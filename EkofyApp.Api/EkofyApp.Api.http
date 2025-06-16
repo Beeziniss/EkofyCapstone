@@ -1,0 +1,6 @@
+@EkofyApp.Api_HostAddress = http://localhost:5030
+
+GET {{EkofyApp.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
