@@ -1,6 +1,12 @@
-using Serilog;
 using EkofyApp.Api.Filters;
+using EkofyApp.Api.GraphQL.Mutation;
+using EkofyApp.Api.GraphQL.Mutation.Test;
+using EkofyApp.Api.GraphQL.Mutation.Track;
+using EkofyApp.Api.GraphQL.Query;
+using EkofyApp.Api.GraphQL.Query.Track;
 using EkofyApp.Infrastructure.DependencyInjections;
+using HotChocolate.Execution.Configuration;
+using Serilog;
 
 namespace EkofyApp.Api
 {
@@ -36,13 +42,24 @@ namespace EkofyApp.Api
 
             builder.Services.AddDependencyInjection();
 
+            builder.Services.AddGraphQLServer()
+                .AddAuthorization().AddType<UploadType>()
+                .AddMaxExecutionDepthRule(5).AddMaxAllowedFieldCycleDepthRule(50)
+                .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections()
+                .AddQueryType<QueryInitialization>()
+                //.AddTypeExtension<TestQuery>()
+                .AddTypeExtension<TrackQuery>()
+                .AddMutationType<MutationInitialization>()
+                //.AddTypeExtension<AuthenticationMutationType>()
+                .AddTypeExtension<TestMutation>()
+                .AddTypeExtension<TrackMutation>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
-                //app.UseSwagger();
-                //app.UseSwaggerUI();
+                // Empty
             }
 
             app.UseHttpsRedirection();
@@ -50,12 +67,13 @@ namespace EkofyApp.Api
             app.UseStaticFiles();
 
             app.UseAuthentication();
-
             app.UseAuthorization();
 
             app.UseCors("");
 
             app.MapControllers();
+
+            app.MapGraphQL("/graphql");
 
             app.Run();
         }

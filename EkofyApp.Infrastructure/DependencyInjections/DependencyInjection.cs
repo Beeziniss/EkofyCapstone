@@ -1,10 +1,15 @@
-﻿using System.Security.Claims;
-using System.Text;
+﻿using Amazon;
+using Amazon.Runtime;
+using Amazon.S3;
 using CloudinaryDotNet;
 using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
+using EkofyApp.Application.ServiceInterfaces.Track;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
+using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.Track;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -16,6 +21,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using System.Security.Claims;
+using System.Text;
 
 namespace EkofyApp.Infrastructure.DependencyInjections
 {
@@ -26,6 +33,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddAutoMapper(typeof(MappingProfile));
             services.ConfigRoute();
 
+            services.AddHttpContextAccessor();
+
             services.AddAuthorization();
             services.AddAuthentication();
 
@@ -34,6 +43,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
 
             services.AddCloudinary();
 
+            services.AddEnumMemberSerializer();
+
             //services.AddSwaggerGen();
             //services.AddJWT();
         }
@@ -41,11 +52,11 @@ namespace EkofyApp.Infrastructure.DependencyInjections
         public static void AddDatabase(this IServiceCollection services)
         {
             // Load MongoDB settings from environment variables
-            string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING");
-            var databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME");
+            string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new NotFoundCustomException("Connection String Database is not set in the environment variables");
+            string databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME") ?? throw new NotFoundCustomException("Database Name is not set in the environment variables");
 
             // Register the MongoDB settings as a singleton
-            var mongoDbSettings = new MongoDbSetting
+            MongoDbSetting mongoDbSettings = new()
             {
                 ConnectionString = connectionString,
                 DatabaseName = databaseName
@@ -64,7 +75,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             // Register IMongoDatabase as a scoped service
             services.AddScoped(sp =>
             {
-                var client = sp.GetRequiredService<IMongoClient>();
+                IMongoClient client = sp.GetRequiredService<IMongoClient>();
                 return client.GetDatabase(mongoDbSettings.DatabaseName);
             });
 
@@ -72,7 +83,6 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddSingleton<EkofyDbContext>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
         }
-
 
         public static void ConfigRoute(this IServiceCollection services)
         {
@@ -87,15 +97,10 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             });
         }
 
-
         public static void AddServices(this IServiceCollection services)
         {
-            services.AddHttpContextAccessor();
-
-            services.AddScoped<ICloudinaryService, CloudinaryService>();
-
+            services.AddScoped<ITrackService, TrackService>();
         }
-
 
         public static void AddCloudinary(this IServiceCollection services)
         {
@@ -103,7 +108,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             string? cloudinaryUrl = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
             if (string.IsNullOrEmpty(cloudinaryUrl))
             {
-                throw new Exception("Cloudinary URL is not set in the environment variables");
+                throw new NotFoundCustomException("Cloudinary URL is not set in the environment variables");
             }
 
             // Initialize Cloudinary instance
@@ -117,8 +122,9 @@ namespace EkofyApp.Infrastructure.DependencyInjections
 
             // Register Cloudinary in DI container as a scoped service
             services.AddScoped<CloudinaryService>();
-        }
 
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
+        }
 
         public static void AddAuthorization(this IServiceCollection services, IConfiguration configuration)
         {
@@ -230,118 +236,63 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             });
         }
 
+        #region AWS
+        public static void AddAmazonWebService(this IServiceCollection services, IConfiguration configuration)
+        {
+            string accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? throw new NotFoundCustomException("AWS_ACCESS_KEY_ID not set");
+            string secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? throw new NotFoundCustomException("AWS_SECRET_ACCESS_KEY not set");
+            string region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new NotFoundCustomException("AWS_REGION not set");
 
-        //public static void AddJWT(this IServiceCollection services)
-        //{
-        //    // Config JWT
-        //    services.AddSwaggerGen(c =>
-        //    {
-        //        c.SwaggerDoc("v1", new OpenApiInfo
-        //        {
-        //            Title = "Healthy Nutrition",
-        //            Version = "v1",
-        //            Description = "",
-        //            TermsOfService = new Uri("https://myfrontend.com/terms"),
-        //            Contact = new OpenApiContact
-        //            {
-        //                Name = "Support Team",
-        //                Email = "support@example.com",
-        //                Url = new Uri("https://myfrontend.com/support")
-        //            },
-        //            License = new OpenApiLicense
-        //            {
-        //                Name = "MIT",
-        //                Url = new Uri("https://opensource.org/licenses/MIT")
-        //            },
-        //        });
+            BasicAWSCredentials awsCredentials = new(accessKey, secretKey);
+            RegionEndpoint awsRegion = RegionEndpoint.GetBySystemName(region);
 
-        //        if (OperationSystemHandle.IsWindows())
-        //        {
-        //            // Include the XML comments (path to the XML file)
-        //            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        //            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        //            if (File.Exists(xmlPath))
-        //            {
-        //                c.IncludeXmlComments(xmlPath);
-        //            }
+            // Thêm S3 Client
+            services.AddSingleton<IAmazonS3>(provider => new AmazonS3Client(awsCredentials, awsRegion));
 
-        //            // Path to XML documentation file for the controller project
-        //            var controllerXmlFile = Path.Combine(AppContext.BaseDirectory, "SpotifyPool.xml");
-        //            if (File.Exists(controllerXmlFile))
-        //            {
-        //                c.IncludeXmlComments(controllerXmlFile);
-        //            }
-        //        }
+            // Thêm MediaConvert Client
+            //services.AddSingleton<IAmazonMediaConvert>(provider => new AmazonMediaConvertClient(awsCredentials, awsRegion));
 
-        //        // Schema Filter
-        //        c.SchemaFilter<EnumSchemaFilter>();
+            // Config the AWS Client
+            AWSSetting awsSetting = new()
+            {
+                BucketName = Environment.GetEnvironmentVariable("AWS_S3_BUCKET_NAME") ?? throw new NotFoundCustomException("BucketName is not set in environment"),
+                Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new NotFoundCustomException("Region is not set in environment"),
+                MediaConvertRole = Environment.GetEnvironmentVariable("AWS_MediaConvertRole") ?? throw new NotFoundCustomException("MediaConvertRole is not set in environment"),
+                MediaConvertEndpoint = Environment.GetEnvironmentVariable("AWS_MediaConvertEndpoint") ?? throw new NotFoundCustomException("MediaConvertEndpoint is not set in environment"),
+                MediaConvertQueue = Environment.GetEnvironmentVariable("AWS_MediaConvertQueue") ?? throw new NotFoundCustomException("MediaConvertQueue is not set in environment")
+            };
 
-        //        #region Add JWT Authentication
-        //        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        //        {
-        //            Name = "Authorization",
-        //            Type = SecuritySchemeType.ApiKey,
-        //            Scheme = "Bearer",
-        //            BearerFormat = "JWT",
-        //            In = ParameterLocation.Header,
-        //            Description = "Enter 'Bearer' [space] and then your token",
-        //        });
-        //        c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        //        {
-        //            {
-        //                new OpenApiSecurityScheme
-        //                {
-        //                    Reference = new OpenApiReference
-        //                    {
-        //                        Type = ReferenceType.SecurityScheme,
-        //                        Id = "Bearer"
-        //                    }
-        //                },
-        //                Array.Empty<string>()
-        //            }
-        //        });
-        //        #endregion
+            // Register the AWSSetting with DI
+            services.AddSingleton(awsSetting);
 
-        //        #region Add OAuth2 Authentication
-        //        //c.AddSecurityDefinition("OAuth2", new OpenApiSecurityScheme
-        //        //{
-        //        //    Type = SecuritySchemeType.OAuth2,
-        //        //    Description = "OAuth2 Authorization Code Flow",
-        //        //    Flows = new OpenApiOAuthFlows
-        //        //    {
-        //        //        AuthorizationCode = new OpenApiOAuthFlow
-        //        //        {
-        //        //            AuthorizationUrl = new Uri("https://accounts.spotify.com/authorize"), // URL ủy quyền của Spotify
-        //        //            TokenUrl = new Uri("https://accounts.spotify.com/api/token"),       // URL token của Spotify
-        //        //            Scopes = new Dictionary<string, string>
-        //        //            {
-        //        //                { "user-top-read", "Read user's top artists and tracks" },
-        //        //                { "playlist-read-private", "Read private playlists" },
-        //        //                { "playlist-modify-public", "Modify public playlists" },
-        //        //                { "user-library-read", "Read user's library" }
-        //        //            }
-        //        //        }
-        //        //    }
-        //        //});
+            // AWS
+            //services.AddScoped<IAmazonWebService, AmazonWebService>();
+        }
+        #endregion
 
-        //        //c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        //        //{
-        //        //    {
-        //        //        new OpenApiSecurityScheme
-        //        //        {
-        //        //            Reference = new OpenApiReference
-        //        //            {
-        //        //                Type = ReferenceType.SecurityScheme,
-        //        //                Id = "OAuth2"
-        //        //            }
-        //        //        },
-        //        //        new List<string> { "user-top-read", "playlist-read-private" } // Các scope mặc định
-        //        //    }
-        //        //});
-        //        #endregion
-        //    });
+        public static void AddEnumMemberSerializer(this IServiceCollection services)
+        {
+            //// User
+            //BsonSerializer.RegisterSerializer(typeof(UserProduct), new EnumMemberSerializer<UserProduct>());
+            //BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
+            //BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
+            //BsonSerializer.RegisterSerializer(typeof(UserGender), new EnumMemberSerializer<UserGender>());
 
+            //// Tracks
+            //BsonSerializer.RegisterSerializer(typeof(PlaylistName), new EnumMemberSerializer<PlaylistName>());
+            //BsonSerializer.RegisterSerializer(typeof(RestrictionReason), new EnumMemberSerializer<RestrictionReason>());
+            //BsonSerializer.RegisterSerializer(typeof(Mood), new EnumMemberSerializer<Mood>());
 
-        //}
+            //// Cloudinary
+            //BsonSerializer.RegisterSerializer(typeof(AudioTagChild), new EnumMemberSerializer<AudioTagChild>());
+            //BsonSerializer.RegisterSerializer(typeof(AudioTagParent), new EnumMemberSerializer<AudioTagParent>());
+            //BsonSerializer.RegisterSerializer(typeof(ImageTag), new EnumMemberSerializer<ImageTag>());
+
+            //// Album
+            //BsonSerializer.RegisterSerializer(typeof(ReleaseStatus), new EnumMemberSerializer<ReleaseStatus>());
+
+            //// Reccomendation
+            //BsonSerializer.RegisterSerializer(typeof(Algorithm), new EnumMemberSerializer<Algorithm>());
+        }
     }
 }

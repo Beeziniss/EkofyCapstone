@@ -7,7 +7,7 @@ namespace EkofyApp.Api
         public static void LoadEnvironmentVariable()
         {
             // Xây dựng đường dẫn đầy đủ tới file .env nằm trong thư mục "4. Application"
-            string envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+            string envFilePath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), ".env");
 
             // Tải file .env từ đường dẫn cụ thể bằng DotEnvOptions
             DotEnvOptions options = new(
