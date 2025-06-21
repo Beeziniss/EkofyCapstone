@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Track;
 using EkofyApp.Application.ServiceInterfaces.Track;
 using EkofyApp.Domain.Entities;
 using HealthyNutritionApp.Application.Interfaces;
@@ -30,12 +30,13 @@ namespace EkofyApp.Infrastructure.Services.Track
             return _mapper.Map<IEnumerable<TrackResponse>>(tracks);
         }
 
-        public async Task CreateTrackAsync(TrackRequest trackRequest)
+        public async Task CreateTrackAsync(CreateTrackRequest trackRequest)
         {
             Tracks track = new()
             {
                 Name = trackRequest.Name,
                 Description = trackRequest.Description,
+                ArtistId = trackRequest.ArtistId,
             };
 
             await _unitOfWork.GetCollection<Tracks>().InsertOneAsync(track);

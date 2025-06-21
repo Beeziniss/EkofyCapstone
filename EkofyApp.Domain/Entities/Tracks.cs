@@ -11,5 +11,8 @@ namespace EkofyApp.Domain.Entities
 
         public string Name { get; set; }
         public string? Description { get; set; }
+
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string ArtistId { get; set; }
     }
 }

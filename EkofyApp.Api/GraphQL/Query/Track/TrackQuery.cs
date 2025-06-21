@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.Models.Track;
 using EkofyApp.Application.ServiceInterfaces.Track;
 using EkofyApp.Domain.Entities;
-using EkofyApp.Infrastructure.Services;
 using HealthyNutritionApp.Application.Interfaces;
 using HotChocolate.Data;
 using HotChocolate.Language;
@@ -38,22 +38,29 @@ namespace EkofyApp.Api.GraphQL.Query.Track
         //}
         #endregion
 
-        [UseProjection]
-        [UseFiltering]
-        [UseSorting]
+        //[UsePaging]
+        //[UseProjection]
+        //[UseFiltering]
+        //[UseSorting]
         public IExecutable<Tracks> GetCustomTrackResponse([Service] IUnitOfWork unitOfWork, [Service] IMapper mapper)
         {
             return unitOfWork.GetCollection<Tracks>().AsExecutable();
-
         }
 
+        //[UsePaging]
         //[UseProjection]
         [UseFiltering]
         [UseSorting]
         public IQueryable<TrackResponse> GetCustomTrackResponseDto([Service] IUnitOfWork unitOfWork, [Service] IMapper mapper)
         {
-            var queryable = unitOfWork.GetCollection<Tracks>().AsQueryable();
+            IQueryable<Tracks> queryable = unitOfWork.GetCollection<Tracks>().AsQueryable();
             return mapper.ProjectTo<TrackResponse>(queryable);
+            //return queryable.Select(track => new TrackResponse
+            //{
+            //    Id = track.Id,
+            //    Name = track.Name,
+            //    Description = track.Description
+            //});
 
             // Method ProjectTo sử dụng Expression<Func<Tracks, TrackResponse>>
             // Nên HotChocolate không thể hiểu hoặc kiểm soát được projection này

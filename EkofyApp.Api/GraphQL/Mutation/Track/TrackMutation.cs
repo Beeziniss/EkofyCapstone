@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.Models.Tracks;
+﻿using EkofyApp.Application.Models.Track;
 using EkofyApp.Application.ServiceInterfaces.Track;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Track
@@ -8,7 +8,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Track
     {
         private readonly ITrackService _trackService = trackService;
 
-        public async Task<bool> CreateTrackAsync(TrackRequest trackRequest)
+        public async Task<bool> CreateTrackAsync(CreateTrackRequest trackRequest)
         {
             await _trackService.CreateTrackAsync(trackRequest);
 

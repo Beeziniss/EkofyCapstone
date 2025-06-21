@@ -13,7 +13,7 @@
                 Directory.CreateDirectory(folderPath);
             }
 
-            using var stream = File.Create(System.IO.Path.Combine(folderPath, $"{fileName}.png"));
+            using FileStream stream = File.Create(System.IO.Path.Combine(folderPath, $"{fileName}.png"));
 
             await file.OpenReadStream().CopyToAsync(stream, cancellationToken);
             await stream.FlushAsync(cancellationToken);

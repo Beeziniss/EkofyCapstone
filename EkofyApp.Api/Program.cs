@@ -1,8 +1,13 @@
 using EkofyApp.Api.Filters;
+using EkofyApp.Api.GraphQL.DataLoader;
 using EkofyApp.Api.GraphQL.Mutation;
+using EkofyApp.Api.GraphQL.Mutation.Artist;
+using EkofyApp.Api.GraphQL.Mutation.Authentication;
 using EkofyApp.Api.GraphQL.Mutation.Test;
 using EkofyApp.Api.GraphQL.Mutation.Track;
 using EkofyApp.Api.GraphQL.Query;
+using EkofyApp.Api.GraphQL.Query.Artist;
+using EkofyApp.Api.GraphQL.Query.Test;
 using EkofyApp.Api.GraphQL.Query.Track;
 using EkofyApp.Infrastructure.DependencyInjections;
 using HotChocolate.Execution.Configuration;
@@ -45,14 +50,18 @@ namespace EkofyApp.Api
             builder.Services.AddGraphQLServer()
                 .AddAuthorization().AddType<UploadType>()
                 .AddMaxExecutionDepthRule(5).AddMaxAllowedFieldCycleDepthRule(50)
-                .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections()
+                .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections().AddMongoDbPagingProviders()
+                //.AddDataLoader<ArtistByIdDataLoader>()
                 .AddQueryType<QueryInitialization>()
-                //.AddTypeExtension<TestQuery>()
+                .AddTypeExtension<TestQuery>()
                 .AddTypeExtension<TrackQuery>()
+                .AddTypeExtension<ArtistQuery>()
+                .AddTypeExtension<TracksResolver>()
                 .AddMutationType<MutationInitialization>()
-                //.AddTypeExtension<AuthenticationMutationType>()
+                .AddTypeExtension<AuthenticationMutation>()
                 .AddTypeExtension<TestMutation>()
-                .AddTypeExtension<TrackMutation>();
+                .AddTypeExtension<TrackMutation>()
+                .AddTypeExtension<ArtistMutation>();
 
             var app = builder.Build();
 
