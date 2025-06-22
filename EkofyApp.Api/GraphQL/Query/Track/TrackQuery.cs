@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using EkofyApp.Api.GraphQL.DataLoader;
 using EkofyApp.Application.Models.Track;
 using EkofyApp.Application.ServiceInterfaces.Track;
 using EkofyApp.Domain.Entities;
@@ -14,6 +13,7 @@ using System.Reflection;
 namespace EkofyApp.Api.GraphQL.Query.Track
 {
     [ExtendObjectType(typeof(QueryInitialization))]
+    [QueryType]
     public class TrackQuery(ITrackService trackService)
     {
         private readonly ITrackService _trackService = trackService;
@@ -38,19 +38,11 @@ namespace EkofyApp.Api.GraphQL.Query.Track
         //}
         #endregion
 
-        //[UsePaging]
-        //[UseProjection]
-        //[UseFiltering]
-        //[UseSorting]
         public IExecutable<Tracks> GetCustomTrackResponse([Service] IUnitOfWork unitOfWork, [Service] IMapper mapper)
         {
             return unitOfWork.GetCollection<Tracks>().AsExecutable();
         }
 
-        //[UsePaging]
-        //[UseProjection]
-        [UseFiltering]
-        [UseSorting]
         public IQueryable<TrackResponse> GetCustomTrackResponseDto([Service] IUnitOfWork unitOfWork, [Service] IMapper mapper)
         {
             IQueryable<Tracks> queryable = unitOfWork.GetCollection<Tracks>().AsQueryable();

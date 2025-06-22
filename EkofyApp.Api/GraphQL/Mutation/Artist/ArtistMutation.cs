@@ -4,6 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.Artist;
 namespace EkofyApp.Api.GraphQL.Mutation.Artist;
 
 [ExtendObjectType(typeof(MutationInitialization))]
+[MutationType]
 public class ArtistMutation(IArtistService artistService)
 {
     private readonly IArtistService _artistService = artistService;

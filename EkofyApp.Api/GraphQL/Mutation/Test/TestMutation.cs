@@ -1,6 +1,7 @@
 ﻿namespace EkofyApp.Api.GraphQL.Mutation.Test
 {
     [ExtendObjectType(typeof(MutationInitialization))]
+    [MutationType]
     public class TestMutation
     {
         public async Task<string> UploadFileAsync(string fileName, IFile file, CancellationToken cancellationToken)

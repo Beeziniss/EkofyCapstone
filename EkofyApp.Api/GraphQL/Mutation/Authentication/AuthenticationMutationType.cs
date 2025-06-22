@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Mutation.Authentication
 {
-    public class AuthenticationMutationType : ObjectType<AuthenticationMutation>
+    public class AuthenticationMutationType : ObjectTypeExtension<AuthenticationMutation>
     {
         protected override void Configure(IObjectTypeDescriptor<AuthenticationMutation> descriptor)
         {

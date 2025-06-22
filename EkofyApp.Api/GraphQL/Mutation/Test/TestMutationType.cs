@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Mutation.Test
 {
-    public class TestMutationType : ObjectType<TestMutation>
+    public class TestMutationType : ObjectTypeExtension<TestMutation>
     {
         protected override void Configure(IObjectTypeDescriptor<TestMutation> descriptor)
         {

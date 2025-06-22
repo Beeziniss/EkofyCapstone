@@ -4,6 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.Track;
 namespace EkofyApp.Api.GraphQL.Mutation.Track
 {
     [ExtendObjectType(typeof(MutationInitialization))]
+    [MutationType]
     public class TrackMutation(ITrackService trackService)
     {
         private readonly ITrackService _trackService = trackService;

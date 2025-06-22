@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Mutation.Track
 {
-    public class TrackMutationType : ObjectType<TrackMutation>
+    public class TrackMutationType : ObjectTypeExtension<TrackMutation>
     {
         protected override void Configure(IObjectTypeDescriptor<TrackMutation> descriptor)
         {

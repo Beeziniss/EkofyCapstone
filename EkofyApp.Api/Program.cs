@@ -52,16 +52,16 @@ namespace EkofyApp.Api
                 .AddMaxExecutionDepthRule(5).AddMaxAllowedFieldCycleDepthRule(50)
                 .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections().AddMongoDbPagingProviders()
                 //.AddDataLoader<ArtistByIdDataLoader>()
-                .AddQueryType<QueryInitialization>()
-                .AddTypeExtension<TestQuery>()
-                .AddTypeExtension<TrackQuery>()
-                .AddTypeExtension<ArtistQuery>()
-                .AddTypeExtension<TracksResolver>()
-                .AddMutationType<MutationInitialization>()
-                .AddTypeExtension<AuthenticationMutation>()
-                .AddTypeExtension<TestMutation>()
-                .AddTypeExtension<TrackMutation>()
-                .AddTypeExtension<ArtistMutation>();
+                .AddQueryType<QueryInitialization>().AddMutationType<MutationInitialization>()
+                .AddTypes();
+                //.AddTypeExtension<TestQuery>()
+                //.AddTypeExtension<TrackQuery>()
+                //.AddTypeExtension<ArtistQuery>()
+                //.AddTypeExtension<TracksResolver>().AddTypeExtension<TrackResponseResolver>().AddTypeExtension<TrackResponseType>()
+                //.AddTypeExtension<AuthenticationMutation>()
+                //.AddTypeExtension<TestMutation>()
+                //.AddTypeExtension<TrackMutation>()
+                //.AddTypeExtension<ArtistMutation>();
 
             var app = builder.Build();
 

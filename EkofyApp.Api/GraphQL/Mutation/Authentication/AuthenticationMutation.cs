@@ -3,6 +3,7 @@
 namespace EkofyApp.Api.GraphQL.Mutation.Authentication
 {
     [ExtendObjectType(typeof(MutationInitialization))]
+    [MutationType]
     public class AuthenticationMutation(IAuthentication authenticationService)
     {
         private readonly IAuthentication _authenticationService = authenticationService;

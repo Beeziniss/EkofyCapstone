@@ -1,10 +1,11 @@
 ﻿namespace EkofyApp.Api.GraphQL.Query.Track;
 
-public class TrackQueryType : ObjectType<TrackQuery>
+public class TrackQueryType : ObjectTypeExtension<TrackQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<TrackQuery> descriptor)
     {
-        //descriptor.Field(x => x.GetTrackById(default)).Description("Returns a track by its ID.");
-        //descriptor.Field(x => x.GetAllTracks()).Description("Returns all tracks.");
+        descriptor.Field(x => x.GetCustomTrackResponseDto(default!, default!))
+            .UseFiltering()
+            .UseSorting();
     }
 }

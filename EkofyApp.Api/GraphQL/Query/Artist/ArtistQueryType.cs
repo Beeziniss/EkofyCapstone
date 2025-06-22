@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Query.Artist;
 
-public class ArtistQueryType : ObjectType<ArtistQuery>
+public class ArtistQueryType : ObjectTypeExtension<ArtistQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<ArtistQuery> descriptor)
     {
