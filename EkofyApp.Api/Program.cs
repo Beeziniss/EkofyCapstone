@@ -1,16 +1,7 @@
 using EkofyApp.Api.Filters;
-using EkofyApp.Api.GraphQL.DataLoader;
 using EkofyApp.Api.GraphQL.Mutation;
-using EkofyApp.Api.GraphQL.Mutation.Artist;
-using EkofyApp.Api.GraphQL.Mutation.Authentication;
-using EkofyApp.Api.GraphQL.Mutation.Test;
-using EkofyApp.Api.GraphQL.Mutation.Track;
 using EkofyApp.Api.GraphQL.Query;
-using EkofyApp.Api.GraphQL.Query.Artist;
-using EkofyApp.Api.GraphQL.Query.Test;
-using EkofyApp.Api.GraphQL.Query.Track;
 using EkofyApp.Infrastructure.DependencyInjections;
-using HotChocolate.Execution.Configuration;
 using Serilog;
 
 namespace EkofyApp.Api

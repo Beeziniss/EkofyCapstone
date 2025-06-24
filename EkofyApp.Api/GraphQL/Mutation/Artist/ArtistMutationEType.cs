@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Mutation.Artist;
 
-public class ArtistMutationType : ObjectType<ArtistMutation>
+public class ArtistMutationEType : ObjectTypeExtension<ArtistMutation>
 {
     protected override void Configure(IObjectTypeDescriptor<ArtistMutation> descriptor)
     {

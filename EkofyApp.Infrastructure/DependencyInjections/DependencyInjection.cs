@@ -104,6 +104,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
         {
             services.AddScoped<ITrackService, TrackService>();
             services.AddScoped<IArtistService, ArtistService>();
+
+            services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
         }
 
         public static void AddCloudinary(this IServiceCollection services)

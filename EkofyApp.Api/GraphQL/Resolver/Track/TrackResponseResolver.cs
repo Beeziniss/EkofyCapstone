@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
-using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Api.GraphQL.DataLoader.Artist;
 using EkofyApp.Application.Models.Artist;
 using EkofyApp.Application.Models.Track;
 using EkofyApp.Domain.Entities;
 
-namespace EkofyApp.Api.GraphQL.Query.Track;
+namespace EkofyApp.Api.GraphQL.Resolver.Track;
 
 [ExtendObjectType(typeof(TrackResponse))]
 public class TrackResponseResolver

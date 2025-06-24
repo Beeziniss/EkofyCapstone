@@ -2,7 +2,7 @@
 using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
-namespace EkofyApp.Api.GraphQL.DataLoader;
+namespace EkofyApp.Api.GraphQL.DataLoader.Artist;
 
 public class ArtistByIdDataLoader(IBatchScheduler scheduler, DataLoaderOptions options, IUnitOfWork unitOfWork) : BatchDataLoader<string, Artists>(scheduler, options)
 {

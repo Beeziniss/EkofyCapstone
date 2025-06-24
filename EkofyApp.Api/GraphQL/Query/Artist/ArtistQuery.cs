@@ -1,4 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.Artist;
+﻿using EkofyApp.Api.GraphQL.Resolver;
+
+namespace EkofyApp.Api.GraphQL.Query.Artist;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
