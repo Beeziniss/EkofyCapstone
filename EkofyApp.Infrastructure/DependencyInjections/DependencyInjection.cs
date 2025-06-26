@@ -7,16 +7,17 @@ using EkofyApp.Application.Mappers;
 using EkofyApp.Application.ServiceInterfaces.Artist;
 using EkofyApp.Application.ServiceInterfaces.Track;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artist;
 using EkofyApp.Infrastructure.Services.Track;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
+using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
@@ -106,6 +107,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddScoped<IArtistService, ArtistService>();
 
             services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
+
+            services.AddScoped<IMomoService, MomoService>();
         }
 
         public static void AddCloudinary(this IServiceCollection services)
