@@ -1,4 +1,9 @@
-﻿namespace EkofyApp.Api.GraphQL.Mutation.Test
+﻿using EkofyApp.Application.Models.Wavs;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Domain.Utils;
+using MongoDB.Bson;
+
+namespace EkofyApp.Api.GraphQL.Mutation.Test
 {
     [ExtendObjectType(typeof(MutationInitialization))]
     [MutationType]
@@ -20,6 +25,25 @@
             await stream.FlushAsync(cancellationToken);
 
             return $"File {fileName}.png uploaded successfully to {folderPath}";
+        }
+
+        public async Task<WavFileResponse> ConvertToWavFileAsync(IFile file, [Service] IFfmpegService ffmpegService, CancellationToken cancellationToken)
+        {
+            using Stream stream = file.OpenReadStream();
+
+            return await ffmpegService.ConvertToWavFileAsync(stream, file.Name, AudioConvertPathOptions.ForConvertToWav());
+
+        }
+
+        public async Task<string> ConvertToHlsAsync(IFile file, [Service] IFfmpegService ffmpegService, CancellationToken cancellationToken)
+        {
+            using Stream stream = file.OpenReadStream();
+
+            WavFileResponse wavFileResponse = await ffmpegService.ConvertToWavFileAsync(stream, file.Name, AudioConvertPathOptions.ForConvertToWav());
+
+            string trackIdTemp = ObjectId.GenerateNewId().ToString();
+
+            return await ffmpegService.ConvertToHls(wavFileResponse.OutputWavPath, trackIdTemp, AudioConvertPathOptions.ForConvertToHls());
         }
     }
 }

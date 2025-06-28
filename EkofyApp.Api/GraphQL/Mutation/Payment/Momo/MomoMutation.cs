@@ -9,7 +9,7 @@ public class MomoMutation(IMomoService momoService)
 {
     private readonly IMomoService _momoService = momoService;
 
-    public async Task<MomoPaymentResponse> CreateMomoPaymentAsync(CreateMomoPaymentRequest createMomoPaymentRequest)
+    public async Task<MomoPaymentResponse> CreateMomoPaymentQRAsync(CreateMomoPaymentRequest createMomoPaymentRequest)
     {
         return await _momoService.CreatePaymentQRLinkAsync(createMomoPaymentRequest);
     }

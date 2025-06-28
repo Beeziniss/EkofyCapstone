@@ -4,7 +4,7 @@ public class MomoMutationEType : ObjectTypeExtension<MutationInitialization>
 {
     protected override void Configure(IObjectTypeDescriptor<MutationInitialization> descriptor)
     {
-        descriptor.Field("createMomoPayment")
+        descriptor.Field("createMomoPaymentQR")
            .AllowAnonymous();
         descriptor.Field("createMomoPaymentVisa")
             .AllowAnonymous();
