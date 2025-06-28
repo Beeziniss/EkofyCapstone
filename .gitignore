@@ -364,3 +364,7 @@ FodyWeavers.xsd
 
 #Ignore .env
 *.env
+
+# Ignore FFmpeg tools
+Tools/ffmpeg.exe
+Tools/ffprobe.exe
