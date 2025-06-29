@@ -116,7 +116,7 @@ public class FfmpegService : IFfmpegService
         };
     }
 
-    public async Task<string> ConvertToHls(string audioFilePath, string trackId, AudioConvertPathOptions audioConvertPathOptions)
+    public async Task<string> ConvertToHls(WavFileResponse wavFileResponse, AudioConvertPathOptions audioConvertPathOptions)
     {
         List<(long bitrate, string relativePath)> playlistEntries = [];
 
@@ -135,7 +135,7 @@ public class FfmpegService : IFfmpegService
 
         try
         {
-            string playlistFileName = $"{trackId}_hls.m3u8";
+            string playlistFileName = $"{audioConvertPathOptions.TargetFolder}_hls.m3u8";
 
             // Lấy key và iv từ environment để mã hóa
             string keyHex = Environment.GetEnvironmentVariable("HLS_KEY")!;
@@ -165,18 +165,18 @@ public class FfmpegService : IFfmpegService
             ]);
 
             // Kiểm tra file đầu vào có hợp lệ không
-            IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(audioFilePath);
+            IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(wavFileResponse.OutputWavPath);
             //if (!mediaInfo.AudioStreams.Any())
             //    throw new InvalidOperationException("AudioFile không chứa stream âm thanh hợp lệ.");
 
             IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullCustomException("Audio Stream is null");
-            long bitrate = audioStream.Bitrate;
+            //long bitrate = audioStream.Bitrate;
 
-            foreach (long bitrateIndex in audioConvertPathOptions.Bitrates)
+            foreach (long bitrateIndex in HelperMethod.GetValidBitrates())
             {
-                if (bitrateIndex > bitrate)
+                if (bitrateIndex > wavFileResponse.Bitrate)
                 {
-                    return targetRootFolder;
+                    break; // Dừng nếu bitrateIndex lớn hơn bitrate của file gốc
                 }
 
                 string bitrateDisplay = (bitrateIndex / 1000).ToString("D3") + "kbps";
@@ -219,9 +219,9 @@ public class FfmpegService : IFfmpegService
         }
         catch
         {
-            if (Directory.Exists(audioFilePath))
+            if (Directory.Exists(wavFileResponse.OutputWavPath))
             {
-                Directory.Delete(audioFilePath, true); // Xóa cả file bên trong
+                Directory.Delete(wavFileResponse.OutputWavPath, true); // Xóa cả file bên trong
             }
 
             if (Directory.Exists(outputFolder))
@@ -232,9 +232,9 @@ public class FfmpegService : IFfmpegService
         finally
         {
             // Xóa file WAV input nếu tồn tại
-            if (File.Exists(audioFilePath))
+            if (File.Exists(wavFileResponse.OutputWavPath))
             {
-                File.Delete(audioFilePath);
+                File.Delete(wavFileResponse.OutputWavPath);
             }
 
             // Xóa folder key sau khi sử dụng

@@ -6,6 +6,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
@@ -14,6 +15,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Tracks;
+using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
@@ -47,6 +49,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddDatabase();
             services.AddServices();
 
+            services.AddAmazonWebService();
             services.AddCloudinary();
 
             services.AddEnumMemberSerializer();
@@ -252,7 +255,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
         }
 
         #region AWS
-        public static void AddAmazonWebService(this IServiceCollection services, IConfiguration configuration)
+        public static void AddAmazonWebService(this IServiceCollection services)
         {
             string accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? throw new NotFoundCustomException("AWS_ACCESS_KEY_ID not set");
             string secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? throw new NotFoundCustomException("AWS_SECRET_ACCESS_KEY not set");
@@ -272,16 +275,17 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             {
                 BucketName = Environment.GetEnvironmentVariable("AWS_S3_BUCKET_NAME") ?? throw new NotFoundCustomException("BucketName is not set in environment"),
                 Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new NotFoundCustomException("Region is not set in environment"),
-                MediaConvertRole = Environment.GetEnvironmentVariable("AWS_MediaConvertRole") ?? throw new NotFoundCustomException("MediaConvertRole is not set in environment"),
-                MediaConvertEndpoint = Environment.GetEnvironmentVariable("AWS_MediaConvertEndpoint") ?? throw new NotFoundCustomException("MediaConvertEndpoint is not set in environment"),
-                MediaConvertQueue = Environment.GetEnvironmentVariable("AWS_MediaConvertQueue") ?? throw new NotFoundCustomException("MediaConvertQueue is not set in environment")
+                CloudFrontDomainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new NotFoundCustomException("CloudFrontDomainUrl is not set in environment"),
+                CloudFrontDistributionId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DISTRIBUTION_ID") ?? throw new NotFoundCustomException("CloudFrontDistributionId is not set in environment"),
+                KeyPairId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_KEY_PAIR_ID") ?? throw new NotFoundCustomException("KeyPairId is not set in environment")
             };
 
             // Register the AWSSetting with DI
             services.AddSingleton(awsSetting);
 
             // AWS
-            //services.AddScoped<IAmazonWebService, AmazonWebService>();
+            services.AddScoped<IAmazonS3Service, AmazonS3Service>();
+            services.AddScoped<IAmazonCloudFrontService, AmazonCloudFrontService>();
         }
         #endregion
 

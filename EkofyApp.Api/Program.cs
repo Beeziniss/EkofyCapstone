@@ -59,6 +59,12 @@ namespace EkofyApp.Api
             if (app.Environment.IsDevelopment())
             {
                 // Empty
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "EkofyApp API V1");
+                    c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
+                });
             }
 
             app.UseHttpsRedirection();

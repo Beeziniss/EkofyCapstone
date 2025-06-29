@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using EkofyApp.Domain.Exceptions;
+using MongoDB.Bson;
 
 namespace EkofyApp.Domain.Utils;
 public class AudioConvertPathOptions
@@ -8,9 +9,6 @@ public class AudioConvertPathOptions
     public string InputIntermediateFolder { get; set; } = string.Empty;
     public string OutputIntermediateFolder { get; set; } = string.Empty;
     public string TargetFolder { get; set; } = string.Empty;
-
-    // Dùng cho convert to HLS
-    public IEnumerable<long> Bitrates = []; // Các bitrate có thể sử dụng
 
     public string GetInputFolder()
         => Path.Combine(BasePath, RootFolder, InputIntermediateFolder);
@@ -30,17 +28,20 @@ public class AudioConvertPathOptions
         };
     }
 
-    public static AudioConvertPathOptions ForConvertToHls()
+    public static AudioConvertPathOptions ForConvertToHls(string trackId)
     {
+        if (string.IsNullOrEmpty(trackId))
+        {
+            throw new ValidationCustomException("Track id cannot be null or empty");
+        }
+
         return new AudioConvertPathOptions
         {
             BasePath = AppDomain.CurrentDomain.BaseDirectory,
             RootFolder = "audio_processing",
             InputIntermediateFolder = "input_temp_audio",
             OutputIntermediateFolder = "output_hls_audio",
-            TargetFolder = ObjectId.GenerateNewId().ToString(),
-
-            Bitrates = [128000, 256000, 320000]
+            TargetFolder = trackId,
         };
     }
 

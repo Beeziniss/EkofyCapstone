@@ -43,7 +43,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test
 
             string trackIdTemp = ObjectId.GenerateNewId().ToString();
 
-            return await ffmpegService.ConvertToHls(wavFileResponse.OutputWavPath, trackIdTemp, AudioConvertPathOptions.ForConvertToHls());
+            return await ffmpegService.ConvertToHls(wavFileResponse, AudioConvertPathOptions.ForConvertToHls(trackIdTemp));
         }
     }
 }

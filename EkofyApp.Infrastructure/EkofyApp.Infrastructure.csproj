@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.Core" Version="4.0.0.12" />
+    <PackageReference Include="AWSSDK.Extensions.CloudFront.Signers" Version="4.0.0.1" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
