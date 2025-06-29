@@ -365,6 +365,9 @@ FodyWeavers.xsd
 #Ignore .env
 *.env
 
+# Ignore Private keys
+PrivateKeys/private_key.pem
+
 # Ignore FFmpeg tools
 Tools/ffmpeg.exe
 Tools/ffprobe.exe
