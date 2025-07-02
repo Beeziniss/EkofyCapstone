@@ -1,4 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.Tracks;
+﻿using EkofyApp.Application.Models.Tracks;
+
+namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
 public class TrackQueryEType : ObjectTypeExtension<TrackQuery>
 {
@@ -7,5 +9,8 @@ public class TrackQueryEType : ObjectTypeExtension<TrackQuery>
         descriptor.Field(x => x.GetCustomTrackResponseDto())
             .UseFiltering()
             .UseSorting();
+
+        descriptor.Field(x => x.GetCustomTrackResponse(default!, default!))
+            .UseProjection<TrackResponse>();
     }
 }

@@ -107,7 +107,9 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             string content = await reader.ReadToEndAsync();
 
             string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
-            string privateKeyPath = PathHelper.ResolvePath(PathTag.PrivateKeys);
+            //string privateKeyPath = PathHelper.ResolvePath(PathTag.PrivateKeys);
+            //privateKeyPath = Path.GetFullPath(privateKeyPath);
+            string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
             string privateKey = File.ReadAllText(privateKeyPath);
             string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
             DateTime expires = DateTime.UtcNow.AddMinutes(2);

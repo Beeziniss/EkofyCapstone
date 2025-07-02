@@ -29,6 +29,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using Refit;
 using System.Security.Claims;
 using System.Text;
 
@@ -45,10 +46,12 @@ namespace EkofyApp.Infrastructure.DependencyInjections
 
             services.AddAuthorization();
             services.AddAuthentication();
+            services.AddCors();
 
             services.AddDatabase();
             services.AddServices();
 
+            services.AddMomo();
             services.AddAmazonWebService();
             services.AddCloudinary();
 
@@ -116,7 +119,6 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
 
             // Third Party Services
-            services.AddScoped<IMomoService, MomoService>();
             services.AddScoped<IFfmpegService, FfmpegService>();
         }
 
@@ -142,15 +144,6 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddScoped<CloudinaryService>();
 
             services.AddScoped<ICloudinaryService, CloudinaryService>();
-        }
-
-        public static void AddAuthorization(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddAuthorizationBuilder().AddPolicy("GoogleOrJwt", policy =>
-            {
-                policy.AddAuthenticationSchemes(GoogleDefaults.AuthenticationScheme, JwtBearerDefaults.AuthenticationScheme);
-                policy.RequireAuthenticatedUser();
-            });
         }
 
         public static void AddAuthentication(this IServiceCollection services)
@@ -252,6 +245,53 @@ namespace EkofyApp.Infrastructure.DependencyInjections
                 //    }
                 //};
             });
+        }
+
+        public static void AddAuthorization(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddAuthorizationBuilder().AddPolicy("GoogleOrJwt", policy =>
+            {
+                policy.AddAuthenticationSchemes(GoogleDefaults.AuthenticationScheme, JwtBearerDefaults.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+            }).AddPolicy("AdminPolicy", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole("Admin");
+            }).AddPolicy("UserPolicy", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole("User");
+            }).AddPolicy("ArtistPolicy", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole("Artist");
+            });
+        }
+
+        public static void AddCors(this IServiceCollection services)
+        {
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+        }
+
+        public static void AddMomo(this IServiceCollection services)
+        {
+            // Load Momo API URL from environment variables
+            string momoApiUrlBase = Environment.GetEnvironmentVariable("MOMO_API_URL_BASE") ?? throw new NotFoundCustomException("Base Address is not set in the environment variables");
+
+            // Register Refit client for Momo API
+            services.AddRefitClient<IMomoApi>()
+                .ConfigureHttpClient(c => c.BaseAddress = new Uri(momoApiUrlBase));
+
+            // Register MomoService with DI
+            services.AddScoped<IMomoService, MomoService>();
         }
 
         #region AWS

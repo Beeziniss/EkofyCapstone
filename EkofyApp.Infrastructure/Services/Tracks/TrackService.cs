@@ -13,7 +13,7 @@ namespace EkofyApp.Infrastructure.Services.Tracks
         private readonly IMapper _mapper = mapper;
 
         // Implement methods from ITrackService here
-        public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Domain.Entities.Track> projection, string id)
+        public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
         {
             Track track = await _unitOfWork.GetCollection<Track>()
                 .Find(x => x.Id == id)
