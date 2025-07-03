@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{b5525ac2-4dec-4d5e-9347-59ae72b3f7b5}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath>..\..\..\Python\Projects\Testing\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include=".vs\EkofyApp\ColorByRegexConfig.txt" />
+    <Content Include="EkofyApp.Api\bin\Debug\net8.0\Uploads\HoangGay.png" />
+    <Content Include="EkofyApp.Api\obj\Debug\net8.0\EkofyApp.Api.csproj.FileListAbsolute.txt" />
+    <Content Include="EkofyApp.Api\obj\Debug\net8.0\staticwebassets.references.upToDateCheck.txt" />
+    <Content Include="EkofyApp.Api\obj\Debug\net8.0\staticwebassets.removed.txt" />
+    <Content Include="EkofyApp.Application\obj\Debug\net8.0\EkofyApp.Application.csproj.FileListAbsolute.txt" />
+    <Content Include="EkofyApp.Domain\obj\Debug\net8.0\EkofyApp.Domain.csproj.FileListAbsolute.txt" />
+    <Content Include="EkofyApp.Infrastructure\obj\Debug\net8.0\EkofyApp.Infrastructure.csproj.FileListAbsolute.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include=".vs\EkofyApp" />
+    <Folder Include="EkofyApp.Api\bin\Debug\net8.0\Uploads" />
+    <Folder Include="EkofyApp.Api\obj\Debug\net8.0" />
+    <Folder Include="EkofyApp.Application\obj\Debug\net8.0" />
+    <Folder Include="EkofyApp.Domain\obj\Debug\net8.0" />
+    <Folder Include="EkofyApp.Infrastructure\obj\Debug\net8.0" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

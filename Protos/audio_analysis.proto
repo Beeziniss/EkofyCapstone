@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option csharp_namespace = "Audio";
+
+package audio;
+
+service AudioAnalyzer {
+  rpc AnalyzeWav (AnalyzeWavRequest) returns (AudioFeaturesReply);
+}
+
+message AnalyzeWavRequest {
+  bytes wav_data = 1;
+}
+
+message AudioFeaturesReply {
+  float tempo = 1;
+  string key = 2;
+  int32 key_number = 3;
+  string mode = 4;
+  int32 mode_number = 5;
+  float energy = 6;
+  float danceability = 7;
+  float acousticness = 8;
+  float spectral_centroid = 9;
+  float zero_crossing_rate = 10;
+  float duration = 11;
+  repeated float chroma_mean = 12;
+  repeated float mfcc_mean = 13;
+}

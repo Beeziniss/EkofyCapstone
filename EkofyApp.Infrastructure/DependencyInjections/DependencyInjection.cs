@@ -1,6 +1,7 @@
 ﻿using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
+using Audio;
 using CloudinaryDotNet;
 using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
@@ -27,6 +28,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Refit;
@@ -51,6 +53,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddDatabase();
             services.AddServices();
 
+            services.AddGrpcClient();
+
             services.AddMomo();
             services.AddAmazonWebService();
             services.AddCloudinary();
@@ -59,6 +63,23 @@ namespace EkofyApp.Infrastructure.DependencyInjections
 
             //services.AddSwaggerGen();
             //services.AddJWT();
+        }
+
+        public static void AddGrpcClient(this IServiceCollection services)
+        {
+            // Register gRPC client with DI
+            services.AddGrpcClient<AudioAnalyzer.AudioAnalyzerClient>(options =>
+            {
+                options.Address = new Uri(Environment.GetEnvironmentVariable("GRPC_CLIENT") ?? throw new NotFoundCustomException("GRPC_CLIENT is not set or configured"));
+
+                // Set the maximum message size for gRPC
+                options.ChannelOptionsActions.Add(channelOptions =>
+                {
+                    // 50MB
+                    channelOptions.MaxReceiveMessageSize = 50 * 1024 * 1024; 
+                    channelOptions.MaxSendMessageSize = 50 * 1024 * 1024;
+                });
+            });
         }
 
         public static void AddDatabase(this IServiceCollection services)
@@ -114,6 +135,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             // Business Services
             services.AddScoped<ITrackService, TrackService>();
             services.AddScoped<IArtistService, ArtistService>();
+            services.AddScoped<IAudioAnalysisService, AudioAnalysisService>();
 
             // GraphQL Services
             services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
