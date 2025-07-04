@@ -371,3 +371,16 @@ PrivateKeys/private_key.pem
 # Ignore FFmpeg tools
 Tools/ffmpeg.exe
 Tools/ffprobe.exe
+
+# === Python (AudioFeatureExtractor) ===
+AudioFeatureExtractor/__pycache__/
+AudioFeatureExtractor/.venv/
+AudioFeatureExtractor/*.pyc
+AudioFeatureExtractor/*.pyo
+AudioFeatureExtractor/*.pyd
+AudioFeatureExtractor/*_pb2.py
+AudioFeatureExtractor/*_pb2_grpc.py
+
+# Nếu dùng VSCode/PyCharm
+AudioFeatureExtractor/.vscode/
+AudioFeatureExtractor/.idea/
