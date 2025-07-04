@@ -7,9 +7,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AWSSDK.Core" Version="4.0.0.12" />
+		<PackageReference Include="AWSSDK.Core" Version="4.0.0.14" />
 		<PackageReference Include="AWSSDK.Extensions.CloudFront.Signers" Version="4.0.0.1" />
-		<PackageReference Include="AWSSDK.S3" Version="4.0.2" />
+		<PackageReference Include="AWSSDK.S3" Version="4.0.4.1" />
 		<PackageReference Include="Google.Protobuf" Version="3.31.1" />
 		<PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
 		<PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
@@ -25,6 +25,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
 		<PackageReference Include="MongoDB.Bson" Version="3.4.0" />
 		<PackageReference Include="MongoDB.Driver" Version="3.4.0" />
+		<PackageReference Include="SoundFingerprinting" Version="12.1.0" />
 		<PackageReference Include="Xabe.FFmpeg" Version="6.0.1" />
 	</ItemGroup>
 

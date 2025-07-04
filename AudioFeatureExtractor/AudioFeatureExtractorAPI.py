@@ -40,7 +40,12 @@ def get_key_and_mode(chroma_vector):
 class AudioAnalyzerService(pb2_grpc.AudioAnalyzerServicer):
     def AnalyzeWav(self, request, context):
         try:
-            y, sr = librosa.load(io.BytesIO(request.wav_data), sr=None, mono=True)
+            if request.wav_file_path:
+                y, sr = librosa.load(request.wav_file_path, sr=None, mono=True)
+            elif request.wav_data:
+                y, sr = librosa.load(io.BytesIO(request.wav_data), sr=None, mono=True)
+            else:
+                raise ValueError("No input wav file provided")
             tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
             energy = np.mean(librosa.feature.rms(y=y))
             centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))

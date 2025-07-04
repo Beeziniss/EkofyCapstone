@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Domain.Utils;
-public static class PathHelper
+public class PathHelper
 {
     public static string ResolvePath(PathTag tag, params string[] more)
     {

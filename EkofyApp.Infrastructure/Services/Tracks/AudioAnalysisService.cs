@@ -1,26 +1,23 @@
 ﻿using Audio;
-using EkofyApp.Application.Models.AudioFeatures;
+using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 public class AudioAnalysisService(AudioAnalyzer.AudioAnalyzerClient client) : IAudioAnalysisService
 {
     private readonly AudioAnalyzer.AudioAnalyzerClient _client = client;
 
-    public async Task<AudioFeaturesResponse> AnalyzeAudioAsync(Stream wavStream)
+    public async Task<AudioFeature> AnalyzeAudioAsync(WavFileResponse wavFileResponse)
     {
-        await using MemoryStream ms = new();
-        await wavStream.CopyToAsync(ms);
-        ms.Position = 0;
-
         AnalyzeWavRequest request = new()
         {
-            WavData = Google.Protobuf.ByteString.CopyFrom(ms.ToArray())
+            WavFilePath = wavFileResponse.OutputWavPath
         };
 
         AudioFeaturesReply reply = await _client.AnalyzeWavAsync(request);
 
-        AudioFeaturesResponse audioFeaturesResponse = new()
+        AudioFeature audioFeaturesResponse = new()
         {
             Tempo = reply.Tempo,
             Key = reply.Key,

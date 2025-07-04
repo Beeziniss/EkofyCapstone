@@ -1,8 +1,8 @@
-﻿
-using EkofyApp.Application.Models.AudioFeatures;
+﻿using EkofyApp.Application.Models.Wavs;
+using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.Tracks;
 public interface IAudioAnalysisService
 {
-    Task<AudioFeaturesResponse> AnalyzeAudioAsync(Stream wavStream);
+    Task<AudioFeature> AnalyzeAudioAsync(WavFileResponse wavFileResponse);
 }

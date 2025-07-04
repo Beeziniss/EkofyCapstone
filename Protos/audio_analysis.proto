@@ -9,7 +9,8 @@ service AudioAnalyzer {
 }
 
 message AnalyzeWavRequest {
-  bytes wav_data = 1;
+  string wav_file_path = 1;
+  bytes wav_data = 2;
 }
 
 message AudioFeaturesReply {

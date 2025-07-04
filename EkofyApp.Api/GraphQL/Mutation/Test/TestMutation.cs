@@ -31,7 +31,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test
         {
             using Stream stream = file.OpenReadStream();
 
-            return await ffmpegService.ConvertToWavFileAsync(stream, file.Name, AudioConvertPathOptions.ForConvertToWav());
+            return await ffmpegService.ConvertToWavAsync(stream, file.Name, AudioConvertPathOptions.ForConvertToWav());
 
         }
 
@@ -39,11 +39,11 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test
         {
             using Stream stream = file.OpenReadStream();
 
-            WavFileResponse wavFileResponse = await ffmpegService.ConvertToWavFileAsync(stream, file.Name, AudioConvertPathOptions.ForConvertToWav());
+            WavFileResponse wavFileResponse = await ffmpegService.ConvertToWavAsync(stream, file.Name, AudioConvertPathOptions.ForConvertToWav());
 
             string trackIdTemp = ObjectId.GenerateNewId().ToString();
 
-            return await ffmpegService.ConvertToHls(wavFileResponse, AudioConvertPathOptions.ForConvertToHls(trackIdTemp));
+            return await ffmpegService.ConvertToHlsAsync(wavFileResponse, AudioConvertPathOptions.ForConvertToHls(trackIdTemp));
         }
     }
 }

@@ -136,6 +136,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddScoped<ITrackService, TrackService>();
             services.AddScoped<IArtistService, ArtistService>();
             services.AddScoped<IAudioAnalysisService, AudioAnalysisService>();
+            services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
 
             // GraphQL Services
             services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();

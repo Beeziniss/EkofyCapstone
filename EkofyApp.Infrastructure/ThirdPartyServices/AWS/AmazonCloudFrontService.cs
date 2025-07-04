@@ -2,10 +2,8 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
-using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
-using EkofyApp.Domain.Utils;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;

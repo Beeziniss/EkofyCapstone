@@ -26,7 +26,7 @@ public class FfmpegService : IFfmpegService
     }
 
     // Convert IFormFile to Waveform Audio File
-    public async Task<WavFileResponse> ConvertToWavFileAsync(Stream inputStreamFile, string inputFileName, AudioConvertPathOptions audioConvertPathOptions)
+    public async Task<WavFileResponse> ConvertToWavAsync(Stream inputStreamFile, string inputFileName, AudioConvertPathOptions audioConvertPathOptions)
     {
         if (inputStreamFile == null || inputStreamFile.Length == 0)
             throw new ArgumentException("Tệp âm thanh không hợp lệ.");
@@ -116,7 +116,7 @@ public class FfmpegService : IFfmpegService
         };
     }
 
-    public async Task<string> ConvertToHls(WavFileResponse wavFileResponse, AudioConvertPathOptions audioConvertPathOptions)
+    public async Task<string> ConvertToHlsAsync(WavFileResponse wavFileResponse, AudioConvertPathOptions audioConvertPathOptions)
     {
         List<(long bitrate, string relativePath)> playlistEntries = [];
 
@@ -232,10 +232,10 @@ public class FfmpegService : IFfmpegService
         finally
         {
             // Xóa file WAV input nếu tồn tại
-            if (File.Exists(wavFileResponse.OutputWavPath))
-            {
-                File.Delete(wavFileResponse.OutputWavPath);
-            }
+            //if (File.Exists(wavFileResponse.OutputWavPath))
+            //{
+            //    File.Delete(wavFileResponse.OutputWavPath);
+            //}
 
             // Xóa folder key sau khi sử dụng
             if (Directory.Exists(keyDirectory))
