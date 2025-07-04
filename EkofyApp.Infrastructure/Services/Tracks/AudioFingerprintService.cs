@@ -3,7 +3,6 @@ using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using HealthyNutritionApp.Application.Interfaces;
-using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using SoundFingerprinting.Audio;
 using SoundFingerprinting.Builder;
@@ -61,7 +60,6 @@ public class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFingerprint
             List<AudioFingerprint> audioFingerprints = await _unitOfWork.GetCollection<Track>().Find(_ => true)
                 .Project(track => track.AudioFingerprint)
                 .ToListAsync();
-
 
             InMemoryModelService tempModelService = new();
 

@@ -13,6 +13,6 @@ public class AudioFeature
     public float ZeroCrossingRate { get; set; }
     public float Duration { get; set; }
 
-    public IEnumerable<float> ChromaMean { get; set; }
-    public IEnumerable<float> MfccMean { get; set; }
+    public List<float> ChromaMean { get; set; }
+    public List<float> MfccMean { get; set; }
 }

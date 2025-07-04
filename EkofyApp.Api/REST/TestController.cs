@@ -4,6 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
 using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,9 @@ public class TestController : ControllerBase
     public async Task<IActionResult> UploadMp3(IFormFile file, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IUnitOfWork unitOfWork)
     {
         if (file == null || file.Length == 0)
+        {
             return BadRequest("No file uploaded.");
+        }
 
         using Stream stream = file.OpenReadStream();
         string fileName = System.IO.Path.GetFileNameWithoutExtension(file.FileName);
@@ -46,8 +49,8 @@ public class TestController : ControllerBase
             Id = trackId,
             Name = "Name",
             Description = "Uploaded MP3 file",
-            CategoryIds = [$"{categoryId}"],
-            Tags = ["Tag1", "Tag2"],
+            CategoryIds = [],
+            Tags = ["cho phép gắn sẵn"],
             ArtistId = ObjectId.GenerateNewId().ToString(), // ObjectId (string) của Artist
             CreatedAt = TimeControl.GetUtcPlus7Time(),
         };
@@ -86,6 +89,7 @@ public class TestController : ControllerBase
         await amazonS3Service.DownloadOriginalAudioAsync(trackId, async stream =>
         {
             string tempName = ObjectId.GenerateNewId().ToString();
+
             // Convert sang WAV
             AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
 
@@ -103,11 +107,25 @@ public class TestController : ControllerBase
         // 3. Lấy đặc trưng âm thanh từ python service
         AudioFeature audioAnalysisResponse = await audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
+        // Xác định mood của track dựa trên đặc trưng âm thanh
+        IEnumerable<MoodType> moodTypes = MoodDetector.DetectMoods(audioAnalysisResponse);
+        IEnumerable<string> moodIds = [];
+
+        if (moodTypes.Any())
+        {
+            moodIds = await unitOfWork.GetCollection<Category>()
+                .Find(mood => mood.Type == "mood" && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
+                .Project(mood => mood.Id)
+                .ToListAsync();
+        }
+
         // Phase 3: Lưu trữ
         // Ở phase này sẽ tổng hợp lại tất cả các kết quả phân tích
         // Sau đó lưu trữ vào cơ sở dữ liệu
 
+        // Cập nhật track với các thông tin đã phân tích
         UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
+            .Set(track => track.CategoryIds, moodIds)
             .Set(track => track.AudioFingerprint, audioFingerprint)
             .Set(track => track.AudioFeature, audioAnalysisResponse)
             .Set(track => track.UpdatedAt, TimeControl.GetUtcPlus7Time());
