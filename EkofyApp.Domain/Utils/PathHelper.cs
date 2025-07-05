@@ -12,8 +12,8 @@ public class PathHelper
             PathTag.Bin => baseDir,
             PathTag.Base => Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..")),
             PathTag.Api => Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..")),
-            PathTag.Tools => Path.Combine(Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..")), "Tools"),
-            PathTag.PrivateKeys => Path.Combine(Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..")), "PrivateKeys"),
+            PathTag.Tools => Path.GetFullPath(Path.Combine(Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..")), "Tools")),
+            PathTag.PrivateKeys => Path.GetFullPath(Path.Combine(Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..")), "PrivateKeys")),
             _ => throw new ArgumentOutOfRangeException(nameof(tag), tag, null)
         };
 

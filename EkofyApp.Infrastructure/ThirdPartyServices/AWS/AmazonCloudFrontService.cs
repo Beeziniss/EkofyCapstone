@@ -17,9 +17,33 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
     private readonly IAmazonS3 _s3Client = s3Client;
     private readonly AWSSetting _aWSSettings = aWSSettings;
 
+    public IDictionary<string, string> GenerateSignedCookies(string resourcePath, DateTime expiresUtc)
+    {
+        string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
+        using var privateKeyStream = new StreamReader(privateKeyPath);
+
+        string distributionDomain = new Uri(_aWSSettings.CloudFrontDomainUrl).Host;
+
+        var cookies = AmazonCloudFrontCookieSigner.GetCookiesForCannedPolicy(
+            AmazonCloudFrontCookieSigner.Protocols.Https,
+            distributionDomain,
+            privateKey: privateKeyStream,
+            resourcePath, // e.g., https://your-cloudfront-domain/*
+            keyPairId: _aWSSettings.KeyPairId,
+            expiresUtc // Corrected parameter name
+        );
+
+        return new Dictionary<string, string>
+        {
+            { "CloudFront-Expires", cookies.Expires.Value },
+            { "CloudFront-Signature", cookies.Signature.Value },
+            { "CloudFront-Key-Pair-Id", cookies.KeyPairId.Value }
+        };
+    }
+
     public byte[] DecryptionKey(string trackId, string token)
     {
-        if(!IsAuthorized(trackId, token))
+        if (!IsAuthorized(trackId, token))
         {
             throw new UnauthorizedCustomException("Unauthorized access");
         }
@@ -41,8 +65,14 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             throw new UnauthorizedCustomException("Unauthorized access");
         }
 
+        // Nhớ thay thành production URL
+        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
+        string endpoint = Environment.GetEnvironmentVariable("ENDPOINTS_ENCRYPTION") ?? throw new NotFoundCustomException("HLS_ENDPOINT is not configured");
+
+        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
+
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
-        string masterFilePath = $"Testing/{trackId}/{trackId}_master.m3u8";
+        string masterFilePath = $"{prefixKey}/{trackId}/{trackId}_master.m3u8";
 
         try
         {
@@ -70,7 +100,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 {
                     // Chuyển hướng thành URL gọi tới API proxy .m3u8 bitrate
                     string bitrate = trimmed.Split('/')[0];
-                    string apiUrl = $"https://localhost:8888/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}"; // Nhớ sửa URL lại cho chuẩn
+                    string apiUrl = $"{localHostUrl}/api/{endpoint}/{trackId}/{bitrate}/playlist.m3u8?token={token}";
                     signedLines.Add(apiUrl);
                 }
                 else
@@ -94,8 +124,10 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             throw new UnauthorizedCustomException("Unauthorized access");
         }
 
+        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
+
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
-        string bitrateHlsFilePath = $"Testing/{trackId}/{bitrate}/{trackId}_hls.m3u8";
+        string bitrateHlsFilePath = $"{prefixKey}/{trackId}/{bitrate}/{trackId}_hls.m3u8";
 
         try
         {
@@ -138,25 +170,39 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                     continue;
                 }
 
+                #region Signed URL for .ts files
+                //if (trimmed.EndsWith(".ts"))
+                //{
+                //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+
+                //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+                //    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+                //        fullUrl,
+                //        new StringReader(privateKey),
+                //        _aWSSettings.KeyPairId,
+                //        expires
+                //    );
+
+                //    signedLines.Add(signedUrl);
+                //}
+                //else
+                //{
+                //    signedLines.Add(trimmed);
+                //}
+                #endregion
+
+                #region Signed Cookies for .ts files
                 if (trimmed.EndsWith(".ts"))
                 {
-                    string relativePath = $"Testing/{trackId}/{bitrate}/{trimmed}";
-
+                    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
                     string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
 
-                    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
-                        fullUrl,
-                        new StringReader(privateKey),
-                        _aWSSettings.KeyPairId,
-                        expires
-                    );
+                    // KHÔNG ký nữa
+                    signedLines.Add(fullUrl);
+                }
 
-                    signedLines.Add(signedUrl);
-                }
-                else
-                {
-                    signedLines.Add(trimmed);
-                }
+                #endregion
             }
 
             return string.Join("\n", signedLines);

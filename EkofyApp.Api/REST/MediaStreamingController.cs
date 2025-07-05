@@ -1,5 +1,4 @@
-﻿using EkofyApp.Application.ServiceInterfaces.Tracks;
-using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
+﻿using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EkofyApp.Api.REST;
@@ -8,6 +7,33 @@ namespace EkofyApp.Api.REST;
 public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontService) : ControllerBase
 {
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
+
+    [HttpPost("authorize")]
+    public IActionResult SetSignedCookies([FromBody] string trackId)
+    {
+        string cloudFrontUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL")!; // e.g., https://dxxxxx.cloudfront.net
+        string endpoint = Environment.GetEnvironmentVariable("ENDPOINTS_ENCRYPTION")!; // e.g., /streaming-audio
+
+        string resourcePath = $"{cloudFrontUrl}/{endpoint}/{trackId}/*"; // Áp dụng cho mọi .ts, .m3u8, .key v.v.
+
+        DateTime expiresAt = DateTime.UtcNow.AddMinutes(10); // Hết hạn sau 10 phút
+        var cookies = _amazonCloudFrontService.GenerateSignedCookies(resourcePath, expiresAt);
+
+        foreach (var cookie in cookies)
+        {
+            Response.Cookies.Append(cookie.Key, cookie.Value, new CookieOptions
+            {
+                Domain = new Uri(cloudFrontUrl).Host,
+                HttpOnly = false,
+                Secure = true,
+                Path = "/",
+                Expires = expiresAt
+            });
+        }
+
+        return Ok(new { Message = "Signed cookies issued", ExpiresAt = expiresAt });
+    }
+
 
     // FE gọi để lấy token ký cho trackId
     [HttpPost("signed-token")]
