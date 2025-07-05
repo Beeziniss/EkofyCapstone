@@ -108,7 +108,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 {
                     // Chuyển hướng thành URL gọi tới API proxy .m3u8 bitrate
                     string bitrate = trimmed.Split('/')[0];
-                    string apiUrl = $"{localHostUrl}/api/{endpoint}/{trackId}/{bitrate}/playlist.m3u8?token={token}";
+                    string apiUrl = $"{productionUrl}/api/{endpoint}/{trackId}/{bitrate}/playlist.m3u8?token={token}";
                     signedLines.Add(apiUrl);
                 }
                 else
@@ -184,36 +184,36 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 }
 
                 #region Signed URL for .ts files
-                if (trimmed.EndsWith(".ts"))
-                {
-                    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
-
-                    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
-
-                    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
-                        fullUrl,
-                        new StringReader(privateKey),
-                        _aWSSettings.KeyPairId,
-                        expires
-                    );
-
-                    signedLines.Add(signedUrl);
-                }
-                else
-                {
-                    signedLines.Add(trimmed);
-                }
-                #endregion
-
-                #region Signed Cookies for .ts files
                 //if (trimmed.EndsWith(".ts"))
                 //{
                 //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+
                 //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
 
-                //    // KHÔNG ký nữa
-                //    signedLines.Add(fullUrl);
+                //    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+                //        fullUrl,
+                //        new StringReader(privateKey),
+                //        _aWSSettings.KeyPairId,
+                //        expires
+                //    );
+
+                //    signedLines.Add(signedUrl);
                 //}
+                //else
+                //{
+                //    signedLines.Add(trimmed);
+                //}
+                #endregion
+
+                #region Signed Cookies for .ts files
+                if (trimmed.EndsWith(".ts"))
+                {
+                    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+                    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+                    // KHÔNG ký nữa
+                    signedLines.Add(fullUrl);
+                }
                 #endregion
             }
 
