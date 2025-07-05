@@ -16,7 +16,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
 
         string resourcePath = $"{cloudFrontUrl}/{endpoint}/{trackId}/*"; // Áp dụng cho mọi .ts, .m3u8, .key v.v.
 
-        DateTime expiresAt = DateTime.UtcNow.AddMinutes(10); // Hết hạn sau 10 phút
+        DateTime expiresAt = DateTime.UtcNow.AddMinutes(60); // Hết hạn sau 10 phút
         var cookies = _amazonCloudFrontService.GenerateSignedCookies(resourcePath, expiresAt);
 
         foreach (var cookie in cookies)
