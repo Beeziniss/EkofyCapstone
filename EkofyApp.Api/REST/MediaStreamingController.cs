@@ -19,13 +19,16 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
         DateTime expiresAt = DateTime.UtcNow.AddMinutes(60); // Hết hạn sau 10 phút
         var cookies = _amazonCloudFrontService.GenerateSignedCookies(resourcePath, expiresAt);
 
+        var isLocal = Request.Host.Host.Contains("localhost") || Request.Host.Host.Contains("127.0.0.1");
+
         foreach (var cookie in cookies)
         {
             Response.Cookies.Append(cookie.Key, cookie.Value, new CookieOptions
             {
-                Domain = new Uri(cloudFrontUrl).Host,
+                //Domain = new Uri(cloudFrontUrl).Host,
                 HttpOnly = false,
-                Secure = true,
+                //Secure = true,
+                Secure = !isLocal, // chỉ bật Secure khi không phải localhost
                 Path = "/",
                 Expires = expiresAt,
                 SameSite = SameSiteMode.None
