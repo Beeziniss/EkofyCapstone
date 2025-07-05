@@ -48,16 +48,15 @@ namespace EkofyApp.Api
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+
+            // Empty
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                // Empty
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "EkofyApp API V1");
-                    c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
-                });
-            }
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "EkofyApp API V1");
+                c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
+            });
+
 
             app.UseHttpsRedirection();
 
