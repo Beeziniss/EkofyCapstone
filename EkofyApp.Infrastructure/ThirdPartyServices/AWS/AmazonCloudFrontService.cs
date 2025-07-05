@@ -74,6 +74,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
 
         // Nhớ thay thành production URL
         string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
+        string productionUrl = Environment.GetEnvironmentVariable("PRODUCTION_URL") ?? throw new NotFoundCustomException("PRODUCTION_URL is not configured");
         string endpoint = Environment.GetEnvironmentVariable("ENDPOINTS_ENCRYPTION") ?? throw new NotFoundCustomException("HLS_ENDPOINT is not configured");
 
         string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
@@ -153,7 +154,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
             string privateKey = File.ReadAllText(privateKeyPath);
-            string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
+            string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL_PRODUCTION") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
             DateTime expires = DateTime.UtcNow.AddMinutes(2);
 
             string finalUri = templateHlsKeyUrl
