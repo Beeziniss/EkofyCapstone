@@ -30,4 +30,6 @@ RUN dotnet publish "./EkofyApp.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publi
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# COPY private_key.pem
+COPY --from=build /src/PrivateKeys ./PrivateKeys
 ENTRYPOINT ["dotnet", "EkofyApp.Api.dll"]
