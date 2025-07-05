@@ -2,8 +2,10 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
+using EkofyApp.Domain.Utils;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -19,7 +21,9 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
 
     public IDictionary<string, string> GenerateSignedCookies(string resourcePath, DateTime expiresUtc)
     {
-        string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
+        //string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
+        string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
+        privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
         using var privateKeyStream = new StreamReader(privateKeyPath);
 
         string distributionDomain = new Uri(_aWSSettings.CloudFrontDomainUrl).Host;
@@ -139,7 +143,9 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
             //string privateKeyPath = PathHelper.ResolvePath(PathTag.PrivateKeys);
             //privateKeyPath = Path.GetFullPath(privateKeyPath);
-            string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
+            //string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
+            string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
+            privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
             string privateKey = File.ReadAllText(privateKeyPath);
             string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
             DateTime expires = DateTime.UtcNow.AddMinutes(2);
@@ -171,37 +177,36 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 }
 
                 #region Signed URL for .ts files
-                //if (trimmed.EndsWith(".ts"))
-                //{
-                //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
-
-                //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
-
-                //    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
-                //        fullUrl,
-                //        new StringReader(privateKey),
-                //        _aWSSettings.KeyPairId,
-                //        expires
-                //    );
-
-                //    signedLines.Add(signedUrl);
-                //}
-                //else
-                //{
-                //    signedLines.Add(trimmed);
-                //}
-                #endregion
-
-                #region Signed Cookies for .ts files
                 if (trimmed.EndsWith(".ts"))
                 {
                     string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+
                     string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
 
-                    // KHÔNG ký nữa
-                    signedLines.Add(fullUrl);
-                }
+                    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+                        fullUrl,
+                        new StringReader(privateKey),
+                        _aWSSettings.KeyPairId,
+                        expires
+                    );
 
+                    signedLines.Add(signedUrl);
+                }
+                else
+                {
+                    signedLines.Add(trimmed);
+                }
+                #endregion
+
+                #region Signed Cookies for .ts files
+                //if (trimmed.EndsWith(".ts"))
+                //{
+                //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+                //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+                //    // KHÔNG ký nữa
+                //    signedLines.Add(fullUrl);
+                //}
                 #endregion
             }
 
