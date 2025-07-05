@@ -27,7 +27,8 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
                 HttpOnly = false,
                 Secure = true,
                 Path = "/",
-                Expires = expiresAt
+                Expires = expiresAt,
+                SameSite = SameSiteMode.None
             });
         }
 
