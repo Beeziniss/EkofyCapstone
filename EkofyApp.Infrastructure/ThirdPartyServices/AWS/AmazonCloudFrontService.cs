@@ -25,7 +25,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
         //string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
         //privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
 
-        string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "keys");
+        string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
         string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
         using var privateKeyStream = new StreamReader(privateKeyPath);
 
@@ -150,7 +150,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             //string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
             //privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
 
-            string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "keys");
+            string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
             string privateKey = File.ReadAllText(privateKeyPath);
             string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
