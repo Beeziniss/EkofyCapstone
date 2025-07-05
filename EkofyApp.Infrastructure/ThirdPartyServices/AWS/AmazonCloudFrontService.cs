@@ -22,8 +22,11 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
     public IDictionary<string, string> GenerateSignedCookies(string resourcePath, DateTime expiresUtc)
     {
         //string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
-        string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
-        privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+        //string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
+        //privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+
+        string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "keys");
+        string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
         using var privateKeyStream = new StreamReader(privateKeyPath);
 
         string distributionDomain = new Uri(_aWSSettings.CloudFrontDomainUrl).Host;
@@ -144,8 +147,11 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
             //string privateKeyPath = PathHelper.ResolvePath(PathTag.PrivateKeys);
             //privateKeyPath = Path.GetFullPath(privateKeyPath);
             //string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
-            string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
-            privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+            //string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
+            //privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+
+            string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "keys");
+            string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
             string privateKey = File.ReadAllText(privateKeyPath);
             string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
             DateTime expires = DateTime.UtcNow.AddMinutes(2);

@@ -69,6 +69,8 @@ namespace EkofyApp.Api
 
             app.MapGraphQL("/graphql");
 
+            app.UseStaticFiles();
+
             app.Run();
         }
     }
