@@ -8,37 +8,6 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
 {
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
-    [HttpPost("authorize")]
-    public IActionResult SetSignedCookies([FromBody] string trackId)
-    {
-        string cloudFrontUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL")!; // e.g., https://dxxxxx.cloudfront.net
-        string endpoint = Environment.GetEnvironmentVariable("ENDPOINTS_ENCRYPTION")!; // e.g., /streaming-audio
-
-        string resourcePath = $"{cloudFrontUrl}/{endpoint}/{trackId}/*"; // Áp dụng cho mọi .ts, .m3u8, .key v.v.
-
-        DateTime expiresAt = DateTime.UtcNow.AddMinutes(60); // Hết hạn sau 10 phút
-        var cookies = _amazonCloudFrontService.GenerateSignedCookies(resourcePath, expiresAt);
-
-        var isLocal = Request.Host.Host.Contains("localhost") || Request.Host.Host.Contains("127.0.0.1");
-
-        foreach (var cookie in cookies)
-        {
-            Response.Cookies.Append(cookie.Key, cookie.Value, new CookieOptions
-            {
-                //Domain = new Uri(cloudFrontUrl).Host,
-                HttpOnly = false,
-                //Secure = true,
-                Secure = !isLocal, // chỉ bật Secure khi không phải localhost
-                Path = "/",
-                Expires = expiresAt,
-                SameSite = SameSiteMode.None
-            });
-        }
-
-        return Ok(new { Message = "Signed cookies issued", ExpiresAt = expiresAt });
-    }
-
-
     // FE gọi để lấy token ký cho trackId
     [HttpPost("signed-token")]
     public IActionResult GenerateSignedToken([FromBody] string trackId)
@@ -46,6 +15,17 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
         string token = _amazonCloudFrontService.GenerateHlsToken(trackId);
 
         return Ok(new { Message = "Get signed token successfully", token });
+    }
+
+    // FE gọi để refresh token, có thể dùng lại trackId cũ
+    // Cần gửi kèm token cũ để xác thực
+    // Chưa xong
+    [HttpPost("refresh-signed-url")]
+    public IActionResult RefreshSignedUrl([FromQuery] string trackId, [FromQuery] string oldToken)
+    {
+        string newToken = _amazonCloudFrontService.RefreshSignedUrl(trackId, oldToken);
+
+        return Ok(new { token = newToken });
     }
 
     // Endpoint để lấy key cho HLS, sẽ trả về file binary
@@ -74,5 +54,12 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
         string finalContent = await _amazonCloudFrontService.GetBitratePlaylistAsync(trackId, bitrate, token);
 
         return Content(finalContent, "application/vnd.apple.mpegurl");
+    }
+
+    [HttpGet("{trackId}/{bitrate}/{segment}")]
+    public IActionResult ProxySegment(string trackId, string bitrate, string segment, [FromQuery] string token)
+    {
+        string redirectUrl = _amazonCloudFrontService.GenerateSignedRedirect(trackId, bitrate, segment, token);
+        return Redirect(redirectUrl);
     }
 }

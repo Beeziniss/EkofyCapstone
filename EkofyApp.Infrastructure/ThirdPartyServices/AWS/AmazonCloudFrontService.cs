@@ -6,6 +6,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -14,38 +15,98 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.AWS;
-public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings) : IAmazonCloudFrontService
+public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings, IHttpContextAccessor httpContextAccessor) : IAmazonCloudFrontService
 {
     private readonly IAmazonS3 _s3Client = s3Client;
     private readonly AWSSetting _aWSSettings = aWSSettings;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public IDictionary<string, string> GenerateSignedCookies(string resourcePath, DateTime expiresUtc)
+    private bool IsAuthorized(string expectedTrackId, string token)
     {
-        //string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
-        //string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
-        //privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("Id")
+            ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
-        using var privateKeyStream = new StreamReader(privateKeyPath);
+        string? key = Environment.GetEnvironmentVariable("HLS_KEY");
 
-        string distributionDomain = new Uri(_aWSSettings.CloudFrontDomainUrl).Host;
-
-        var cookies = AmazonCloudFrontCookieSigner.GetCookiesForCannedPolicy(
-            AmazonCloudFrontCookieSigner.Protocols.Https,
-            distributionDomain,
-            privateKey: privateKeyStream,
-            resourcePath, // e.g., https://your-cloudfront-domain/*
-            keyPairId: _aWSSettings.KeyPairId,
-            expiresUtc // Corrected parameter name
-        );
-
-        return new Dictionary<string, string>
+        if (string.IsNullOrEmpty(key))
         {
-            { "CloudFront-Expires", cookies.Expires.Value },
-            { "CloudFront-Signature", cookies.Signature.Value },
-            { "CloudFront-Key-Pair-Id", cookies.KeyPairId.Value }
+            return false;
+        }
+
+        byte[] keyBytes = Encoding.UTF8.GetBytes(key);
+        JwtSecurityTokenHandler tokenHandler = new();
+
+        try
+        {
+            TokenValidationParameters parameters = new()
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = true, // kiểm tra hết hạn
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+            };
+
+            tokenHandler.ValidateToken(token, parameters, out SecurityToken? validatedToken);
+
+            JwtSecurityToken jwtToken = (JwtSecurityToken)validatedToken;
+            string? tokenTrackId = jwtToken.Claims.FirstOrDefault(c => c.Type == "trackId")?.Value;
+            string? tokenUserId = jwtToken.Claims.FirstOrDefault(c => c.Type == "expectedUserId")?.Value;
+
+            return tokenTrackId == expectedTrackId && tokenUserId == expectedUserId;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public string GenerateHlsToken(string trackId, int expireMinutes = 5)
+    {
+        if (string.IsNullOrEmpty(trackId))
+        {
+            throw new ValidationCustomException("Track id cannot be null or empty");
+        }
+
+        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("Id")
+            ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string? hlsKey = Environment.GetEnvironmentVariable("HLS_KEY");
+
+        if (string.IsNullOrEmpty(hlsKey))
+        {
+            throw new Exception("HLS_SECRET environment variable not set");
+        }
+
+        byte[] keyBytes = Encoding.UTF8.GetBytes(hlsKey);
+
+        JwtSecurityTokenHandler tokenHandler = new();
+        SecurityTokenDescriptor tokenDescriptor = new()
+        {
+            Subject = new ClaimsIdentity(
+            [
+                new Claim("trackId", trackId),
+                new Claim("expectedUserId", expectedUserId)
+            ]),
+            Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256Signature)
         };
+
+        SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
+
+        // Trả về token đã ký
+        return tokenHandler.WriteToken(token);
+    }
+
+    public string RefreshSignedUrl(string trackId, string oldToken, int expireMinutes = 5)
+    {
+        if (!IsAuthorized(trackId, oldToken))
+        {
+            throw new UnauthorizedCustomException("Invalid or expired token");
+        }
+
+        return GenerateHlsToken(trackId, expireMinutes);
     }
 
     public byte[] DecryptionKey(string trackId, string token)
@@ -74,8 +135,6 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
 
         // Nhớ thay thành production URL
         string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
-        string productionUrl = Environment.GetEnvironmentVariable("PRODUCTION_URL") ?? throw new NotFoundCustomException("PRODUCTION_URL is not configured");
-        string endpoint = Environment.GetEnvironmentVariable("ENDPOINTS_ENCRYPTION") ?? throw new NotFoundCustomException("HLS_ENDPOINT is not configured");
 
         string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
@@ -108,7 +167,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 {
                     // Chuyển hướng thành URL gọi tới API proxy .m3u8 bitrate
                     string bitrate = trimmed.Split('/')[0];
-                    string apiUrl = $"{productionUrl}/api/{endpoint}/{trackId}/{bitrate}/playlist.m3u8?token={token}";
+                    string apiUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}";
                     signedLines.Add(apiUrl);
                 }
                 else
@@ -137,29 +196,18 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
         string bitrateHlsFilePath = $"{prefixKey}/{trackId}/{bitrate}/{trackId}_hls.m3u8";
 
+        string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
+
+        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
+
+        string keyUri = $"{localHostUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
+
         try
         {
             GetObjectResponse response = await _s3Client.GetObjectAsync(_aWSSettings.BucketName, bitrateHlsFilePath);
 
             using StreamReader reader = new(response.ResponseStream);
             string content = await reader.ReadToEndAsync();
-
-            string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
-            //string privateKeyPath = PathHelper.ResolvePath(PathTag.PrivateKeys);
-            //privateKeyPath = Path.GetFullPath(privateKeyPath);
-            //string privateKeyPath = "Z:\\Projects\\EkofyProject\\EkofyCapstone\\PrivateKeys\\private_key.pem";
-            //string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
-            //privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
-
-            string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            string privateKeyPath = Path.Combine(wwwrootPath, "private_key.pem");
-            string privateKey = File.ReadAllText(privateKeyPath);
-            string templateHlsKeyUrl = Environment.GetEnvironmentVariable("HLS_KEY_URL_PRODUCTION") ?? throw new NotFoundCustomException("HLS_KEY_URL is not configured");
-            DateTime expires = DateTime.UtcNow.AddMinutes(2);
-
-            string finalUri = templateHlsKeyUrl
-                .Replace("{trackId}", trackId)
-                .Replace("{token}", token);
 
             List<string> signedLines = [];
             string updatedLine;
@@ -172,11 +220,11 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 {
                     if (trimmed.Contains(keyUrlHidden))
                     {
-                        updatedLine = trimmed.Replace(keyUrlHidden, finalUri);
+                        updatedLine = trimmed.Replace(keyUrlHidden, keyUri);
                     }
                     else
                     {
-                        updatedLine = Regex.Replace(trimmed, @"URI=""[^""]+""", $@"URI=""{finalUri}""");
+                        updatedLine = Regex.Replace(trimmed, @"URI=""[^""]+""", $@"URI=""{keyUri}""");
                     }
 
                     signedLines.Add(updatedLine);
@@ -206,13 +254,31 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
                 #endregion
 
                 #region Signed Cookies for .ts files
+                //if (trimmed.EndsWith(".ts"))
+                //{
+                //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+                //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+                //    // KHÔNG ký nữa
+                //    signedLines.Add(fullUrl);
+
+                //    continue; // chỗ này có thể dùng else
+                //}
+
+                //// Các dòng khác như #EXTINF, #EXTM3U, v.v. giữ nguyên
+                //signedLines.Add(trimmed);
+                #endregion
+
+                #region API proxy
                 if (trimmed.EndsWith(".ts"))
                 {
-                    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
-                    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
-
-                    // KHÔNG ký nữa
-                    signedLines.Add(fullUrl);
+                    // Chuyển hướng thành URL gọi tới API proxy .ts
+                    string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+                    signedLines.Add(proxyUrl);
+                }
+                else
+                {
+                    signedLines.Add(trimmed);
                 }
                 #endregion
             }
@@ -225,73 +291,39 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings)
         }
     }
 
-    private static bool IsAuthorized(string expectedTrackId, string token)
+    public string GenerateSignedRedirect(string trackId, string bitrate, string segment, string token)
     {
-        string? key = Environment.GetEnvironmentVariable("HLS_KEY");
-
-        if (string.IsNullOrEmpty(key))
+        if (!IsAuthorized(trackId, token))
         {
-            return false;
+            throw new UnauthorizedCustomException("Unauthorized access");
         }
 
-        byte[] keyBytes = Encoding.UTF8.GetBytes(key);
-        JwtSecurityTokenHandler tokenHandler = new();
+        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("AWS_MASTER_PREFIX_KEY is not configured");
 
-        try
-        {
-            TokenValidationParameters parameters = new()
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true, // kiểm tra hết hạn
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
-            };
+        // Đường dẫn đến file .ts
+        string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{segment}";
 
-            tokenHandler.ValidateToken(token, parameters, out SecurityToken? validatedToken);
+        string domainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new NotFoundCustomException("AWS_CLOUDFRONT_DOMAIN_URL is not configured");
 
-            JwtSecurityToken jwtToken = (JwtSecurityToken)validatedToken;
-            string? tokenTrackId = jwtToken.Claims.FirstOrDefault(c => c.Type == "trackId")?.Value;
+        // Tạo URL đầy đủ
+        string fullUrl = $"{domainUrl}/{relativePath}";
 
-            return tokenTrackId == expectedTrackId;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        // Đọc private key từ file
+        string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
+        privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+        using StreamReader privateKeyStream = new(privateKeyPath);
 
-    public string GenerateHlsToken(string trackId, int expireMinutes = 5)
-    {
-        if (string.IsNullOrEmpty(trackId))
-        {
-            throw new ValidationCustomException("Track id cannot be null or empty");
-        }
+        // Thời gian hết hạn của signed URL
+        DateTime expires = TimeControl.GetUtcPlus7Time().AddMinutes(2);
 
-        string? hlsKey = Environment.GetEnvironmentVariable("HLS_KEY");
+        // Ký URL
+        string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+            fullUrl,
+            privateKeyStream,
+            _aWSSettings.KeyPairId,
+            expires
+        );
 
-        if (string.IsNullOrEmpty(hlsKey))
-        {
-            throw new Exception("HLS_SECRET environment variable not set");
-        }
-
-        byte[] keyBytes = Encoding.UTF8.GetBytes(hlsKey);
-
-        JwtSecurityTokenHandler tokenHandler = new();
-        SecurityTokenDescriptor tokenDescriptor = new()
-        {
-            Subject = new ClaimsIdentity(
-            [
-                new Claim("trackId", trackId)
-            ]),
-            Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
-
-        // Trả về token đã ký
-        return tokenHandler.WriteToken(token);
+        return signedUrl;
     }
 }

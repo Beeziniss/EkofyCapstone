@@ -6,6 +6,7 @@ using CloudinaryDotNet;
 using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.ServiceInterfaces.Artists;
+using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
@@ -15,6 +16,7 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
+using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
@@ -26,9 +28,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Refit;
@@ -46,8 +46,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
 
             services.AddHttpContextAccessor();
 
-            services.AddAuthorization();
             services.AddAuthentication();
+            services.AddAuthorization();
             services.AddCors();
 
             services.AddDatabase();
@@ -137,6 +137,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddScoped<IArtistService, ArtistService>();
             services.AddScoped<IAudioAnalysisService, AudioAnalysisService>();
             services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
+            services.AddScoped<IJsonWebToken, JsonWebToken>();
+            services.AddScoped<IAuthenticationService, AuthenticationService>();
 
             // GraphQL Services
             services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
@@ -270,7 +272,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             });
         }
 
-        public static void AddAuthorization(this IServiceCollection services, IConfiguration configuration)
+        public static void AddAuthorization(this IServiceCollection services)
         {
             services.AddAuthorizationBuilder().AddPolicy("GoogleOrJwt", policy =>
             {
@@ -297,10 +299,9 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins("http://127.0.0.1:5500")
+                    policy.AllowAnyOrigin()
                           .AllowAnyMethod()
-                          .AllowAnyHeader()
-                          .AllowCredentials();
+                          .AllowAnyHeader();
                 });
             });
         }

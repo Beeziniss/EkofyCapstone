@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Application.ServiceInterfaces.Authentication
 {
-    public interface IAuthentication
+    public interface IAuthenticationService
     {
 
     }
