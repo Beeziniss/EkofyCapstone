@@ -7,6 +7,7 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -21,17 +22,18 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
     private readonly AWSSetting _aWSSettings = aWSSettings;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    private bool IsAuthorized(string expectedTrackId, string token)
+    public void ValidateHlsToken(string expectedTrackId, string token)
     {
+        //string cacheKey = $"auth:{tokenString}";
+        //string? cached = await _distributedCache.GetStringAsync(cacheKey);
+
+        //if (cached == "1") return true;
+        //if (cached == "0") return false;
+
         string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("Id")
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        string? key = Environment.GetEnvironmentVariable("HLS_KEY");
-
-        if (string.IsNullOrEmpty(key))
-        {
-            return false;
-        }
+        string key = Environment.GetEnvironmentVariable("HLS_KEY") ?? throw new NotFoundCustomException("HLS_KEY is not set in the environment");
 
         byte[] keyBytes = Encoding.UTF8.GetBytes(key);
         JwtSecurityTokenHandler tokenHandler = new();
@@ -44,7 +46,8 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
                 ValidateAudience = false,
                 ValidateLifetime = true, // kiểm tra hết hạn
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+                IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+                ClockSkew = TimeSpan.FromSeconds(5) // Cho phép trễ nhẹ
             };
 
             tokenHandler.ValidateToken(token, parameters, out SecurityToken? validatedToken);
@@ -53,11 +56,35 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
             string? tokenTrackId = jwtToken.Claims.FirstOrDefault(c => c.Type == "trackId")?.Value;
             string? tokenUserId = jwtToken.Claims.FirstOrDefault(c => c.Type == "expectedUserId")?.Value;
 
-            return tokenTrackId == expectedTrackId && tokenUserId == expectedUserId;
+            bool isValid = tokenTrackId == expectedTrackId && tokenUserId == expectedUserId;
+
+            //TimeSpan expiresIn = jwtToken.ValidTo - TimeControl.GetUtcPlus7Time() - TimeSpan.FromSeconds(2);
+            //if (expiresIn < TimeSpan.FromSeconds(1))
+            //    expiresIn = TimeSpan.FromSeconds(1);
+
+            //await _distributedCache.SetStringAsync(
+            //    cacheKey,
+            //    isValid ? "1" : "0",
+            //    new DistributedCacheEntryOptions
+            //    {
+            //        AbsoluteExpirationRelativeToNow = expiresIn
+            //    });
+
+            if (!isValid)
+            {
+                throw new UnauthorizedCustomException("Invalid token for the requested track");
+            }
         }
         catch
         {
-            return false;
+            //await _distributedCache.SetStringAsync(
+            //cacheKey, "0",
+            //new DistributedCacheEntryOptions
+            //{
+            //    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
+            //});
+
+            throw new UnauthorizedCustomException("Invalid or expired token");
         }
     }
 
@@ -94,28 +121,37 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
         };
 
         SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
+        string tokenString = tokenHandler.WriteToken(token);
+
+        // Trích thời gian hết hạn của token
+        //if (token is JwtSecurityToken jwtToken)
+        //{
+        //    DateTimeOffset exp = jwtToken.ValidTo; // UTC
+        //    TimeSpan cacheDuration = exp - TimeControl.GetUtcPlus7Time() - TimeSpan.FromSeconds(2);
+
+        //    if (cacheDuration > TimeSpan.Zero)
+        //    {
+        //        await _distributedCache.SetStringAsync(
+        //            $"auth:{tokenString}",
+        //            "1",
+        //            new DistributedCacheEntryOptions
+        //            {
+        //                AbsoluteExpirationRelativeToNow = cacheDuration
+        //            });
+        //    }
+        //}
 
         // Trả về token đã ký
-        return tokenHandler.WriteToken(token);
+        return tokenString;
     }
 
     public string RefreshSignedUrl(string trackId, string oldToken, int expireMinutes = 5)
     {
-        if (!IsAuthorized(trackId, oldToken))
-        {
-            throw new UnauthorizedCustomException("Invalid or expired token");
-        }
-
         return GenerateHlsToken(trackId, expireMinutes);
     }
 
     public byte[] DecryptionKey(string trackId, string token)
     {
-        if (!IsAuthorized(trackId, token))
-        {
-            throw new UnauthorizedCustomException("Unauthorized access");
-        }
-
         string? keyHex = Environment.GetEnvironmentVariable("HLS_KEY");
 
         if (string.IsNullOrWhiteSpace(keyHex) || keyHex.Length != 32)
@@ -128,11 +164,6 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
 
     public async Task<string> GetMasterPlaylistAsync(string trackId, string token)
     {
-        if (!IsAuthorized(trackId, token))
-        {
-            throw new UnauthorizedCustomException("Unauthorized access");
-        }
-
         // Nhớ thay thành production URL
         string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
 
@@ -186,11 +217,6 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
 
     public async Task<string> GetBitratePlaylistAsync(string trackId, string bitrate, string token)
     {
-        if (!IsAuthorized(trackId, token))
-        {
-            throw new UnauthorizedCustomException("Unauthorized access");
-        }
-
         string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
@@ -293,11 +319,6 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
 
     public string GenerateSignedRedirect(string trackId, string bitrate, string segment, string token)
     {
-        if (!IsAuthorized(trackId, token))
-        {
-            throw new UnauthorizedCustomException("Unauthorized access");
-        }
-
         string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("AWS_MASTER_PREFIX_KEY is not configured");
 
         // Đường dẫn đến file .ts

@@ -23,6 +23,8 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     [HttpPost("refresh-signed-url")]
     public IActionResult RefreshSignedUrl([FromQuery] string trackId, [FromQuery] string oldToken)
     {
+        _amazonCloudFrontService.ValidateHlsToken(trackId, oldToken);
+
         string newToken = _amazonCloudFrontService.RefreshSignedUrl(trackId, oldToken);
 
         return Ok(new { token = newToken });
@@ -33,6 +35,8 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     [HttpGet("keys")]
     public IActionResult DecryptionKey([FromQuery] string trackId, [FromQuery] string token)
     {
+        _amazonCloudFrontService.ValidateHlsToken(trackId, token);
+
         byte[] keyBytes = _amazonCloudFrontService.DecryptionKey(trackId, token);
 
         return File(keyBytes, "application/octet-stream");
@@ -42,6 +46,8 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     [HttpGet("cloudfront/{trackId}/master.m3u8")]
     public async Task<IActionResult> GetMasterPlaylist(string trackId, [FromQuery] string token)
     {
+        _amazonCloudFrontService.ValidateHlsToken(trackId, token);
+
         string signedContent = await _amazonCloudFrontService.GetMasterPlaylistAsync(trackId, token);
 
         return Content(signedContent, "application/vnd.apple.mpegurl");
@@ -51,6 +57,8 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     [HttpGet("{trackId}/{bitrate}/playlist.m3u8")]
     public async Task<IActionResult> GetBitratePlaylist(string trackId, string bitrate, [FromQuery] string token)
     {
+        _amazonCloudFrontService.ValidateHlsToken(trackId, token);
+
         string finalContent = await _amazonCloudFrontService.GetBitratePlaylistAsync(trackId, bitrate, token);
 
         return Content(finalContent, "application/vnd.apple.mpegurl");
@@ -59,6 +67,8 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     [HttpGet("{trackId}/{bitrate}/{segment}")]
     public IActionResult ProxySegment(string trackId, string bitrate, string segment, [FromQuery] string token)
     {
+        _amazonCloudFrontService.ValidateHlsToken(trackId, token);
+
         string redirectUrl = _amazonCloudFrontService.GenerateSignedRedirect(trackId, bitrate, segment, token);
         return Redirect(redirectUrl);
     }
