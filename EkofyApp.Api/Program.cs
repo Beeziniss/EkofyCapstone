@@ -1,7 +1,9 @@
-using EkofyApp.Api.Filters;
+﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL.Mutation;
 using EkofyApp.Api.GraphQL.Query;
+using EkofyApp.Api.GraphQL.Scalars;
 using EkofyApp.Infrastructure.DependencyInjections;
+using EkofyApp.Infrastructure.Services.Chat;
 using Serilog;
 
 namespace EkofyApp.Api
@@ -40,6 +42,9 @@ namespace EkofyApp.Api
 
             builder.Services.AddGraphQLServer().AddErrorFilter<GraphQLExceptionFilter>()
                 .AddAuthorization().AddType<UploadType>()
+                // Nếu expose field có data type UInt32 thì cần phải bind nó vào GraphQL
+                .AddType(new UInt32Type())
+                .BindRuntimeType<uint, UInt32Type>()
                 .AddMaxExecutionDepthRule(5).AddMaxAllowedFieldCycleDepthRule(50)
                 .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections().AddMongoDbPagingProviders()
                 .AddQueryType<QueryInitialization>().AddMutationType<MutationInitialization>()
@@ -70,6 +75,8 @@ namespace EkofyApp.Api
             app.MapControllers();
 
             app.MapGraphQL("/graphql");
+
+            app.MapHub<ChatHub>("/chat");
 
             app.Run();
         }

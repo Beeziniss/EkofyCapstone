@@ -12,5 +12,8 @@ public class TrackQueryEType : ObjectTypeExtension<TrackQuery>
 
         descriptor.Field(x => x.GetCustomTrackResponse(default!, default!))
             .UseProjection<TrackResponse>();
+
+        descriptor.Field(x => x.GetTracks())
+            .UseProjection<TrackResponse>();
     }
 }

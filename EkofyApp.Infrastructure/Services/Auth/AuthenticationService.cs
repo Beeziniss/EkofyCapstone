@@ -3,10 +3,10 @@ using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public class AuthenticationService(IUnitOfWork unitOfWork, JsonWebToken jsonWebToken, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
+public class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly JsonWebToken _jsonWebToken = jsonWebToken;
+    private readonly IJsonWebToken _jsonWebToken = jsonWebToken;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     private static string HashPassword(string password)
@@ -16,6 +16,11 @@ public class AuthenticationService(IUnitOfWork unitOfWork, JsonWebToken jsonWebT
     private static bool VerifyPassword(string password, string hashedPassword)
     {
         return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+    }
+
+    public Task<string> LoginAsync(string email, string password)
+    {
+        throw new NotImplementedException();
     }
 
     // Methods

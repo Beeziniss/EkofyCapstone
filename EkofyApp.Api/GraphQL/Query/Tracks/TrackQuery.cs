@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using EkofyApp.Api.GraphQL.Resolver;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.Entities;
@@ -20,7 +19,12 @@ public class TrackQuery(ITrackService trackService, ITrackGraphQLService trackGr
     private readonly ITrackService _trackService = trackService;
     private readonly ITrackGraphQLService _trackGraphQLService = trackGraphQLService;
 
-    public async Task<IEnumerable<TrackResponse>> GetTracksAsync()
+    public IQueryable<Track> GetTracks()
+    {
+        return _trackGraphQLService.GetTracksQueryable();
+    }
+
+    public async Task<IEnumerable<TrackResponse>> GetTrackResponsesAsync()
     {
         return await _trackService.GetTracksAsync();
     }

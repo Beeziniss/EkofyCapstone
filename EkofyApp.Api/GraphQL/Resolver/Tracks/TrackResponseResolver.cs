@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using EkofyApp.Api.GraphQL.DataLoader;
 using EkofyApp.Api.GraphQL.DataLoader.Artists;
 using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.Tracks;
@@ -11,12 +12,14 @@ public class TrackResponseResolver
 {
     public async Task<ArtistResponse?> GetArtistAsync(
         [Parent] TrackResponse trackResponse,
-        ArtistByIdDataLoader artistByIdDataLoader,
+        //ArtistByIdDataLoader artistByIdDataLoader,
+        DataLoaderCustom<Artist> artistDataLoader,
         [Service] IMapper mapper,
         CancellationToken cancellationToken)
     {
-        Artist? artist = await artistByIdDataLoader.LoadAsync(trackResponse.ArtistId, cancellationToken);
-        
+        //Artist? artist = await artistByIdDataLoader.LoadAsync(trackResponse.ArtistId, cancellationToken);
+        Artist? artist = await artistDataLoader.LoadAsync(trackResponse.ArtistId, cancellationToken);
+
         return mapper.Map<ArtistResponse>(artist);
     }
 }

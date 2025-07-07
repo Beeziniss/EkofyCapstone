@@ -26,4 +26,9 @@ public class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper) : ITrac
         // Nên HotChocolate không thể hiểu hoặc kiểm soát được projection này
         // Do đó [UseProjection] sẽ bị bỏ qua 
     }
+
+    public IQueryable<Track> GetTracksQueryable()
+    {
+        return _unitOfWork.GetCollection<Track>().AsQueryable();
+    }
 }

@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
+using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
@@ -17,6 +18,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
+using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
@@ -58,6 +60,8 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddMomo();
             services.AddAmazonWebService();
             services.AddCloudinary();
+
+            services.AddSignalR();
 
             services.AddEnumMemberSerializer();
 
@@ -142,6 +146,7 @@ namespace EkofyApp.Infrastructure.DependencyInjections
 
             // GraphQL Services
             services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
+            services.AddScoped<IChatGraphQLService, ChatGraphQLService>();
 
             // Third Party Services
             services.AddScoped<IFfmpegService, FfmpegService>();

@@ -2,7 +2,7 @@
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public class Artist
+public class Artist : IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
