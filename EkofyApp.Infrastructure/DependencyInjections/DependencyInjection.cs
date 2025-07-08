@@ -66,7 +66,6 @@ namespace EkofyApp.Infrastructure.DependencyInjections
             services.AddEnumMemberSerializer();
 
             //services.AddSwaggerGen();
-            //services.AddJWT();
         }
 
         public static void AddGrpcClient(this IServiceCollection services)

@@ -4,6 +4,7 @@ using EkofyApp.Api.GraphQL.Query;
 using EkofyApp.Api.GraphQL.Scalars;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
+using Microsoft.OpenApi.Models;
 using Serilog;
 
 namespace EkofyApp.Api
@@ -36,9 +37,40 @@ namespace EkofyApp.Api
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
             builder.Services.AddDependencyInjection();
+
+            // Chưa config được bên dependency injection
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new() { Title = "EkofyApp API", Version = "v1" });
+                options.CustomSchemaIds(type => type.FullName);
+
+                // JWT Authentication without requiring "Bearer " prefix
+                options.AddSecurityDefinition("JWT", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Enter your JWT token directly (without 'Bearer ' prefix)",
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "JWT"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
 
             builder.Services.AddGraphQLServer().AddErrorFilter<GraphQLExceptionFilter>()
                 .AddAuthorization().AddType<UploadType>()
@@ -55,16 +87,19 @@ namespace EkofyApp.Api
             // Configure the HTTP request pipeline.
 
             // Empty
-            if(app.Environment.IsDevelopment())
+            if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI(c =>
+                app.UseSwaggerUI(options =>
                 {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "EkofyApp API V1");
-                    c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
+                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "EkofyApp API V1");
+                    options.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
+
+                    // Inject CSS để tùy chỉnh giao diện
+                    options.InjectStylesheet("/swagger-dark-theme.css");
                 });
             }
-            
+
             app.UseHttpsRedirection();
 
             app.UseAuthentication();
@@ -77,6 +112,8 @@ namespace EkofyApp.Api
             app.MapGraphQL("/graphql");
 
             app.MapHub<ChatHub>("/chat");
+
+            app.UseStaticFiles();
 
             app.Run();
         }

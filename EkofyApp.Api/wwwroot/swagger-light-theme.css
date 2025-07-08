@@ -1,0 +1,26 @@
+﻿:root {
+    --primary-color: #ffffff;
+    --secondary-color: #f4f4f4;
+    --text-color: #000000;
+    --highlight-color: #007bff;
+    --button-color: #e9ecef;
+}
+
+body {
+    background-color: var(--primary-color) !important;
+    color: var(--text-color) !important;
+}
+
+.swagger-ui .topbar, .swagger-ui .info, .swagger-ui .opblock {
+    background-color: var(--secondary-color) !important;
+    color: var(--text-color) !important;
+}
+
+.swagger-ui .btn {
+    background-color: var(--button-color) !important;
+    color: var(--text-color) !important;
+}
+
+.swagger-ui a {
+    color: var(--highlight-color) !important;
+}

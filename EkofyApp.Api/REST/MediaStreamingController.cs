@@ -1,9 +1,12 @@
 ﻿using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EkofyApp.Api.REST;
 [Route("api/media-streaming")]
 [ApiController]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] //"Bearer"
 public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontService) : ControllerBase
 {
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
@@ -32,6 +35,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
 
     // Endpoint để lấy key cho HLS, sẽ trả về file binary
     // Bên trong content của HLS.m3u8 sẽ tự động gọi đến hàm này
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpGet("keys")]
     public IActionResult DecryptionKey([FromQuery] string trackId, [FromQuery] string token)
     {
@@ -54,6 +58,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     }
 
     // Hàm xử lý proxy cho file bitrate.m3u8, replace và ký toàn bộ .ts và EXT-X-KEY bên trong
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpGet("{trackId}/{bitrate}/playlist.m3u8")]
     public async Task<IActionResult> GetBitratePlaylist(string trackId, string bitrate, [FromQuery] string token)
     {
@@ -64,6 +69,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
         return Content(finalContent, "application/vnd.apple.mpegurl");
     }
 
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpGet("{trackId}/{bitrate}/{segment}")]
     public IActionResult ProxySegment(string trackId, string bitrate, string segment, [FromQuery] string token)
     {
