@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using EkofyApp.Api.GraphQL.DataLoader;
-using EkofyApp.Api.GraphQL.DataLoader.Artists;
 using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Domain.Entities;

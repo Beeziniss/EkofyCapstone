@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.AudioFeatures;
+﻿using Amazon.Runtime.Internal.Transform;
+using EkofyApp.Application.Models.AudioFeatures;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
@@ -16,19 +17,6 @@ namespace EkofyApp.Api.REST;
 [ApiController]
 public class TestController : ControllerBase
 {
-    //[HttpPost("analyze-grpc")]
-    //public async Task<IActionResult> AnalyzeAudioGrpc(IFormFile file, [FromServices] IAudioAnalysisService audioAnalysisService)
-    //{
-    //    if (file == null || file.Length == 0)
-    //        return BadRequest("No file uploaded.");
-
-    //    using var stream = file.OpenReadStream();
-
-    //    var reply = await audioAnalysisService.AnalyzeAudioAsync(stream);
-
-    //    return Ok(reply);
-    //}
-
     [HttpPost("upload-mp3")]
     public async Task<IActionResult> UploadMp3(IFormFile file, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IUnitOfWork unitOfWork)
     {
@@ -160,7 +148,7 @@ public class TestController : ControllerBase
 
         WavFileResponse wavFileResponse = await ffmpegService.ConvertToWavAsync(stream, "aaaaaaa", audioConvertPathOptions);
 
-        var result = await fingerprintCustomService.CompareWithDatabase(wavFileResponse);
+        var result = await fingerprintCustomService.GetMatchConfidenceScore(wavFileResponse);
 
         // Xóa file tạm sau khi nhận diện xong
         if (System.IO.File.Exists(wavFileResponse.OutputWavPath))

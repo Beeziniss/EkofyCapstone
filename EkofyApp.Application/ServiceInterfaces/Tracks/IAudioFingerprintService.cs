@@ -4,6 +4,6 @@ using EkofyApp.Domain.Entities;
 namespace EkofyApp.Application.ServiceInterfaces.Tracks;
 public interface IAudioFingerprintService
 {
-    Task<double> CompareWithDatabase(WavFileResponse wavFileResponse);
+    Task<double> GetMatchConfidenceScore(WavFileResponse wavFileResponse);
     Task<AudioFingerprint> GenerateFingerprint(WavFileResponse wavFileResponse);
 }

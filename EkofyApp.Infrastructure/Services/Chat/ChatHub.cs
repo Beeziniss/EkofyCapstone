@@ -2,19 +2,19 @@
 using EkofyApp.Domain.Utils;
 using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.SignalR;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Collections.Concurrent;
-using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
 public class ChatHub(IUnitOfWork unitOfWork) : Hub
 {
-    private static readonly ConcurrentDictionary<string, string> OnlineUsers = []; // userId -> senderConnectionId
+    private static readonly ConcurrentDictionary<string, string> OnlineUsers = []; // readerId -> senderConnectionId
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
     public override async Task OnConnectedAsync()
     {
-        string? userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = Context.User?.FindFirst("Id")?.Value;
 
         if (string.IsNullOrEmpty(userId))
         {
@@ -47,49 +47,78 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
     // SEND MESSAGE
     public async Task SendMessage(string conversationId, string senderId, string receiverId, string text)
     {
-        Message message = new()
+        try
         {
-            ConversationId = conversationId,
-            SenderId = senderId,
-            ReceiverId = receiverId,
-            Text = text,
-            SentAt = TimeControl.GetUtcPlus7Time(),
-        };
-
-        await _unitOfWork.GetCollection<Message>().InsertOneAsync(message);
-
-        // Update lastMessage
-        UpdateDefinition<Conversation> update = Builders<Conversation>.Update
-            .Set(c => c.LastMessage, new LastMessage
+            // Nếu chưa có conversationId, tìm hoặc tạo
+            if (string.IsNullOrEmpty(conversationId))
             {
-                Text = text,
+                Conversation conversation = await _unitOfWork.GetCollection<Conversation>()
+                    .Find(c => c.UserIds.Contains(senderId) && c.UserIds.Contains(receiverId))
+                    .FirstOrDefaultAsync();
+
+                if (conversation is null)
+                {
+                    conversation = new()
+                    {
+                        Id = ObjectId.GenerateNewId().ToString(),
+                        UserIds = [senderId, receiverId],
+                        CreatedAt = TimeControl.GetUtcPlus7Time(),
+                    };
+                    await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(conversation);
+                }
+
+                conversationId = conversation.Id;
+            }
+
+            Message message = new()
+            {
+                ConversationId = conversationId,
                 SenderId = senderId,
-                SentAt = message.SentAt,
-                IsReadBy = [senderId]
-            })
-            .Set(c => c.UpdatedAt, TimeControl.GetUtcPlus7Time());
+                ReceiverId = receiverId,
+                Text = text,
+                SentAt = TimeControl.GetUtcPlus7Time(),
+            };
 
-        await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(
-            Builders<Conversation>.Filter.Eq(c => c.Id, conversationId),
-            update);
+            await _unitOfWork.GetCollection<Message>().InsertOneAsync(message);
 
-        // SignalR push to receiver
-        if (OnlineUsers.TryGetValue(receiverId, out string? receiverConnId))
-        {
-            await Clients.Client(receiverConnId).SendAsync("ReceiveMessage", message);
+            // Update lastMessage
+            UpdateDefinition<Conversation> update = Builders<Conversation>.Update
+                .Set(c => c.LastMessage, new LastMessage
+                {
+                    Text = text,
+                    SenderId = senderId,
+                    SentAt = message.SentAt,
+                    IsReadBy = [senderId]
+                })
+                .Set(c => c.UpdatedAt, TimeControl.GetUtcPlus7Time());
+
+            await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(
+                Builders<Conversation>.Filter.Eq(c => c.Id, conversationId),
+                update);
+
+            // SignalR push to receiver
+            if (OnlineUsers.TryGetValue(receiverId, out string? receiverConnectionId))
+            {
+                await Clients.Client(receiverConnectionId).SendAsync("ReceiveMessage", message);
+            }
+
+            // Optional: return ack
+            //await Clients.Caller.SendAsync("MessageSent", message);
         }
-
-        // Optional: return ack
-        await Clients.Caller.SendAsync("MessageSent", message);
+        catch (Exception ex)
+        {
+            // Gửi lỗi về client
+            await Clients.Caller.SendAsync("ReceiveException", $"Error sending message: {ex.Message}");
+        }
     }
 
     // MARK AS READ
-    public async Task MarkAsRead(string conversationId, string userId)
+    public async Task MarkAsRead(string conversationId, string readerId)
     {
         // Mark all as read
         FilterDefinition<Message> filter = Builders<Message>.Filter.And(
             Builders<Message>.Filter.Eq(x => x.ConversationId, conversationId),
-            Builders<Message>.Filter.Eq(x => x.ReceiverId, userId),
+            Builders<Message>.Filter.Eq(x => x.ReceiverId, readerId),
             Builders<Message>.Filter.Eq(x => x.IsRead, false)
         );
 
@@ -98,19 +127,23 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
         // Update lastMessage.isReadBy
         await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(
             Builders<Conversation>.Filter.Eq(x => x.Id, conversationId),
-            Builders<Conversation>.Update.AddToSet("lastMessage.isReadBy", userId)
+            Builders<Conversation>.Update.AddToSet("lastMessage.isReadBy", readerId)
         );
 
         // Push seen to other client
+        // A là người nhận tin nhắn từ B
+        // A mở đoạn chat => gọi MarkAsRead
+        // Server đánh dấu đã đọc các tin nhắn B gửi cho A
+        // Server gửi "MessageSeen" cho B, để B biết A đã đọc
         Conversation otherUser = await _unitOfWork.GetCollection<Conversation>().Find(x => x.Id == conversationId).FirstOrDefaultAsync();
-        string? receiverId = otherUser.UserIds.FirstOrDefault(u => u != userId);
+        string? partnerUserId = otherUser.UserIds.FirstOrDefault(u => u != readerId);
 
-        if (receiverId != null && OnlineUsers.TryGetValue(receiverId, out string? connectionId))
+        if (partnerUserId != null && OnlineUsers.TryGetValue(partnerUserId, out string? connectionId))
         {
             await Clients.Client(connectionId).SendAsync("MessageSeen", new
             {
                 ConversationId = conversationId,
-                SeenBy = userId
+                SeenBy = readerId
             });
         }
     }

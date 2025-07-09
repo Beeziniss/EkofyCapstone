@@ -13,12 +13,19 @@ public sealed class Conversation
 
     public LastMessage? LastMessage { get; set; }
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    public Dictionary<string, bool> DeletedFor { get; set; } = []; // userId => true if deleted
+    public List<DeletedForEntry> DeletedFor { get; set; } = []; // userId => true if deleted
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+}
+
+public class DeletedForEntry
+{
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string UserId { get; set; }
+
+    public bool IsDeleted { get; set; }
 }
 
 public sealed class LastMessage
