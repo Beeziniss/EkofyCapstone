@@ -11,7 +11,7 @@ using SoundFingerprinting.InMemory;
 using SoundFingerprinting.Query;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
-public class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFingerprintService
+public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFingerprintService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 

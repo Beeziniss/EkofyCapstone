@@ -7,7 +7,7 @@ using System.Security.Claims;
 using System.Text;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public class JsonWebToken : IJsonWebToken
+public sealed class JsonWebToken : IJsonWebToken
 {
     public string GenerateAccessToken(IEnumerable<Claim> claims)
     {

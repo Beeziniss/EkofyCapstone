@@ -3,7 +3,7 @@ using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
+public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IJsonWebToken _jsonWebToken = jsonWebToken;

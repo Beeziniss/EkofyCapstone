@@ -8,7 +8,7 @@ using EkofyApp.Domain.Settings.AWS;
 using System.Net;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.AWS;
-public class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) : IAmazonS3Service
+public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) : IAmazonS3Service
 {
     private readonly IAmazonS3 _s3Client = s3Client;
     private readonly AWSSetting _aWSSettings = aWSSettings;

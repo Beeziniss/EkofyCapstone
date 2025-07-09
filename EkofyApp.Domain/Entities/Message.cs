@@ -2,7 +2,7 @@
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public class Message
+public sealed class Message
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

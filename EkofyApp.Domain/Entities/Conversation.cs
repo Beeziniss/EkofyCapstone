@@ -2,7 +2,7 @@
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public class Conversation
+public sealed class Conversation
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -21,7 +21,7 @@ public class Conversation
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class LastMessage
+public sealed class LastMessage
 {
     public string Text { get; set; }
 

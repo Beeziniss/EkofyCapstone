@@ -1,5 +1,5 @@
 ﻿namespace EkofyApp.Application.Models.AudioFingerprints;
-public class AudioFingerprintResponse
+public record AudioFingerprintResponse
 {
     public List<byte[]> CompressedFingerprints { get; set; } = [];
     public List<uint> SequenceNumbers { get; set; } = [];

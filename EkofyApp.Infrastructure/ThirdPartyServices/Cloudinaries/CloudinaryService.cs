@@ -8,10 +8,8 @@ using MongoDB.Bson;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries
 {
-    public class CloudinaryService(Cloudinary cloudinary, IHttpContextAccessor httpContextAccessor) : IDisposable, ICloudinaryService
+    public sealed class CloudinaryService(Cloudinary cloudinary, IHttpContextAccessor httpContextAccessor) : ICloudinaryService
     {
-        private bool disposedValue;
-
         private readonly Cloudinary _cloudinary = cloudinary;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
@@ -76,37 +74,6 @@ namespace EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries
             //Console.WriteLine(uploadResult.JsonObj);
 
             return uploadResult;
-        }
-        #endregion
-
-        #region Dispose
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects)
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
-            }
-        }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~CloudinaryService()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
         #endregion
     }

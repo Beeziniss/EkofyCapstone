@@ -5,41 +5,40 @@ using EkofyApp.Domain.Entities;
 using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
-namespace EkofyApp.Infrastructure.Services.Tracks
+namespace EkofyApp.Infrastructure.Services.Tracks;
+
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper) : ITrackService
 {
-    public class TrackService(IUnitOfWork unitOfWork, IMapper mapper) : ITrackService
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IMapper _mapper = mapper;
+
+    // Implement methods from ITrackService here
+    public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork;
-        private readonly IMapper _mapper = mapper;
+        Track track = await _unitOfWork.GetCollection<Track>()
+            .Find(x => x.Id == id)
+            .Project<Track>(projection)
+            .FirstOrDefaultAsync();
 
-        // Implement methods from ITrackService here
-        public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
+        return _mapper.Map<TrackResponse>(track);
+    }
+
+    public async Task<IEnumerable<TrackResponse>> GetTracksAsync()
+    {
+        IEnumerable<Track> tracks = await _unitOfWork.GetCollection<Track>().Find(_ => true).ToListAsync();
+
+        return _mapper.Map<IEnumerable<TrackResponse>>(tracks);
+    }
+
+    public async Task CreateTrackAsync(CreateTrackRequest trackRequest)
+    {
+        Track track = new()
         {
-            Track track = await _unitOfWork.GetCollection<Track>()
-                .Find(x => x.Id == id)
-                .Project<Track>(projection)
-                .FirstOrDefaultAsync();
+            Name = trackRequest.Name,
+            Description = trackRequest.Description,
+            ArtistId = trackRequest.ArtistId,
+        };
 
-            return _mapper.Map<TrackResponse>(track);
-        }
-
-        public async Task<IEnumerable<TrackResponse>> GetTracksAsync()
-        {
-            IEnumerable<Track> tracks = await _unitOfWork.GetCollection<Track>().Find(_ => true).ToListAsync();
-
-            return _mapper.Map<IEnumerable<TrackResponse>>(tracks);
-        }
-
-        public async Task CreateTrackAsync(CreateTrackRequest trackRequest)
-        {
-            Track track = new()
-            {
-                Name = trackRequest.Name,
-                Description = trackRequest.Description,
-                ArtistId = trackRequest.ArtistId,
-            };
-
-            await _unitOfWork.GetCollection<Track>().InsertOneAsync(track);
-        }
+        await _unitOfWork.GetCollection<Track>().InsertOneAsync(track);
     }
 }

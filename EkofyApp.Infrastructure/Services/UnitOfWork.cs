@@ -6,8 +6,6 @@ namespace EkofyApp.Infrastructure.Services
 {
     public class UnitOfWork(EkofyDbContext dbContext) : IUnitOfWork
     {
-
-
         private readonly IMongoDatabase _database = dbContext.GetDatabase();
         private bool disposedValue;
 

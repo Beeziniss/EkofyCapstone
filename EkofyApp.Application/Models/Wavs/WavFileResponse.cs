@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Application.Models.Wavs;
-public class WavFileResponse
+public record WavFileResponse
 {
     public string OutputWavPath { get; set; } = default!;
-    public long Bitrate { get; set; } = default!;
+    public long OriginalBitrate { get; set; } = default!;
 }

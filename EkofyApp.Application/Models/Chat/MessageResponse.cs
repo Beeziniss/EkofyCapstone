@@ -1,5 +1,5 @@
 ﻿namespace EkofyApp.Application.Models.Chat;
-public class MessageResponse
+public record MessageResponse
 {
     public string Id { get; set; }
     public string SenderId { get; set; }

@@ -7,7 +7,7 @@ using MongoDB.Bson;
 using Xabe.FFmpeg;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
-public class FfmpegService : IFfmpegService
+public sealed class FfmpegService : IFfmpegService
 {
     private readonly string _ffmpegPath;
 
@@ -112,7 +112,7 @@ public class FfmpegService : IFfmpegService
         return new WavFileResponse()
         {
             OutputWavPath = outputWavPath,
-            Bitrate = bitrate
+            OriginalBitrate = bitrate
         };
     }
 
@@ -170,11 +170,11 @@ public class FfmpegService : IFfmpegService
             //    throw new InvalidOperationException("AudioFile không chứa stream âm thanh hợp lệ.");
 
             IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullCustomException("Audio Stream is null");
-            //long bitrate = audioStream.Bitrate;
+            //long bitrate = audioStream.OriginalBitrate;
 
             foreach (long bitrateIndex in HelperMethod.GetValidBitrates())
             {
-                if (bitrateIndex > wavFileResponse.Bitrate)
+                if (bitrateIndex > wavFileResponse.OriginalBitrate)
                 {
                     break; // Dừng nếu bitrateIndex lớn hơn bitrate của file gốc
                 }

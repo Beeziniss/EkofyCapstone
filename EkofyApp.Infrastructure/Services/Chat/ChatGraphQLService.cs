@@ -5,7 +5,7 @@ using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
-public class ChatGraphQLService(IUnitOfWork unitOfWork, IMapper mapper) : IChatGraphQLService
+public sealed class ChatGraphQLService(IUnitOfWork unitOfWork, IMapper mapper) : IChatGraphQLService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;

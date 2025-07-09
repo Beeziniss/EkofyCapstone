@@ -5,7 +5,7 @@ using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.Models.Tracks;
 
-public class TrackResponse : IMapFrom<Track>
+public record TrackResponse : IMapFrom<Track>
 {
     public string Id { get; set; } = default!;
     public string Name { get; set; } = default!;

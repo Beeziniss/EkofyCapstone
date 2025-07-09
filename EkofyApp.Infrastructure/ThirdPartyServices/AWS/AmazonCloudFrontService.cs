@@ -15,7 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.AWS;
-public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings, IHttpContextAccessor httpContextAccessor) : IAmazonCloudFrontService
+public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings, IHttpContextAccessor httpContextAccessor) : IAmazonCloudFrontService
 {
     private readonly IAmazonS3 _s3Client = s3Client;
     private readonly AWSSetting _aWSSettings = aWSSettings;
@@ -312,7 +312,7 @@ public class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings,
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            throw new NotFoundCustomException($"Bitrate file not found in S3: {bitrateHlsFilePath}");
+            throw new NotFoundCustomException($"OriginalBitrate file not found in S3: {bitrateHlsFilePath}");
         }
     }
 

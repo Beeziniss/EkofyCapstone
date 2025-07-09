@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
-public class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) : IMomoService
+public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) : IMomoService
 {
     private readonly IMomoApi _momoApi = momoApi;
     private readonly ILogger<MomoService> _logger = logger;

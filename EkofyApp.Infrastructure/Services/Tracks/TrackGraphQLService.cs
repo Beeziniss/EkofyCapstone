@@ -6,7 +6,7 @@ using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
-public class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper) : ITrackGraphQLService
+public sealed class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper) : ITrackGraphQLService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;

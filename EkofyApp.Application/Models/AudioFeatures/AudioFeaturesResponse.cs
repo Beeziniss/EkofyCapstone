@@ -1,5 +1,5 @@
 ﻿namespace EkofyApp.Application.Models.AudioFeatures;
-public class AudioFeaturesResponse
+public record AudioFeaturesResponse
 {
     public float Tempo { get; set; }
     public string Key { get; set; }

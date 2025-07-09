@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities
 {
-    public class Track
+    public sealed class Track
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]

@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 
 namespace EkofyApp.Application.Models.Payment.Momo;
-public class MomoPaymentResponse
+public record MomoPaymentResponse
 {
     public string? PartnerCode { get; set; }
     public string? RequestId { get; set; }
