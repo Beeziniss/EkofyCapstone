@@ -5,6 +5,7 @@ namespace EkofyApp.Domain.Entities;
 public class Message
 {
     [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; }
 
     [BsonRepresentation(BsonType.ObjectId)]
