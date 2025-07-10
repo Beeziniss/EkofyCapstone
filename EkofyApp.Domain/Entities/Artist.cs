@@ -9,4 +9,6 @@ public sealed class Artist : IEntityCustom
     public string Id { get; set; }
     public string Name { get; set; }
     public string Genre { get; set; }
+    public bool IsVerified { get; set; } = false; // Indicates if the artist is verified
+    public bool IsBanned { get; set; } = false; // Indicates if the artist is banned
 }

@@ -30,7 +30,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
             claims: claims,
 
-            expires: TimeControl.GetUtcPlus7Time().Add(TimeSpan.FromDays(expiresInDays)),
+            expires: HelperMethod.GetUtcPlus7Time().Add(TimeSpan.FromDays(expiresInDays)),
 
             signingCredentials: new SigningCredentials(
                                 new SymmetricSecurityKey(symmetricKey),
@@ -44,7 +44,7 @@ public sealed class JsonWebToken : IJsonWebToken
     public ClaimsPrincipal ValidateToken(string token)
     {
         var tokenHadler = new JwtSecurityTokenHandler();
-        string key = Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new NotFoundCustomException("JWTSettings_SecretKey is not set in the environment");
+        string key = Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new UnconfiguredEnvironmentCustomException("JWTSettings_SecretKey is not set in the environment");
 
         TokenValidationParameters tokenValidationParameters = new()
         {

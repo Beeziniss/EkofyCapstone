@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Api.Filters;
+using EkofyApp.Api.GraphQL.DataLoader;
 using EkofyApp.Api.GraphQL.Mutation;
 using EkofyApp.Api.GraphQL.Query;
 using EkofyApp.Api.GraphQL.Scalars;
@@ -73,9 +74,9 @@ namespace EkofyApp.Api
             });
 
             builder.Services.AddGraphQLServer().AddErrorFilter<GraphQLExceptionFilter>()
-                .AddAuthorization().AddType<UploadType>()
+                .AddAuthorization()
                 // Nếu expose field có data type UInt32 thì cần phải bind nó vào GraphQL
-                .AddType(new UInt32Type())
+                .AddType<UploadType>().AddType(new UInt32Type())
                 .BindRuntimeType<uint, UInt32Type>()
                 .AddMaxExecutionDepthRule(5).AddMaxAllowedFieldCycleDepthRule(50)
                 .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections().AddMongoDbPagingProviders()

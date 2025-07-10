@@ -8,7 +8,7 @@ public class TracksResolver
 {
     public async Task<Artist?> GetArtistAsync(
         [Parent] Track track,
-        ArtistByIdDataLoader artistByIdDataLoader,
+        ArtistDataLoader artistByIdDataLoader,
         CancellationToken cancellationToken)
     {
         return await artistByIdDataLoader.LoadAsync(track.ArtistId, cancellationToken);

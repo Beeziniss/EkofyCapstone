@@ -40,7 +40,7 @@ public class TestController : ControllerBase
             CategoryIds = [],
             Tags = ["cho phép gắn sẵn"],
             ArtistId = ObjectId.GenerateNewId().ToString(), // ObjectId (string) của Artist
-            CreatedAt = TimeControl.GetUtcPlus7Time(),
+            CreatedAt = HelperMethod.GetUtcPlus7Time(),
         };
 
         await unitOfWork.GetCollection<Track>().InsertOneAsync(track);
@@ -96,7 +96,7 @@ public class TestController : ControllerBase
         AudioFeature audioAnalysisResponse = await audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
         // Xác định mood của track dựa trên đặc trưng âm thanh
-        IEnumerable<MoodType> moodTypes = MoodDetector.DetectMoods(audioAnalysisResponse);
+        IEnumerable<MoodType> moodTypes = HelperMethod.DetectMoods(audioAnalysisResponse);
         IEnumerable<string> moodIds = [];
 
         if (moodTypes.Any())
@@ -116,7 +116,7 @@ public class TestController : ControllerBase
             .Set(track => track.CategoryIds, moodIds)
             .Set(track => track.AudioFingerprint, audioFingerprint)
             .Set(track => track.AudioFeature, audioAnalysisResponse)
-            .Set(track => track.UpdatedAt, TimeControl.GetUtcPlus7Time());
+            .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
 
         await unitOfWork.GetCollection<Track>().FindOneAndUpdateAsync(track => track.Id == trackId, updateDefinition);
 

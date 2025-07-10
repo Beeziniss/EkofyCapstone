@@ -73,7 +73,7 @@ public static class DependencyInjection
         // Register gRPC client with DI
         services.AddGrpcClient<AudioAnalyzer.AudioAnalyzerClient>(options =>
         {
-            options.Address = new Uri(Environment.GetEnvironmentVariable("GRPC_CLIENT") ?? throw new NotFoundCustomException("GRPC_CLIENT is not set or configured"));
+            options.Address = new Uri(Environment.GetEnvironmentVariable("GRPC_CLIENT") ?? throw new UnconfiguredEnvironmentCustomException("GRPC_CLIENT is not set or configured"));
 
             // Set the maximum message size for gRPC
             options.ChannelOptionsActions.Add(channelOptions =>
@@ -88,8 +88,8 @@ public static class DependencyInjection
     public static void AddDatabase(this IServiceCollection services)
     {
         // Load MongoDB settings from environment variables
-        string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new NotFoundCustomException("Connection String Database is not set in the environment variables");
-        string databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME") ?? throw new NotFoundCustomException("Database Name is not set in the environment variables");
+        string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
+        string databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME") ?? throw new UnconfiguredEnvironmentCustomException("Database Name is not set in the environment variables");
 
         // Register the MongoDB settings as a singleton
         MongoDbSetting mongoDbSettings = new()
@@ -157,7 +157,7 @@ public static class DependencyInjection
         string? cloudinaryUrl = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
         if (string.IsNullOrEmpty(cloudinaryUrl))
         {
-            throw new NotFoundCustomException("Cloudinary URL is not set in the environment variables");
+            throw new UnconfiguredEnvironmentCustomException("Cloudinary URL is not set in the environment variables");
         }
 
         // Initialize Cloudinary instance
@@ -313,7 +313,7 @@ public static class DependencyInjection
     public static void AddMomo(this IServiceCollection services)
     {
         // Load Momo API URL from environment variables
-        string momoApiUrlBase = Environment.GetEnvironmentVariable("MOMO_API_URL_BASE") ?? throw new NotFoundCustomException("Base Address is not set in the environment variables");
+        string momoApiUrlBase = Environment.GetEnvironmentVariable("MOMO_API_URL_BASE") ?? throw new UnconfiguredEnvironmentCustomException("Base Address is not set in the environment variables");
 
         // Register Refit client for Momo API
         services.AddRefitClient<IMomoApi>()
@@ -326,9 +326,9 @@ public static class DependencyInjection
     #region AWS
     public static void AddAmazonWebService(this IServiceCollection services)
     {
-        string accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? throw new NotFoundCustomException("AWS_ACCESS_KEY_ID not set");
-        string secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? throw new NotFoundCustomException("AWS_SECRET_ACCESS_KEY not set");
-        string region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new NotFoundCustomException("AWS_REGION not set");
+        string accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID") ?? throw new UnconfiguredEnvironmentCustomException("AWS_ACCESS_KEY_ID not set");
+        string secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? throw new UnconfiguredEnvironmentCustomException("AWS_SECRET_ACCESS_KEY not set");
+        string region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new UnconfiguredEnvironmentCustomException("AWS_REGION not set");
 
         BasicAWSCredentials awsCredentials = new(accessKey, secretKey);
         RegionEndpoint awsRegion = RegionEndpoint.GetBySystemName(region);
@@ -342,11 +342,11 @@ public static class DependencyInjection
         // Config the AWS Client
         AWSSetting awsSetting = new()
         {
-            BucketName = Environment.GetEnvironmentVariable("AWS_S3_BUCKET_NAME") ?? throw new NotFoundCustomException("BucketName is not set in environment"),
-            Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new NotFoundCustomException("Region is not set in environment"),
-            CloudFrontDomainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new NotFoundCustomException("CloudFrontDomainUrl is not set in environment"),
-            CloudFrontDistributionId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DISTRIBUTION_ID") ?? throw new NotFoundCustomException("CloudFrontDistributionId is not set in environment"),
-            KeyPairId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_KEY_PAIR_ID") ?? throw new NotFoundCustomException("KeyPairId is not set in environment")
+            BucketName = Environment.GetEnvironmentVariable("AWS_S3_BUCKET_NAME") ?? throw new UnconfiguredEnvironmentCustomException("BucketName is not set in environment"),
+            Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new UnconfiguredEnvironmentCustomException("Region is not set in environment"),
+            CloudFrontDomainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new UnconfiguredEnvironmentCustomException("CloudFrontDomainUrl is not set in environment"),
+            CloudFrontDistributionId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DISTRIBUTION_ID") ?? throw new UnconfiguredEnvironmentCustomException("CloudFrontDistributionId is not set in environment"),
+            KeyPairId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_KEY_PAIR_ID") ?? throw new UnconfiguredEnvironmentCustomException("KeyPairId is not set in environment")
         };
 
         // Register the AWSSetting with DI

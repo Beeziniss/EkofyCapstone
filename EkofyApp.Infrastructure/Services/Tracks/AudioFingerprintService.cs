@@ -37,7 +37,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
             StartsAt = hashes.Audio.Select(h => h.StartsAt).ToList(),
             OriginalPoints = hashes.Audio.Select(h => h.OriginalPoint).ToList(),
             Duration = hashes.Audio.DurationInSeconds,
-            CreatedAt = TimeControl.GetUtcPlus7Time(),
+            CreatedAt = HelperMethod.GetUtcPlus7Time(),
             UpdatedAt = null
         };
 

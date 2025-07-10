@@ -1,5 +1,5 @@
 ﻿namespace EkofyApp.Domain.Utils;
-public class AudioPropertyOptions
+public sealed class AudioPropertyOptions
 {
     public int Bitrate { get; private set; }
     public int SampleRate { get; private set; }

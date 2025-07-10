@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Domain.Settings.AWS
 {
-    public class AWSSetting
+    public sealed class AWSSetting
     {
         public required string BucketName { get; set; }
         public required string Region { get; set; }

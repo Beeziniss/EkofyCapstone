@@ -32,7 +32,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("Id")
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        string key = Environment.GetEnvironmentVariable("HLS_KEY") ?? throw new NotFoundCustomException("HLS_KEY is not set in the environment");
+        string key = Environment.GetEnvironmentVariable("HLS_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY is not set in the environment");
 
         byte[] keyBytes = Encoding.UTF8.GetBytes(key);
         JwtSecurityTokenHandler tokenHandler = new();
@@ -155,7 +155,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         if (string.IsNullOrWhiteSpace(keyHex) || keyHex.Length != 32)
         {
-            throw new NotFoundCustomException("Encryption key is not properly configured");
+            throw new UnconfiguredEnvironmentCustomException("Encryption key is not properly configured");
         }
 
         return Convert.FromHexString(keyHex);
@@ -164,9 +164,9 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
     public async Task<string> GetMasterPlaylistAsync(string trackId, string token)
     {
         // Nhớ thay thành production URL
-        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
+        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
-        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
+        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
         string masterFilePath = $"{prefixKey}/{trackId}/{trackId}_master.m3u8";
@@ -216,14 +216,14 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
     public async Task<string> GetBitratePlaylistAsync(string trackId, string bitrate, string token)
     {
-        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
+        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
         string bitrateHlsFilePath = $"{prefixKey}/{trackId}/{bitrate}/{trackId}_hls.m3u8";
 
-        string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new NotFoundCustomException("HLS_KEY_URL_HIDDEN is not configured");
+        string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
-        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new NotFoundCustomException("LOCAL_HOST_URL is not configured");
+        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
         string keyUri = $"{localHostUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
 
@@ -318,23 +318,23 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
     public string GenerateSignedRedirect(string trackId, string bitrate, string segment, string token)
     {
-        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new NotFoundCustomException("AWS_MASTER_PREFIX_KEY is not configured");
+        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("AWS_MASTER_PREFIX_KEY is not configured");
 
         // Đường dẫn đến file .ts
         string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{segment}";
 
-        string domainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new NotFoundCustomException("AWS_CLOUDFRONT_DOMAIN_URL is not configured");
+        string domainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new UnconfiguredEnvironmentCustomException("AWS_CLOUDFRONT_DOMAIN_URL is not configured");
 
         // Tạo URL đầy đủ
         string fullUrl = $"{domainUrl}/{relativePath}";
 
         // Đọc private key từ file
-        string privateKeyPath = PathHelper.ResolvePath(PathTag.Base, "PrivateKeys");
+        string privateKeyPath = HelperMethod.ResolvePath(PathTag.Base, "PrivateKeys");
         privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
         using StreamReader privateKeyStream = new(privateKeyPath);
 
         // Thời gian hết hạn của signed URL
-        DateTime expires = TimeControl.GetUtcPlus7Time().AddMinutes(2);
+        DateTime expires = HelperMethod.GetUtcPlus7Time().AddMinutes(2);
 
         // Ký URL
         string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(

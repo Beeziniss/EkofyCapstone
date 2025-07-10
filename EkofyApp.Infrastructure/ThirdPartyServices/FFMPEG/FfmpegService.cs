@@ -13,7 +13,7 @@ public sealed class FfmpegService : IFfmpegService
 
     public FfmpegService()
     {
-        _ffmpegPath = PathHelper.ResolvePath(PathTag.Base, "Tools");
+        _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "Tools");
         _ffmpegPath = Path.GetFullPath(_ffmpegPath);
 
         FFmpeg.SetExecutablesPath(_ffmpegPath);

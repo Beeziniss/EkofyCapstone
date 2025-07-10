@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Domain.Exceptions;
 
 namespace EkofyApp.Domain.Utils;
-public class AudioConvertPathOptions
+public sealed class AudioConvertPathOptions
 {
     public string BasePath { get; set; } = string.Empty; // Mặc định
     public string RootFolder { get; set; } = string.Empty;

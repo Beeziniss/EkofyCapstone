@@ -20,7 +20,7 @@ public sealed class Conversation
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class DeletedForEntry
+public sealed class DeletedForEntry
 {
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; }

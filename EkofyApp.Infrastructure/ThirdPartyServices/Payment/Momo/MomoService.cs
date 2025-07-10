@@ -19,12 +19,12 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
 
         string requestId = ObjectId.GenerateNewId().ToString();
         string extraData = "";
-        string accessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new NotFoundCustomException($"{nameof(accessKey)} is not set in the environment variables");
-        string secretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new NotFoundCustomException($"{nameof(secretKey)} is not set in the environment variables");
-        string partnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new NotFoundCustomException($"{nameof(partnerCode)} is not set in the environment variables");
-        string returnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new NotFoundCustomException($"{nameof(returnUrl)} is not set in the environment variables");
-        string notifyUrl = Environment.GetEnvironmentVariable("MOMO_NOTIFY_URL") ?? throw new NotFoundCustomException($"{nameof(notifyUrl)} is not set in the environment variables");
-        string requestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_QR") ?? throw new NotFoundCustomException($"{nameof(requestType)} is not set in the environment variables");
+        string accessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(accessKey)} is not set in the environment variables");
+        string secretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(secretKey)} is not set in the environment variables");
+        string partnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(partnerCode)} is not set in the environment variables");
+        string returnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(returnUrl)} is not set in the environment variables");
+        string notifyUrl = Environment.GetEnvironmentVariable("MOMO_NOTIFY_URL") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(notifyUrl)} is not set in the environment variables");
+        string requestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_QR") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(requestType)} is not set in the environment variables");
 
         // Tránh bị trùng ID đơn hàng
         string orderIdObjectId = ObjectId.GenerateNewId().ToString();
@@ -68,11 +68,11 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
 
         string requestId = ObjectId.GenerateNewId().ToString();
         string extraData = "";
-        string accessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new NotFoundCustomException($"{nameof(accessKey)} is not set in the environment variables");
-        string secretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new NotFoundCustomException($"{nameof(secretKey)} is not set in the environment variables");
-        string partnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new NotFoundCustomException($"{nameof(partnerCode)} is not set in the environment variables");
-        string returnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new NotFoundCustomException($"{nameof(returnUrl)} is not set in the environment variables");
-        string requestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_VISA") ?? throw new NotFoundCustomException($"{nameof(requestType)} is not set in the environment variables");
+        string accessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(accessKey)} is not set in the environment variables");
+        string secretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(secretKey)} is not set in the environment variables");
+        string partnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(partnerCode)} is not set in the environment variables");
+        string returnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(returnUrl)} is not set in the environment variables");
+        string requestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_VISA") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(requestType)} is not set in the environment variables");
 
         // Tránh bị trùng ID đơn hàng
         string orderIdObjectId = ObjectId.GenerateNewId().ToString();
