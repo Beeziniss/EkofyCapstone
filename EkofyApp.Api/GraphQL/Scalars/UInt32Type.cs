@@ -2,7 +2,7 @@
 
 namespace EkofyApp.Api.GraphQL.Scalars;
 
-public class UInt32Type : ScalarType<uint, IntValueNode>
+public sealed class UInt32Type : ScalarType<uint, IntValueNode>
 {
     public UInt32Type() : base("UInt32") { }
 
@@ -38,11 +38,19 @@ public class UInt32Type : ScalarType<uint, IntValueNode>
     public override object Deserialize(object? resultValue)
     {
         if (resultValue is uint u)
+        {
             return u;
+        }
+
         if (resultValue is int i && i >= 0)
+        {
             return (uint)i;
+        }
+
         if (resultValue is string s && uint.TryParse(s, out var parsed))
+        {
             return parsed;
+        }
 
         throw new SerializationException("Invalid UInt32 value", this);
     }

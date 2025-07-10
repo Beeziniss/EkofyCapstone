@@ -1,11 +1,9 @@
-﻿namespace EkofyApp.Domain.Settings.AWS
+﻿namespace EkofyApp.Domain.Settings.AWS;
+public sealed record class AWSSetting
 {
-    public sealed class AWSSetting
-    {
-        public required string BucketName { get; set; }
-        public required string Region { get; set; }
-        public required string CloudFrontDistributionId { get; set; }
-        public required string CloudFrontDomainUrl { get; set; }
-        public required string KeyPairId { get; set; }
-    }
+    public required string BucketName { get; init; }
+    public required string Region { get; init; }
+    public required string CloudFrontDistributionId { get; init; }
+    public required string CloudFrontDomainUrl { get; init; }
+    public required string KeyPairId { get; init; }
 }

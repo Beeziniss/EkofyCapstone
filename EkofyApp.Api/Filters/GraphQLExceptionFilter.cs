@@ -3,7 +3,7 @@ using Serilog;
 
 namespace EkofyApp.Api.Filters;
 
-public class GraphQLExceptionFilter : IErrorFilter
+public sealed class GraphQLExceptionFilter : IErrorFilter
 {
     public IError OnError(IError error)
     {
@@ -22,7 +22,7 @@ public class GraphQLExceptionFilter : IErrorFilter
         Log.Fatal(error.Exception, error.Exception?.Message ?? "Can not get Message");
 
         return error
-            .WithMessage("Đã xảy ra lỗi không xác định.")
+            .WithMessage("Đã xảy ra lỗi không xác định. Lỗi hệ thống")
             .WithCode("UNHANDLED_ERROR")
             .SetExtension("status", 500);
     }

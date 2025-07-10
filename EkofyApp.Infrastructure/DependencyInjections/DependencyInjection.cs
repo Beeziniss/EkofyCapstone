@@ -15,6 +15,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
+using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
@@ -318,6 +319,21 @@ public static class DependencyInjection
         // Register Refit client for Momo API
         services.AddRefitClient<IMomoApi>()
             .ConfigureHttpClient(c => c.BaseAddress = new Uri(momoApiUrlBase));
+
+        // Config the MomoSetting from environment variables
+        MomoSetting momoSetting = new()
+        {
+            AccessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Access Key is not set in the environment variables"),
+            SecretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Secret Key is not set in the environment variables"),
+            PartnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Partner Code is not set in the environment variables"),
+            ReturnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Return URL is not set in the environment variables"),
+            NotifyUrl = Environment.GetEnvironmentVariable("MOMO_NOTIFY_URL") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Notify URL is not set in the environment variables"),
+            RequestTypeQR = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_QR") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Request Type QR is not set in the environment variables"),
+            RequestTypeVisa = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_VISA") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Request Type Visa is not set in the environment variables")
+        };
+
+        // Register MomoSetting with DI
+        services.AddSingleton(momoSetting);
 
         // Register MomoService with DI
         services.AddScoped<IMomoService, MomoService>();

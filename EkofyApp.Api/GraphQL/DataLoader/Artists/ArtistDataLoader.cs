@@ -15,7 +15,7 @@ public sealed class ArtistDataLoader(IBatchScheduler scheduler, DataLoaderOption
         IReadOnlyList<string> keys,
         CancellationToken cancellationToken)
     {
-        // Ví dụ logic riêng: chỉ lấy Artist còn "IsActive"
+        // Ví dụ logic riêng: chỉ lấy Artist có "IsBanned" là false
         FilterDefinition<Artist> filter = Builders<Artist>.Filter.And(
             Builders<Artist>.Filter.In(a => a.Id, keys)
             //Builders<Artist>.Filter.Eq(a => a.IsBanned, false) // chỉ lấy active

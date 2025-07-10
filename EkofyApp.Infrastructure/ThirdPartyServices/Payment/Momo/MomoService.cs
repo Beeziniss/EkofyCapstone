@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.Models.Payment.Momo;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Settings.Momo;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using Refit;
@@ -8,9 +9,10 @@ using System.Security.Cryptography;
 using System.Text;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
-public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) : IMomoService
+public sealed class MomoService(IMomoApi momoApi, MomoSetting momoSetting, ILogger<MomoService> logger) : IMomoService
 {
     private readonly IMomoApi _momoApi = momoApi;
+    private readonly MomoSetting _momoSetting = momoSetting;
     private readonly ILogger<MomoService> _logger = logger;
 
     public async Task<MomoPaymentResponse> CreatePaymentQRLinkAsync(CreateMomoPaymentRequest createMomoPaymentRequest)
@@ -19,12 +21,12 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
 
         string requestId = ObjectId.GenerateNewId().ToString();
         string extraData = "";
-        string accessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(accessKey)} is not set in the environment variables");
-        string secretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(secretKey)} is not set in the environment variables");
-        string partnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(partnerCode)} is not set in the environment variables");
-        string returnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(returnUrl)} is not set in the environment variables");
-        string notifyUrl = Environment.GetEnvironmentVariable("MOMO_NOTIFY_URL") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(notifyUrl)} is not set in the environment variables");
-        string requestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_QR") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(requestType)} is not set in the environment variables");
+        string accessKey = _momoSetting.AccessKey;
+        string secretKey = _momoSetting.SecretKey;
+        string partnerCode = _momoSetting.PartnerCode;
+        string returnUrl = _momoSetting.ReturnUrl;
+        string notifyUrl = _momoSetting.NotifyUrl;
+        string requestTypeQR = _momoSetting.RequestTypeQR;
 
         // Tránh bị trùng ID đơn hàng
         string orderIdObjectId = ObjectId.GenerateNewId().ToString();
@@ -45,7 +47,7 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
             NotifyUrl = notifyUrl,
             ExtraData = extraData,
             Lang = "vi",
-            RequestType = requestType,
+            RequestType = requestTypeQR,
             Signature = signature
         };
 
@@ -68,17 +70,17 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
 
         string requestId = ObjectId.GenerateNewId().ToString();
         string extraData = "";
-        string accessKey = Environment.GetEnvironmentVariable("MOMO_ACCESS_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(accessKey)} is not set in the environment variables");
-        string secretKey = Environment.GetEnvironmentVariable("MOMO_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(secretKey)} is not set in the environment variables");
-        string partnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(partnerCode)} is not set in the environment variables");
-        string returnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(returnUrl)} is not set in the environment variables");
-        string requestType = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_VISA") ?? throw new UnconfiguredEnvironmentCustomException($"{nameof(requestType)} is not set in the environment variables");
+        string accessKey = _momoSetting.AccessKey;
+        string secretKey = _momoSetting.SecretKey;
+        string partnerCode = _momoSetting.PartnerCode;
+        string returnUrl = _momoSetting.ReturnUrl;
+        string requestTypeVisa = _momoSetting.RequestTypeVisa;
 
         // Tránh bị trùng ID đơn hàng
         string orderIdObjectId = ObjectId.GenerateNewId().ToString();
 
         // Tạo chuỗi rawHash để tạo chữ ký
-        string rawHash = $"accessKey={accessKey}&amount={createMomoPaymentRequest.Amount}&extraData=&ipnUrl={returnUrl}&orderId={orderIdObjectId}&orderInfo={createMomoPaymentRequest.OrderInfo}&partnerCode={partnerCode}&redirectUrl={returnUrl}&requestId={requestId}&requestType={requestType}";
+        string rawHash = $"accessKey={accessKey}&amount={createMomoPaymentRequest.Amount}&extraData=&ipnUrl={returnUrl}&orderId={orderIdObjectId}&orderInfo={createMomoPaymentRequest.OrderInfo}&partnerCode={partnerCode}&redirectUrl={returnUrl}&requestId={requestId}&requestTypeQR={requestTypeVisa}";
 
         // Tạo chữ ký
         string signature = CreateSignature(rawHash, secretKey);
@@ -97,7 +99,7 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
         //    //ipnUrl,
         //    extraData,
         //    lang = "vi",
-        //    requestType,
+        //    requestTypeQR,
         //    signature
         //};
 
@@ -139,7 +141,7 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
             IpnUrl = returnUrl,
             ExtraData = extraData,
             Lang = "vi",
-            RequestType = requestType,
+            RequestType = requestTypeVisa,
             Signature = signature
         };
 
@@ -159,8 +161,8 @@ public sealed class MomoService(IMomoApi momoApi, ILogger<MomoService> logger) :
 
     private static string CreateSignature(string rawData, string secretKey)
     {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+        using HMACSHA256 hmac = new(Encoding.UTF8.GetBytes(secretKey));
+        byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData));
         return BitConverter.ToString(hash).Replace("-", "").ToLower();
     }
 }
