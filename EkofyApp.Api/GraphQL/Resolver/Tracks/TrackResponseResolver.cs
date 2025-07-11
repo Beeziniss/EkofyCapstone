@@ -12,8 +12,8 @@ public sealed class TrackResponseResolver
 {
     public async Task<ArtistResponse?> GetArtistAsync(
        [Parent] TrackResponse trackResponse,
-       //ArtistDataLoader artistDataLoader,
-       DataLoaderCustom<Artist> artistDataLoader,
+       ArtistDataLoader artistDataLoader,
+       //DataLoaderCustom<Artist> artistDataLoader,
        [Service] IMapper mapper,
        CancellationToken cancellationToken)
     {

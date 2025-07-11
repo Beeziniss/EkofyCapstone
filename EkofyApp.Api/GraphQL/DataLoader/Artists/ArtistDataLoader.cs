@@ -25,13 +25,11 @@ public sealed class ArtistDataLoader(IBatchScheduler scheduler, DataLoaderOption
 
         // Caching
         // Kiêm tra xem đã có cache chưa
-        ICacheResult<IEnumerable<Artist>> a = await _redisCacheService.TryGetAsync<IEnumerable<Artist>>("artists:ids:many");
-
-        if (a.Success && a.Value != null)
+        if (_redisCacheService.TryGet("artists:ids:many", out IEnumerable<Artist>? values))
         {
-            // Nếu đã có cache, trả về cache
+            // Nếu có cache thì trả về ngay
             Console.WriteLine("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-            return a.Value.ToDictionary(a => a.Id);
+            return values!.ToDictionary(a => a.Id);
         }
 
         IEnumerable<Artist> activeArtists = await _unitOfWork.GetCollection<Artist>().Find(filter).ToListAsync(cancellationToken);

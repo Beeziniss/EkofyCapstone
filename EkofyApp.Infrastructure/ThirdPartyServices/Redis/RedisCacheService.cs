@@ -4,7 +4,7 @@ using StackExchange.Redis;
 using System.Text.Json;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Redis;
-public class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
+public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
 {
     private readonly IDatabase _redisDb = redisDb;
     private readonly ILogger<RedisCacheService> _logger = logger;
@@ -34,6 +34,27 @@ public class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> log
             _logger.LogError(ex, $"[Redis] Get failed. Key: {key}");
             return null;
         }
+    }
+
+    public bool TryGet(string key, out string? value)
+    {
+        try
+        {
+            RedisValue redisValue = _redisDb.StringGet(key);
+            if (redisValue.HasValue)
+            {
+                value = redisValue.ToString();
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, $"[Redis] TryGet failed. Key: {key}");
+        }
+
+        value = default;
+
+        return false;
     }
 
     public async Task<ICacheResult<string>> TryGetAsync(string key)
@@ -78,6 +99,19 @@ public class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> log
         catch (Exception ex)
         {
             _logger.LogError(ex, $"[Redis] Remove failed. Key: {key}");
+        }
+    }
+
+    public TimeSpan? GetTTL(string key)
+    {
+        try
+        {
+            return _redisDb.KeyTimeToLive(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] GetExpiration failed. Key: {key}");
+            return null;
         }
     }
 
@@ -170,15 +204,36 @@ public class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> log
         return default;
     }
 
+    public bool TryGet<T>(string key, out T? value)
+    {
+        try
+        {
+            RedisValue json = _redisDb.StringGet(key);
+            if (json.HasValue)
+            {
+                value = JsonSerializer.Deserialize<T>(json!);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, $"[Redis] TryGet failed. Key: {key}");
+        }
+
+        value = default;
+
+        return false;
+    }
+
     public async Task<ICacheResult<T>> TryGetAsync<T>(string key)
     {
         try
         {
-            var json = await _redisDb.StringGetAsync(key);
+            RedisValue json = await _redisDb.StringGetAsync(key);
             if (json.HasValue)
             {
-                var value = JsonSerializer.Deserialize<T>(json!);
-                var ttl = await GetTTLAsync(key);
+                T? value = JsonSerializer.Deserialize<T>(json!);
+                TimeSpan? ttl = await GetTTLAsync(key);
                 return CacheResult<T>.From(value!, ttl);
             }
         }

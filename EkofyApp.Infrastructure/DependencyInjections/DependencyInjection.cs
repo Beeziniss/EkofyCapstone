@@ -17,6 +17,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
+using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
@@ -30,10 +31,12 @@ using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Refit;
@@ -81,14 +84,33 @@ public static class DependencyInjection
 
         string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? throw new Exception("REDIS_PASSWORD is not set in the environment");
 
-        ConfigurationOptions options = new()
+        ConfigurationOptions options;
+        if (HelperMethod.IsWindows())
         {
-            EndPoints = { redisHost },
-            //User = redisUser,
-            Password = redisPassword,
-            Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
-            AbortOnConnectFail = false
-        };
+            options = new()
+            {
+                EndPoints = { redisHost },
+                User = redisUser,
+                Password = redisPassword,
+                Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
+                AbortOnConnectFail = false
+            };
+        }
+        else if (HelperMethod.IsLinux())
+        {
+            options = new()
+            {
+                EndPoints = { redisHost },
+                User = redisUser,
+                Password = redisPassword,
+                Ssl = true, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
+                AbortOnConnectFail = false
+            };
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("Unsupported operating system for Redis configuration.");
+        }
 
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(options));
         //services.AddSingleton<IConnectionMultiplexer>(sp =>
