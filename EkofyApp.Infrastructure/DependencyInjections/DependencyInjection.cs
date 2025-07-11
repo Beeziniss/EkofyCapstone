@@ -13,6 +13,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
@@ -25,6 +26,7 @@ using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
+using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -35,6 +37,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Refit;
+using StackExchange.Redis;
 using System.Security.Claims;
 using System.Text;
 
@@ -54,6 +57,7 @@ public static class DependencyInjection
         services.AddCors();
 
         services.AddDatabase();
+        services.AddRedis();
         services.AddServices();
 
         services.AddGrpcClient();
@@ -69,6 +73,40 @@ public static class DependencyInjection
         //services.AddSwaggerGen();
     }
 
+    public static void AddRedis(this IServiceCollection services)
+    {
+        string redisHost = Environment.GetEnvironmentVariable("REDIS_PUBLIC_ENDPOINT") ?? throw new Exception("REDIS_PUBLIC_ENDPOINT is not set in the environment");
+
+        string redisUser = Environment.GetEnvironmentVariable("REDIS_USERNAME") ?? throw new UnconfiguredEnvironmentCustomException("REDIS_USERNAME is not set in the environment");
+
+        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? throw new Exception("REDIS_PASSWORD is not set in the environment");
+
+        ConfigurationOptions options = new()
+        {
+            EndPoints = { redisHost },
+            //User = redisUser,
+            Password = redisPassword,
+            Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
+            AbortOnConnectFail = false
+        };
+
+        services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(options));
+        //services.AddSingleton<IConnectionMultiplexer>(sp =>
+        //{
+        //    string redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("REDIS_CONNECTION_STRING is not set");
+
+        //    return ConnectionMultiplexer.Connect(redisConnectionString);
+        //});
+
+        services.AddScoped(sp =>
+        {
+            IConnectionMultiplexer multiplexer = sp.GetRequiredService<IConnectionMultiplexer>();
+            return multiplexer.GetDatabase();
+        });
+
+        services.AddScoped<IRedisCacheService, RedisCacheService>();
+    }
+
     public static void AddGrpcClient(this IServiceCollection services)
     {
         // Register gRPC client with DI
@@ -80,7 +118,7 @@ public static class DependencyInjection
             options.ChannelOptionsActions.Add(channelOptions =>
             {
                 // 50MB
-                channelOptions.MaxReceiveMessageSize = 50 * 1024 * 1024; 
+                channelOptions.MaxReceiveMessageSize = 50 * 1024 * 1024;
                 channelOptions.MaxSendMessageSize = 50 * 1024 * 1024;
             });
         });

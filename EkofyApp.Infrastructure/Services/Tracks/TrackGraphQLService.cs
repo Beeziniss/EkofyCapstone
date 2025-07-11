@@ -1,15 +1,18 @@
 ﻿using AutoMapper;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using HealthyNutritionApp.Application.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
-public sealed class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper) : ITrackGraphQLService
+public sealed class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper, IRedisCacheService redisCacheService) : ITrackGraphQLService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
     public IQueryable<TrackResponse> GetTracksExecutable()
     {
