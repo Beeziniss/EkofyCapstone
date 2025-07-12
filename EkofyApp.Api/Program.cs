@@ -79,6 +79,7 @@ namespace EkofyApp.Api
                 .AddType<UploadType>().AddType(new UInt32Type())
                 .BindRuntimeType<uint, UInt32Type>()
                 .AddMaxExecutionDepthRule(5).AddMaxAllowedFieldCycleDepthRule(50)
+                .AddProjections()
                 .AddMongoDbFiltering().AddMongoDbSorting().AddMongoDbProjections().AddMongoDbPagingProviders()
                 .AddQueryType<QueryInitialization>().AddMutationType<MutationInitialization>()
                 .AddTypes();

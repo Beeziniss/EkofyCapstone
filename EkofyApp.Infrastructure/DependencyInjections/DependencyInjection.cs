@@ -37,8 +37,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Events;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Refit;
 using StackExchange.Redis;
 using System.Security.Claims;
@@ -165,7 +170,32 @@ public static class DependencyInjection
         // Register MongoClient as singleton, sharing the connection across all usages
         services.AddSingleton<IMongoClient>(sp =>
         {
-            return new MongoClient(mongoDbSettings.ConnectionString);
+            var logger = sp.GetRequiredService<ILogger<MongoDbLogger>>();
+
+            MongoClientSettings settings = MongoClientSettings.FromConnectionString(mongoDbSettings.ConnectionString);
+            settings.ClusterConfigurator = builder =>
+            {
+                builder.Subscribe<CommandStartedEvent>(e =>
+                {
+                    // Log JSON format
+                    string json = JsonConvert.SerializeObject(JObject.Parse(e.Command.ToJson()), Formatting.Indented);
+                    logger.LogInformation("[MongoDB Command] {CommandName}:\n{Json}", e.CommandName, json);
+                });
+
+                // Optional: log command success/failure
+                builder.Subscribe<CommandSucceededEvent>(e =>
+                {
+                    logger.LogInformation("[MongoDB Succeeded] {CommandName} - Duration: {Duration}", e.CommandName, e.Duration);
+                });
+
+                builder.Subscribe<CommandFailedEvent>(e =>
+                {
+                    logger.LogError(e.Failure, "[MongoDB Failed] {CommandName}", e.CommandName);
+                });
+            };
+
+            return new MongoClient(settings);
+            //return new MongoClient(mongoDbSettings.ConnectionString);
         });
         //services.AddSingleton<IMongoClient>(_lazyClient.Value);
 
