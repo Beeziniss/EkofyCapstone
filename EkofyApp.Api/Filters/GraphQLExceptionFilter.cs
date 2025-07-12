@@ -24,6 +24,7 @@ public sealed class GraphQLExceptionFilter : IErrorFilter
         return error
             .WithMessage("Đã xảy ra lỗi không xác định. Lỗi hệ thống")
             .WithCode("UNHANDLED_ERROR")
-            .SetExtension("status", 500);
+            .SetExtension("status", 500)
+            .SetExtension("detail", error.Exception?.Message);
     }
 }
