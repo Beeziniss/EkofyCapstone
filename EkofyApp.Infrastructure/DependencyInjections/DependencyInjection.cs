@@ -173,6 +173,8 @@ public static class DependencyInjection
             var logger = sp.GetRequiredService<ILogger<MongoDbLogger>>();
 
             MongoClientSettings settings = MongoClientSettings.FromConnectionString(mongoDbSettings.ConnectionString);
+
+            #region Logging configuration
             settings.ClusterConfigurator = builder =>
             {
                 builder.Subscribe<CommandStartedEvent>(e =>
@@ -193,8 +195,9 @@ public static class DependencyInjection
                     logger.LogError(e.Failure, "[MongoDB Failed] {CommandName}", e.CommandName);
                 });
             };
-
             return new MongoClient(settings);
+            #endregion
+
             //return new MongoClient(mongoDbSettings.ConnectionString);
         });
         //services.AddSingleton<IMongoClient>(_lazyClient.Value);

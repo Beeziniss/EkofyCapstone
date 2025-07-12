@@ -4,7 +4,6 @@ using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using HealthyNutritionApp.Application.Interfaces;
-using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
@@ -14,7 +13,7 @@ public sealed class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper, 
     private readonly IMapper _mapper = mapper;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
-    public IQueryable<TrackResponse> GetTracksExecutable()
+    public IQueryable<TrackResponse> GetTracksQueryable()
     {
         IQueryable<Track> queryable = _unitOfWork.GetCollection<Track>().AsQueryable();
         return _mapper.ProjectTo<TrackResponse>(queryable);
@@ -22,7 +21,8 @@ public sealed class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper, 
         //{
         //    Id = track.Id,
         //    Name = track.Name,
-        //    Description = track.Description
+        //    Description = track.Description,
+        //    ArtistId = track.ArtistId,
         //});
 
         // Method ProjectTo sử dụng Expression<Func<Tracks, TrackResponse>>
@@ -30,7 +30,7 @@ public sealed class TrackGraphQLService(IUnitOfWork unitOfWork, IMapper mapper, 
         // Do đó [UseProjection] sẽ bị bỏ qua 
     }
 
-    public IQueryable<Track> GetTracksQueryable()
+    public IQueryable<Track> GetTracksQueryableDB()
     {
         return _unitOfWork.GetCollection<Track>().AsQueryable();
     }

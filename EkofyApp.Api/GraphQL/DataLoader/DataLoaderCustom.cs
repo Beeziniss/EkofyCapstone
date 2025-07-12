@@ -12,7 +12,10 @@ public class DataLoaderCustom<T>(IBatchScheduler scheduler, DataLoaderOptions op
     protected override async Task<IReadOnlyDictionary<string, T>> LoadBatchAsync(
         IReadOnlyList<string> keys, CancellationToken ct)
     {
-        List<T> result = await _unitOfWork.GetCollection<T>().Find(x => keys.Contains(x.Id)).ToListAsync(ct);
+        IEnumerable<T> result = await _unitOfWork.GetCollection<T>()
+            //.Find(x => keys.Contains(x.Id))
+            .Find(Builders<T>.Filter.In(a => a.Id, keys))
+            .ToListAsync(ct);
         return result.ToDictionary(a => a.Id);
     }
 }

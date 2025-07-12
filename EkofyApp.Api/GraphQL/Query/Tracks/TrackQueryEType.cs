@@ -6,14 +6,12 @@ public class TrackQueryEType : ObjectTypeExtension<TrackQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<TrackQuery> descriptor)
     {
-        descriptor.Field(x => x.GetCustomTrackResponseDto())
+        descriptor.Field(x => x.GetTracks())
+            .UseProjection()
             .UseFiltering()
             .UseSorting();
 
-        descriptor.Field(x => x.GetCustomTrackResponse(default!, default!))
-            .UseProjection<TrackResponse>();
-
-        descriptor.Field(x => x.GetTracks())
-            .UseProjection<TrackResponse>();
+        descriptor.Field(x => x.GetTracksIe())
+            .UseProjection();
     }
 }
