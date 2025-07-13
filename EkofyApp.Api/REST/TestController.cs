@@ -39,7 +39,7 @@ public class TestController : ControllerBase
             Description = "Uploaded MP3 file",
             CategoryIds = [],
             Tags = ["cho phép gắn sẵn"],
-            ArtistId = ObjectId.GenerateNewId().ToString(), // ObjectId (string) của Artist
+            ArtistId = [ObjectId.GenerateNewId().ToString()], // ObjectId (string) của Artist
             CreatedAt = HelperMethod.GetUtcPlus7Time(),
         };
 
@@ -102,7 +102,7 @@ public class TestController : ControllerBase
         if (moodTypes.Any())
         {
             moodIds = await unitOfWork.GetCollection<Category>()
-                .Find(mood => mood.Type == "mood" && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
+                .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
                 .Project(mood => mood.Id)
                 .ToListAsync();
         }

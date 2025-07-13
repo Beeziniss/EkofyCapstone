@@ -1,7 +1,8 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using EkofyApp.Domain.Enums;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Category
+public sealed class Category : IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
@@ -9,8 +10,8 @@ public sealed class Category
 
     public string Name { get; set; }
     public string Slug { get; set; }
-    public string Type { get; set; } // e.g., "music", "podcast", etc.
-    public List<string> Aliases { get; set; } // For SEO or alternative names
+    public CategoryType Type { get; set; } // e.g., "music", "podcast", etc.
+    public List<string> Aliases { get; set; } = []; // For SEO or alternative names
 
     public int Popularity { get; set; } // A measure of how popular the category is
 

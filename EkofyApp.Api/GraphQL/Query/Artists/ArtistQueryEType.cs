@@ -8,5 +8,10 @@ public class ArtistQueryEType : ObjectTypeExtension<ArtistQuery>
         // For example:
         // descriptor.Field(x => x.GetArtistById(default)).Description("Returns an artist by its ID.");
         // descriptor.Field(x => x.GetAllArtists()).Description("Returns all artists.");
+
+        descriptor.Field(x => x.GetArtists())
+            .UseProjection()
+            .UseFiltering()
+            .UseSorting();
     }
 }

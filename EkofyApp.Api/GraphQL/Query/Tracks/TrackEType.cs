@@ -9,7 +9,7 @@ public class TrackEType : ObjectTypeExtension<Track>
 {
     protected override void Configure(IObjectTypeDescriptor<Track> descriptor)
     {
-        descriptor.Field(x => x.ArtistId).IsProjected(true);
+        //descriptor.Field(x => x.ArtistId).IsProjected(true); 
 
         descriptor.Field(x => x.AudioFeature).Ignore();
         descriptor.Field(x => x.AudioFingerprint).Ignore();
@@ -25,7 +25,7 @@ public class TrackEType : ObjectTypeExtension<Track>
         //    .Resolve(async context =>
         //    {
         //        var track = context.Parent<Track>();
-        //        var artistDataLoader = context.Service<DataLoaderCustom<Artist>>();
+        //        var artistDataLoader = context.Service<DataLoaderCustomOneToOne<Artist>>();
         //        var mapper = context.Service<IMapper>();
 
         //        var artist = await artistDataLoader.LoadAsync(track.ArtistId, context.RequestAborted);

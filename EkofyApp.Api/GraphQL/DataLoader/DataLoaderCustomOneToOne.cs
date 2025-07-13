@@ -4,7 +4,7 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.DataLoader;
 
-public class DataLoaderCustom<T>(IBatchScheduler scheduler, DataLoaderOptions options, IUnitOfWork unitOfWork) : BatchDataLoader<string, T>(scheduler, options)
+public class DataLoaderCustomOneToOne<T>(IBatchScheduler scheduler, DataLoaderOptions options, IUnitOfWork unitOfWork) : BatchDataLoader<string, T>(scheduler, options)
     where T : class, IEntityCustom
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;

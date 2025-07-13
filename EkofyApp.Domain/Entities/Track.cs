@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities
 {
-    public sealed class Track
+    public sealed class Track : IEntityCustom
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
@@ -17,7 +17,7 @@ namespace EkofyApp.Domain.Entities
         public List<string> Tags { get; set; } // e.g., "music", "podcast", etc.
 
         [BsonRepresentation(BsonType.ObjectId)]
-        public string ArtistId { get; set; }
+        public List<string> ArtistId { get; set; } = [];
 
         public AudioFeature AudioFeature { get; set; } // Contains audio features
         public AudioFingerprint AudioFingerprint { get; set; } // Unique identifier for the audio content

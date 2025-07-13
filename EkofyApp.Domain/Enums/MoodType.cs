@@ -3,22 +3,22 @@
 namespace EkofyApp.Domain.Enums;
 public enum MoodType
 {
-    [EnumMember(Value = "happy")]
+    [EnumMember(Value = "Happy")]
     Happy,
-    [EnumMember(Value = "calm")]
+    [EnumMember(Value = "Calm")]
     Calm,
-    [EnumMember(Value = "sad")]
+    [EnumMember(Value = "Sad")]
     Sad,
-    [EnumMember(Value = "angry")]
+    [EnumMember(Value = "Angry")]
     Angry,
-    [EnumMember(Value = "relaxed")]
+    [EnumMember(Value = "Relaxed")]
     Relaxed,
-    [EnumMember(Value = "energetic")]
+    [EnumMember(Value = "Energetic")]
     Energetic,
-    [EnumMember(Value = "dark")]
+    [EnumMember(Value = "Dark")]
     Dark,
-    [EnumMember(Value = "romantic")]
+    [EnumMember(Value = "Romantic")]
     Romantic,
-    [EnumMember(Value = "chill")]
+    [EnumMember(Value = "Chill")]
     Chill
 }

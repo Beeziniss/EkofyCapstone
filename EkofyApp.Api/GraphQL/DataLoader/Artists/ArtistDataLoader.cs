@@ -6,12 +6,12 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.DataLoader.Artists;
 
-public sealed class ArtistDataLoader(IBatchScheduler scheduler, DataLoaderOptions options, IUnitOfWork unitOfWork, IRedisCacheService redisCacheService) : DataLoaderCustom<Artist>(scheduler, options, unitOfWork)
+public sealed class ArtistDataLoader(IBatchScheduler scheduler, DataLoaderOptions options, IUnitOfWork unitOfWork, IRedisCacheService redisCacheService) : DataLoaderCustomOneToOne<Artist>(scheduler, options, unitOfWork)
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
-    // Đây là DataLoader cho Artist, kế thừa từ DataLoaderCustom
+    // Đây là DataLoader cho Artist, kế thừa từ DataLoaderCustomOneToOne
     // Không nhất thiết phải override LoadBatchAsync nếu không cần logic đặc biệt
     protected override async Task<IReadOnlyDictionary<string, Artist>> LoadBatchAsync(
         IReadOnlyList<string> keys,

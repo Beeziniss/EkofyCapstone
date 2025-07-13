@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
+using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
@@ -14,6 +15,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
@@ -21,6 +23,7 @@ using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
+using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
@@ -40,6 +43,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Events;
 using Newtonsoft.Json;
@@ -179,8 +183,17 @@ public static class DependencyInjection
             {
                 builder.Subscribe<CommandStartedEvent>(e =>
                 {
-                    // Log JSON format
-                    string json = JsonConvert.SerializeObject(JObject.Parse(e.Command.ToJson()), Formatting.Indented);
+                    // Lọc các field không cần thiết
+                    BsonDocument filtered = [.. e.Command.Elements
+                            .Where(el =>
+                                el.Name != "lsid" &&
+                                el.Name != "signature" &&
+                                el.Name != "$clusterTime")];
+                                //el.Name != "$db" &&
+                                //el.Name != "cursor")];
+
+                    // Log JSON format sau khi đã lọc
+                    string json = JsonConvert.SerializeObject(JObject.Parse(filtered.ToJson()), Formatting.Indented);
                     logger.LogInformation("[MongoDB Command] {CommandName}:\n{Json}", e.CommandName, json);
                 });
 
@@ -231,6 +244,7 @@ public static class DependencyInjection
     {
         // Business Services
         services.AddScoped<ITrackService, TrackService>();
+        services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IArtistService, ArtistService>();
         services.AddScoped<IAudioAnalysisService, AudioAnalysisService>();
         services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
@@ -239,6 +253,7 @@ public static class DependencyInjection
 
         // GraphQL Services
         services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
+        services.AddScoped<IArtistGraphQLService, ArtistGraphQLService>();
         services.AddScoped<IChatGraphQLService, ChatGraphQLService>();
 
         // Third Party Services
@@ -469,9 +484,12 @@ public static class DependencyInjection
 
     public static void AddEnumMemberSerializer(this IServiceCollection services)
     {
+        // Category
+        BsonSerializer.RegisterSerializer(typeof(CategoryType), new EnumMemberSerializer<CategoryType>());
+
         //// User
         //BsonSerializer.RegisterSerializer(typeof(UserProduct), new EnumMemberSerializer<UserProduct>());
-        //BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
+        BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
         //BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
         //BsonSerializer.RegisterSerializer(typeof(UserGender), new EnumMemberSerializer<UserGender>());
 

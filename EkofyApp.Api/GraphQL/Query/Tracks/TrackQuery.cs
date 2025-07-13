@@ -1,10 +1,14 @@
-﻿using EkofyApp.Application.Models.Tracks;
+﻿using AutoMapper;
+using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.Entities;
 using HealthyNutritionApp.Application.Interfaces;
 using HotChocolate.Data;
+using HotChocolate.Language;
 using HotChocolate.Resolvers;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
+using System.Reflection;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
@@ -30,11 +34,11 @@ public class TrackQuery(ITrackService trackService, ITrackGraphQLService trackGr
     //public async Task<TrackResponse> GetTrackByIdAsync(string id, IResolverContext context, [Service] IUnitOfWork unitOfWork, [Service] IMapper mapper)
     //{
     //    IReadOnlyList<string> selectedFields = GetSelectedFieldNames(context);
-    //    ProjectionDefinition<Tracks> projection = BuildProjection<Tracks>(selectedFields);
+    //    ProjectionDefinition<Track> projection = BuildProjection<Track>(selectedFields);
 
-    //    Tracks tracks = await unitOfWork.GetCollection<Tracks>()
+    //    Track tracks = await unitOfWork.GetCollection<Track>()
     //        .Find(x => x.Id == id)
-    //        .Project<Tracks>(projection)
+    //        .Project<Track>(projection)
     //        .FirstOrDefaultAsync();
 
     //    return mapper.Map<TrackResponse>(tracks);
