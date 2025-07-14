@@ -1,8 +1,8 @@
 ﻿using EkofyApp.Application.Models.Categories;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
-using HealthyNutritionApp.Application.Interfaces;
 
 namespace EkofyApp.Infrastructure.Services.Categories;
 public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService

@@ -1,8 +1,8 @@
 ﻿using EkofyApp.Application.Models.Wavs;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
-using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 using SoundFingerprinting.Audio;
 using SoundFingerprinting.Builder;
@@ -52,11 +52,12 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
 
         try
         {
+            #region Analyze and Hash Audio Original
             await FingerprintCommandBuilder.Instance
-            .BuildFingerprintCommand()
-            .From(wavFileResponse.OutputWavPath)
-            .UsingServices(audioService)
-            .Hash();
+                .BuildFingerprintCommand()
+                .From(wavFileResponse.OutputWavPath)
+                .UsingServices(audioService)
+                .Hash();
 
             IEnumerable<AudioFingerprint> audioFingerprints = await _unitOfWork.GetCollection<Track>().Find(_ => true)
                 .Project(track => track.AudioFingerprint)
@@ -95,6 +96,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
                     bestConfidence = queryResult.BestMatch.Audio.Confidence * 100;
                 }
             }
+            #endregion
         }
         catch
         {

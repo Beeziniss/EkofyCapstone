@@ -1,7 +1,7 @@
-﻿using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+﻿using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Infrastructure.Services;
-using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.DataLoader.Artists;

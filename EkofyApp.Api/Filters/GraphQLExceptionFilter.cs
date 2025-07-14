@@ -19,12 +19,15 @@ public sealed class GraphQLExceptionFilter : IErrorFilter
         }
 
         // Unhandled exception fallback
-        Log.Fatal(error.Exception, error.Exception?.Message ?? "Can not get Message");
+        string detail = error.Exception?.Message ?? "GraphQL is misconfigured.";
+        string fallbackMessage = "An unknown error has occurred. System error.";
+
+        Log.Fatal(error.Exception, detail);
 
         return error
-            .WithMessage("Đã xảy ra lỗi không xác định. Lỗi hệ thống")
+            .WithMessage(fallbackMessage)
             .WithCode("UNHANDLED_ERROR")
             .SetExtension("status", 500)
-            .SetExtension("detail", error.Exception?.Message);
+            .SetExtension("detail", detail);
     }
 }

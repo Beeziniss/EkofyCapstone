@@ -1,39 +1,37 @@
 ﻿using EkofyApp.Application.DatabaseContext;
-using HealthyNutritionApp.Application.Interfaces;
+using EkofyApp.Application.ServiceInterfaces;
 using MongoDB.Driver;
 
-namespace EkofyApp.Infrastructure.Services
+namespace EkofyApp.Infrastructure.Services;
+public class UnitOfWork(EkofyDbContext dbContext) : IUnitOfWork
 {
-    public class UnitOfWork(EkofyDbContext dbContext) : IUnitOfWork
+    private readonly IMongoDatabase _database = dbContext.GetDatabase();
+    private bool disposedValue;
+
+    public IMongoCollection<TDocument> GetCollection<TDocument>() where TDocument : class
     {
-        private readonly IMongoDatabase _database = dbContext.GetDatabase();
-        private bool disposedValue;
+        return _database.GetCollection<TDocument>(typeof(TDocument).Name);
+    }
 
-        public IMongoCollection<TDocument> GetCollection<TDocument>() where TDocument : class
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
         {
-            return _database.GetCollection<TDocument>(typeof(TDocument).Name);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
+            if (disposing)
             {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects)
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
+                // TODO: dispose managed state (managed objects)
             }
-        }
 
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            disposedValue = true;
         }
+    }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

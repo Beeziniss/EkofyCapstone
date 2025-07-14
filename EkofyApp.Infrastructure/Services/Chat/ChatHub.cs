@@ -1,6 +1,6 @@
-﻿using EkofyApp.Domain.Entities;
+﻿using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
-using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using MongoDB.Bson;
 using MongoDB.Driver;

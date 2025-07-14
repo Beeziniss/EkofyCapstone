@@ -5,6 +5,7 @@ using Audio;
 using CloudinaryDotNet;
 using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Categories;
@@ -31,7 +32,6 @@ using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
-using HealthyNutritionApp.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -54,7 +54,6 @@ using System.Security.Claims;
 using System.Text;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
-
 public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
@@ -246,7 +245,7 @@ public static class DependencyInjection
         services.AddScoped<ITrackService, TrackService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IArtistService, ArtistService>();
-        services.AddScoped<IAudioAnalysisService, AudioAnalysisService>();
+        services.AddScoped<IAudioAnalysisService, AudioFeatureService>();
         services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
         services.AddScoped<IJsonWebToken, JsonWebToken>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();

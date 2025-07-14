@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Domain.Entities;
-using HealthyNutritionApp.Application.Interfaces;
 
 namespace EkofyApp.Infrastructure.Services.Artists;
 

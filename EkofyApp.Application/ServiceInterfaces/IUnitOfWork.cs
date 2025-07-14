@@ -1,9 +1,8 @@
 ﻿using MongoDB.Driver;
 
-namespace HealthyNutritionApp.Application.Interfaces
+namespace EkofyApp.Application.ServiceInterfaces;
+
+public interface IUnitOfWork : IDisposable
 {
-    public interface IUnitOfWork : IDisposable
-    {
-        IMongoCollection<TDocument> GetCollection<TDocument>() where TDocument : class;
-    }
+    IMongoCollection<TDocument> GetCollection<TDocument>() where TDocument : class;
 }

@@ -1,9 +1,9 @@
 ﻿using AutoMapper;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
-using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;

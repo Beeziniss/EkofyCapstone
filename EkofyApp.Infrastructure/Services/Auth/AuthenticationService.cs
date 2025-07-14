@@ -1,5 +1,5 @@
-﻿using EkofyApp.Application.ServiceInterfaces.Authentication;
-using HealthyNutritionApp.Application.Interfaces;
+﻿using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Authentication;
 using Microsoft.AspNetCore.Http;
 
 namespace EkofyApp.Infrastructure.Services.Auth;

@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Domain.Entities;
-using HealthyNutritionApp.Application.Interfaces;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Chat;

@@ -4,7 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
-public sealed class AudioAnalysisService(AudioAnalyzer.AudioAnalyzerClient client) : IAudioAnalysisService
+public sealed class AudioFeatureService(AudioAnalyzer.AudioAnalyzerClient client) : IAudioAnalysisService
 {
     private readonly AudioAnalyzer.AudioAnalyzerClient _client = client;
 

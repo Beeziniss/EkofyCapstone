@@ -1,14 +1,5 @@
-﻿using AutoMapper;
-using EkofyApp.Application.Models.Tracks;
-using EkofyApp.Application.ServiceInterfaces.Tracks;
+﻿using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.Entities;
-using HealthyNutritionApp.Application.Interfaces;
-using HotChocolate.Data;
-using HotChocolate.Language;
-using HotChocolate.Resolvers;
-using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Driver;
-using System.Reflection;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
 

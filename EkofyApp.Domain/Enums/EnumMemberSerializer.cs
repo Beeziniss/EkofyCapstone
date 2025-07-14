@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
-public class EnumMemberSerializer<T> : SerializerBase<T> where T : struct, System.Enum
+public sealed class EnumMemberSerializer<T> : SerializerBase<T> where T : struct, System.Enum
 {
     public override T Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
     {

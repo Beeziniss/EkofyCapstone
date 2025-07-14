@@ -1,5 +1,5 @@
-﻿using EkofyApp.Domain.Entities;
-using HealthyNutritionApp.Application.Interfaces;
+﻿using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Domain.Entities;
 using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.DataLoader;

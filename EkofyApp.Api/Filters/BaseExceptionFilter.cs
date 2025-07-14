@@ -5,7 +5,6 @@ using EkofyApp.Domain.Exceptions;
 using Serilog;
 
 namespace EkofyApp.Api.Filters;
-
 public sealed class BaseExceptionFilter : IExceptionFilter
 {
     public BaseExceptionFilter()
@@ -43,7 +42,7 @@ public sealed class BaseExceptionFilter : IExceptionFilter
                 Title = ReasonPhrases.GetReasonPhrase(StatusCodes.Status500InternalServerError), // Default to 500 Internal Server Error
                 Status = StatusCodes.Status500InternalServerError,
                 Detail = exception.Message,
-                Type = "Đã xảy ra lỗi không xác định. Lỗi hệ thống"
+                Type = "An unknown error has occurred. System error."
             };
 
             context.HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;

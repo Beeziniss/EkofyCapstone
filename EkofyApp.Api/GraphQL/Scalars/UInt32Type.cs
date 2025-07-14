@@ -47,7 +47,7 @@ public sealed class UInt32Type : ScalarType<uint, IntValueNode>
             return (uint)i;
         }
 
-        if (resultValue is string s && uint.TryParse(s, out var parsed))
+        if (resultValue is string s && uint.TryParse(s, out uint parsed))
         {
             return parsed;
         }
