@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.Models.Tracks;
+using HotChocolate.Execution;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
