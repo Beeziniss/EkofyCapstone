@@ -172,7 +172,7 @@ public class TestController : ControllerBase
 
     // Upload UseCase Handler
     [HttpPost("upload-multiple")]
-    public async Task<IActionResult> HandleMultipleUploadUsecase(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
+    public async Task<IActionResult> uploadMultipleFilesManually(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
     {
 
         // Tài nguyên từ file vật lý
@@ -180,6 +180,7 @@ public class TestController : ControllerBase
         // Purpose: Thêm data thủ công
         string inputRootFolder = "Z:\\Projects\\EkofyProject\\Tracks\\Arcane";
         string inputMP3Folder = System.IO.Path.Combine(inputRootFolder, "MP3");
+        string outputWavFolder = System.IO.Path.Combine(inputRootFolder, "WAV");
         string outputHLSFolder = System.IO.Path.Combine(inputRootFolder, "HLS");
 
         string[] mp3Files = Directory.GetFiles(inputMP3Folder, "*.mp3");
@@ -188,20 +189,7 @@ public class TestController : ControllerBase
         foreach(string mp3File in mp3Files)
         {
             // Convert sang WAV
-            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.CreateCustom(inputRootFolder, null, outputHLSFolder);
-            // Phase 1: Kiểm duyệt
-            // Khởi tạo track entity
-            // Lưu file gốc vào S3 để kiểm duyệt
-            // Kiểm tra tự động -> không cần moderator duyệt
-            // Kiểm tra thủ công -> cần moderator duyệt
-            // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
-            // Nếu có vi phạm cần moderator kiểm tra thủ công
-            // Nếu không có vi phạm thì chuyển sang Phase 2
-
-
-            // Phase 2: Phân tích
-            // Convert file sang định dạng Wav
-            // Chia thêm 2 phase nhỏ: convert wav sang hls và tạo fingerprint, trích xuất đặc trưng âm thanh
+            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.CreateCustom(inputRootFolder, null, outputWavFolder);
 
             // Convert file sang định dạng wav
             WavFileResponse wavFileResponse = await ffmpegService.ConvertToWavAsync(mp3File, audioConvertPathOptionsWav);
@@ -210,12 +198,15 @@ public class TestController : ControllerBase
             {
                 return BadRequest("Failed to convert MP3 to WAV.");
             }
+
+            //// 1. Tạo hls từ file wav
+            AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.CreateCustom(inputRootFolder, null, outputHLSFolder);
+            string outputHlsPath = await ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+
             count++;
         }
 
-        //// 1. Tạo hls từ file wav
-        //AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
-        //string outputHlsPath = await ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+       
 
         //// 2. Tạo fingerprint từ file wav
         //AudioFingerprint audioFingerprint = await fingerprintCustomService.GenerateFingerprint(wavFileResponse);

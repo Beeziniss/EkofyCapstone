@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Exceptions;
+using MongoDB.Bson;
 
 namespace EkofyApp.Domain.Utils;
 public sealed class AudioConvertPathOptions
@@ -49,14 +50,16 @@ public sealed class AudioConvertPathOptions
         string root,
         string? input,
         string output,
-        string? basePath = null)
+        string? basePath = null,
+        string? target = null)
     {
         return new AudioConvertPathOptions
         {
             BasePath = basePath ?? AppDomain.CurrentDomain.BaseDirectory, // Sẽ xem xét dùng temp path nếu không có basePath
             RootFolder = root,
             InputIntermediateFolder = input ?? string.Empty,
-            OutputIntermediateFolder = output
+            OutputIntermediateFolder = output,
+            TargetFolder = target ?? ObjectId.GenerateNewId().ToString() // Tạo ID mới nếu không có target
         };
     }
 }
