@@ -74,6 +74,7 @@ public class TestController : ControllerBase
 
         WavFileResponse wavFileResponse = default!;
 
+        // Tài nguyên từ S3
         await amazonS3Service.DownloadOriginalAudioAsync(trackId, async stream =>
         {
             string tempName = ObjectId.GenerateNewId().ToString();
@@ -84,6 +85,10 @@ public class TestController : ControllerBase
             // Convert file sang định dạng wav
             wavFileResponse = await ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
         });
+
+        // Tài nguyên từ file vật lý
+        // TODO: Viết hàm xử lý batch HLS folder
+        // Purpose: Thêm data thủ công
 
         // 1. Tạo hls từ file wav
         AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
@@ -160,6 +165,107 @@ public class TestController : ControllerBase
         {
             Message = "Audio recognition completed",
             result
+        });
+    }
+
+
+
+    // Upload UseCase Handler
+    [HttpPost("upload-multiple")]
+    public async Task<IActionResult> HandleMultipleUploadUsecase(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
+    {
+
+        // Tài nguyên từ file vật lý
+        // TODO: Viết hàm xử lý batch HLS folder
+        // Purpose: Thêm data thủ công
+        string inputRootFolder = "Z:\\Projects\\EkofyProject\\Tracks\\Arcane";
+        string inputMP3Folder = System.IO.Path.Combine(inputRootFolder, "MP3");
+        string outputHLSFolder = System.IO.Path.Combine(inputRootFolder, "HLS");
+
+        string[] mp3Files = Directory.GetFiles(inputMP3Folder, "*.mp3");
+
+        int count = 0;
+        foreach(string mp3File in mp3Files)
+        {
+            // Convert sang WAV
+            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.CreateCustom(inputRootFolder, null, outputHLSFolder);
+            // Phase 1: Kiểm duyệt
+            // Khởi tạo track entity
+            // Lưu file gốc vào S3 để kiểm duyệt
+            // Kiểm tra tự động -> không cần moderator duyệt
+            // Kiểm tra thủ công -> cần moderator duyệt
+            // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
+            // Nếu có vi phạm cần moderator kiểm tra thủ công
+            // Nếu không có vi phạm thì chuyển sang Phase 2
+
+
+            // Phase 2: Phân tích
+            // Convert file sang định dạng Wav
+            // Chia thêm 2 phase nhỏ: convert wav sang hls và tạo fingerprint, trích xuất đặc trưng âm thanh
+
+            // Convert file sang định dạng wav
+            WavFileResponse wavFileResponse = await ffmpegService.ConvertToWavAsync(mp3File, audioConvertPathOptionsWav);
+            // Lưu tạm file wav để xử lý tiếp
+            if (wavFileResponse == null || string.IsNullOrEmpty(wavFileResponse.OutputWavPath))
+            {
+                return BadRequest("Failed to convert MP3 to WAV.");
+            }
+            count++;
+        }
+
+        //// 1. Tạo hls từ file wav
+        //AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
+        //string outputHlsPath = await ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+
+        //// 2. Tạo fingerprint từ file wav
+        //AudioFingerprint audioFingerprint = await fingerprintCustomService.GenerateFingerprint(wavFileResponse);
+
+        //// 3. Lấy đặc trưng âm thanh từ python service
+        //AudioFeature audioAnalysisResponse = await audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+
+        //// Xác định mood của track dựa trên đặc trưng âm thanh
+        //IEnumerable<MoodType> moodTypes = HelperMethod.DetectMoods(audioAnalysisResponse);
+        //IEnumerable<string> moodIds = [];
+
+        //if (moodTypes.Any())
+        //{
+        //    moodIds = await unitOfWork.GetCollection<Category>()
+        //        .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
+        //        .Project(mood => mood.Id)
+        //        .ToListAsync();
+        //}
+
+        //// Phase 3: Lưu trữ
+        //// Ở phase này sẽ tổng hợp lại tất cả các kết quả phân tích
+        //// Sau đó lưu trữ vào cơ sở dữ liệu
+
+        //// Cập nhật track với các thông tin đã phân tích
+        //UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
+        //    .Set(track => track.CategoryIds, moodIds)
+        //    .Set(track => track.AudioFingerprint, audioFingerprint)
+        //    .Set(track => track.AudioFeature, audioAnalysisResponse)
+        //    .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
+
+        //await unitOfWork.GetCollection<Track>().FindOneAndUpdateAsync(track => track.Id == trackId, updateDefinition);
+
+        //// Đẩy hls playlist lên S3
+        //await amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);
+
+        //// Xóa folder, file tạm sau khi upload lên S3
+        //if (Directory.Exists(outputHlsPath))
+        //{
+        //    Directory.Delete(outputHlsPath, true);
+        //}
+        //if (System.IO.File.Exists(wavFileResponse.OutputWavPath))
+        //{
+        //    System.IO.File.Delete(wavFileResponse.OutputWavPath);
+        //}
+
+        return Ok(new
+        {
+            Message = "Upload UseCase Handler Successfully",
+            Count = count,
+            FilesCount = mp3Files.Length
         });
     }
 }

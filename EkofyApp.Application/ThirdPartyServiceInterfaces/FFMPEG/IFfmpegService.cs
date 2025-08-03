@@ -6,4 +6,5 @@ public interface IFfmpegService
 {
     Task<string> ConvertToHlsAsync(WavFileResponse wavFileResponse, AudioConvertPathOptions audioConvertPathOptions);
     Task<WavFileResponse> ConvertToWavAsync(Stream inputStreamFile, string inputFileName, AudioConvertPathOptions audioConvertPathOptions);
+    Task<WavFileResponse> ConvertToWavAsync(string inputFilePath, AudioConvertPathOptions audioConvertPathOptions);
 }

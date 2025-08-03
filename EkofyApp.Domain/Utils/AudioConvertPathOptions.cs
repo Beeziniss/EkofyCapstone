@@ -47,7 +47,7 @@ public sealed class AudioConvertPathOptions
     // Optional: Có thể custom
     public static AudioConvertPathOptions CreateCustom(
         string root,
-        string input,
+        string? input,
         string output,
         string? basePath = null)
     {
@@ -55,7 +55,7 @@ public sealed class AudioConvertPathOptions
         {
             BasePath = basePath ?? AppDomain.CurrentDomain.BaseDirectory, // Sẽ xem xét dùng temp path nếu không có basePath
             RootFolder = root,
-            InputIntermediateFolder = input,
+            InputIntermediateFolder = input ?? string.Empty,
             OutputIntermediateFolder = output
         };
     }

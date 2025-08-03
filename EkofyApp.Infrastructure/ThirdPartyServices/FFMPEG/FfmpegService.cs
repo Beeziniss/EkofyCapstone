@@ -116,6 +116,67 @@ public sealed class FfmpegService : IFfmpegService
         };
     }
 
+    public async Task<WavFileResponse> ConvertToWavAsync(string inputFilePath, AudioConvertPathOptions audioConvertPathOptions)
+    {
+        if (string.IsNullOrWhiteSpace(inputFilePath) || !File.Exists(inputFilePath))
+            throw new FileNotFoundException("Tệp âm thanh không tồn tại.", inputFilePath);
+
+        string inputFileName = Path.GetFileNameWithoutExtension(inputFilePath);
+        string inputFileExtension = Path.GetExtension(inputFilePath);
+
+        audioConvertPathOptions.BasePath ??= Path.GetTempPath();
+        audioConvertPathOptions.RootFolder ??= string.Empty;
+        audioConvertPathOptions.InputIntermediateFolder ??= string.Empty;
+        audioConvertPathOptions.OutputIntermediateFolder ??= string.Empty;
+
+        string outputFolderTempPath = Path.Combine(audioConvertPathOptions.BasePath, audioConvertPathOptions.RootFolder, audioConvertPathOptions.OutputIntermediateFolder);
+
+        string outputWavPath = string.Empty;
+        long bitrate = default;
+
+        if (!Directory.Exists(outputFolderTempPath))
+        {
+            Directory.CreateDirectory(outputFolderTempPath);
+        }
+
+        try
+        {
+            // Tạo đường dẫn file .wav tạm
+            outputWavPath = Path.Combine(outputFolderTempPath, $"{ObjectId.GenerateNewId()}_{inputFileName}.wav");
+
+            // Lấy thông tin âm thanh
+            IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(inputFilePath);
+            if (!mediaInfo.AudioStreams.Any())
+                throw new InvalidOperationException("Tệp âm thanh không chứa stream âm thanh hợp lệ.");
+
+            IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault()
+                ?? throw new ArgumentNullException("Audio Stream is null");
+
+            bitrate = audioStream.Bitrate;
+
+            IConversion conversion = FFmpeg.Conversions.New()
+                .AddStream(audioStream)
+                .SetOutput(outputWavPath);
+            // .AddParameter("-ac 1 -ar 16000"); // Nếu cần Mono, 16kHz
+
+            await conversion.Start();
+        }
+        catch
+        {
+            if (Directory.Exists(outputFolderTempPath))
+            {
+                Directory.Delete(outputFolderTempPath, true);
+            }
+        }
+
+        return new WavFileResponse()
+        {
+            OutputWavPath = outputWavPath,
+            OriginalBitrate = bitrate
+        };
+    }
+
+
     public async Task<string> ConvertToHlsAsync(WavFileResponse wavFileResponse, AudioConvertPathOptions audioConvertPathOptions)
     {
         List<(long bitrate, string relativePath)> playlistEntries = [];
