@@ -176,19 +176,16 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             GetObjectResponse response = await _s3Client.GetObjectAsync(_aWSSettings.BucketName, masterFilePath);
 
             using StreamReader reader = new(response.ResponseStream);
-            string content = await reader.ReadToEndAsync();
+            StringBuilder stringBuilder = new();
+            string? line;
 
-            string[] lines = content.Split('\n');
-            List<string> signedLines = [];
-
-            foreach (string line in lines)
+            while ((line = await reader.ReadLineAsync()) != null)
             {
                 string trimmed = line.Trim();
 
-                // Bỏ qua dòng trống hoặc comment
                 if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#'))
                 {
-                    signedLines.Add(trimmed);
+                    stringBuilder.AppendLine(trimmed);
                     continue;
                 }
 
@@ -198,15 +195,15 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                     // Chuyển hướng thành URL gọi tới API proxy .m3u8 bitrate
                     string bitrate = trimmed.Split('/')[0];
                     string apiUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}";
-                    signedLines.Add(apiUrl);
+                    stringBuilder.AppendLine(apiUrl);
                 }
                 else
                 {
-                    signedLines.Add(trimmed);
+                    stringBuilder.AppendLine(trimmed);
                 }
             }
 
-            return string.Join("\n", signedLines);
+            return stringBuilder.ToString();
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {

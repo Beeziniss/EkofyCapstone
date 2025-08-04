@@ -34,30 +34,12 @@ public sealed class FfmpegService : IFfmpegService
         // Tạo file tạm input (mp3, m4a...)
         string inputFileExtension = Path.GetExtension(inputFileName);
 
-        //string inputTempPath = Path.Combine(Path.GetTempPath(), $"{ObjectId.GenerateNewId()}{inputFileExtension}");
-
-        audioConvertPathOptions.BasePath ??= Path.GetTempPath(); // Nếu basePath null thì dùng thư mục tạm hệ thống
-        audioConvertPathOptions.RootFolder ??= string.Empty;
-        audioConvertPathOptions.InputIntermediateFolder ??= string.Empty;
-        audioConvertPathOptions.OutputIntermediateFolder ??= string.Empty;
-        //string inputFileName = Path.GetFileNameWithoutExtension(inputStreamFile.FileName);
-
-        // Nếu basePath, rootFolder, intermediateFolder không null thì tạo đường dẫn tạm theo cấu trúc
-        string inputFolderTempPath = Path.Combine(audioConvertPathOptions.BasePath, audioConvertPathOptions.RootFolder, audioConvertPathOptions.InputIntermediateFolder);
-        string outputFolderTempPath = Path.Combine(audioConvertPathOptions.BasePath, audioConvertPathOptions.RootFolder, audioConvertPathOptions.OutputIntermediateFolder);
+        // Tạo đường dẫn tạm theo cấu trúc
+        string inputFolderTempPath = audioConvertPathOptions.CreateInputFolder();
+        string outputFolderTempPath = audioConvertPathOptions.CreateOutputFolder();
 
         string outputWavPath = string.Empty;
         long bitrate = default;
-
-        // Tạo thư mục nếu chưa tồn tại
-        if (!Directory.Exists(inputFolderTempPath))
-        {
-            Directory.CreateDirectory(inputFolderTempPath);
-        }
-        if (!Directory.Exists(outputFolderTempPath))
-        {
-            Directory.CreateDirectory(outputFolderTempPath);
-        }
 
         try
         {
@@ -122,22 +104,11 @@ public sealed class FfmpegService : IFfmpegService
             throw new FileNotFoundException("Tệp âm thanh không tồn tại.", inputFilePath);
 
         string inputFileName = Path.GetFileNameWithoutExtension(inputFilePath);
-        string inputFileExtension = Path.GetExtension(inputFilePath);
 
-        audioConvertPathOptions.BasePath ??= Path.GetTempPath();
-        audioConvertPathOptions.RootFolder ??= string.Empty;
-        audioConvertPathOptions.InputIntermediateFolder ??= string.Empty;
-        audioConvertPathOptions.OutputIntermediateFolder ??= string.Empty;
-
-        string outputFolderTempPath = Path.Combine(audioConvertPathOptions.BasePath, audioConvertPathOptions.RootFolder, audioConvertPathOptions.OutputIntermediateFolder);
+        string outputFolderTempPath = audioConvertPathOptions.CreateInputFolder();
 
         string outputWavPath = string.Empty;
         long bitrate = default;
-
-        if (!Directory.Exists(outputFolderTempPath))
-        {
-            Directory.CreateDirectory(outputFolderTempPath);
-        }
 
         try
         {
@@ -185,11 +156,6 @@ public sealed class FfmpegService : IFfmpegService
         string outputFilePath = string.Empty;
         string bitrateVersionFolder = string.Empty;
 
-        audioConvertPathOptions.BasePath ??= Path.GetTempPath(); // Nếu basePath null thì dùng thư mục tạm hệ thống
-        audioConvertPathOptions.RootFolder ??= string.Empty;
-        audioConvertPathOptions.OutputIntermediateFolder ??= string.Empty;
-        audioConvertPathOptions.TargetFolder ??= ObjectId.GenerateNewId().ToString();
-
         string targetRootFolder = Path.Combine(audioConvertPathOptions.BasePath, audioConvertPathOptions.RootFolder, audioConvertPathOptions.OutputIntermediateFolder, audioConvertPathOptions.TargetFolder);
 
         string keyDirectory = string.Empty;
@@ -206,12 +172,8 @@ public sealed class FfmpegService : IFfmpegService
             string keyUriHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN")!;
 
             // Tạo folder key để mã hóa HLS
-            keyDirectory = Path.Combine(targetRootFolder, "key");
-            if(!Directory.Exists(keyDirectory))
-            {
-                Directory.CreateDirectory(keyDirectory); // Nhớ xóa folder này sau khi sử dụng
-            }
-            
+            keyDirectory = audioConvertPathOptions.CreateKeyFolder(); // Nhớ xóa folder này sau khi sử dụng
+
             string keyFilePath = Path.Combine(keyDirectory, "encryption.key");
             string keyInfoPath = Path.Combine(keyDirectory, "key_info.txt");
 
@@ -241,13 +203,7 @@ public sealed class FfmpegService : IFfmpegService
                 }
 
                 string bitrateDisplay = (bitrateIndex / 1000).ToString("D3") + "kbps";
-                outputFolder = Path.Combine(audioConvertPathOptions.BasePath, audioConvertPathOptions.RootFolder, audioConvertPathOptions.OutputIntermediateFolder, $"{audioConvertPathOptions.TargetFolder}", $"{bitrateDisplay}");
-
-                // Tạo thư mục nếu chưa tồn tại
-                if (!Directory.Exists(outputFolder))
-                {
-                    Directory.CreateDirectory(outputFolder);
-                }
+                outputFolder = audioConvertPathOptions.CreateSegmentFolder(bitrateDisplay);
 
                 // Cấp quyền cho thư mục
                 //Syscall.chmod(inputFolder, FilePermissions.ALLPERMS);
@@ -292,17 +248,20 @@ public sealed class FfmpegService : IFfmpegService
         }
         finally
         {
-            // Xóa file WAV input nếu tồn tại
+            //// Xóa file WAV input nếu tồn tại
             //if (File.Exists(wavFileResponse.OutputWavPath))
             //{
             //    File.Delete(wavFileResponse.OutputWavPath);
             //}
 
-            // Xóa folder key sau khi sử dụng
-            if (Directory.Exists(keyDirectory))
-            {
-                Directory.Delete(keyDirectory, true); 
-            }
+            //// Xóa folder key sau khi sử dụng
+            //if (Directory.Exists(keyDirectory))
+            //{
+            //    Directory.Delete(keyDirectory, true);
+            //}
+
+            // Xóa các thư mục sau khi đã xử lý xong
+            HelperMethod.DeleteBatchIO(wavFileResponse.OutputWavPath, keyDirectory);
         }
 
         return targetRootFolder;

@@ -10,11 +10,81 @@ public sealed class AudioConvertPathOptions
     public string OutputIntermediateFolder { get; set; } = string.Empty;
     public string TargetFolder { get; set; } = string.Empty;
 
-    public string GetInputFolder()
-        => Path.Combine(BasePath, RootFolder, InputIntermediateFolder);
+    public string CreateInputFolder()
+    {
+        string inputFolderPath = Path.Combine(BasePath, RootFolder, InputIntermediateFolder);
+        if (!Directory.Exists(inputFolderPath))
+        {
+            Directory.CreateDirectory(inputFolderPath);
+        }
 
-    public string GetOutputFolder()
-        => Path.Combine(BasePath, RootFolder, OutputIntermediateFolder);
+        return inputFolderPath;
+    }
+
+    public string CreateOutputFolder()
+    {
+        string outputFolderPath = Path.Combine(BasePath, RootFolder, OutputIntermediateFolder);
+        if (!Directory.Exists(outputFolderPath))
+        {
+            Directory.CreateDirectory(outputFolderPath);
+        }
+
+        return outputFolderPath;
+    }
+
+    public string CreateTargetFolder()
+    {
+        if (string.IsNullOrEmpty(TargetFolder))
+        {
+            throw new ValidationCustomException("Target folder cannot be null or empty");
+        }
+
+        string targetFolderPath = Path.Combine(BasePath, RootFolder, OutputIntermediateFolder, TargetFolder);
+
+        if (!Directory.Exists(targetFolderPath))
+        {
+            Directory.CreateDirectory(targetFolderPath);
+        }
+
+        return targetFolderPath;
+    }
+
+    public string CreateKeyFolder()
+    {
+        if (string.IsNullOrEmpty(TargetFolder))
+        {
+            throw new ValidationCustomException("Target folder cannot be null or empty");
+        }
+
+        string keyFolderPath = Path.Combine(BasePath, RootFolder, OutputIntermediateFolder, TargetFolder, "key");
+
+        if (!Directory.Exists(keyFolderPath))
+        {
+            Directory.CreateDirectory(keyFolderPath);
+        }
+        return keyFolderPath;
+    }
+
+    public string CreateSegmentFolder(string bitrate)
+    {
+        if (string.IsNullOrEmpty(TargetFolder))
+        {
+            throw new ValidationCustomException("Target folder cannot be null or empty");
+        }
+        if (string.IsNullOrEmpty(bitrate))
+        {
+            throw new ValidationCustomException("Bitrate cannot be null or empty");
+        }
+
+        string segmentFolderPath = Path.Combine(BasePath, RootFolder, OutputIntermediateFolder, TargetFolder, bitrate);
+
+        if (!Directory.Exists(segmentFolderPath))
+        {
+            Directory.CreateDirectory(segmentFolderPath);
+        }
+
+        return segmentFolderPath;
+    }
 
     // Factory static methods
     public static AudioConvertPathOptions ForConvertToWav()

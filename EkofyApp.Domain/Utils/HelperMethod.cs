@@ -173,4 +173,21 @@ public sealed class HelperMethod
         return result;
     }
     #endregion
+
+    #region Delete Directories and Files
+    public static void DeleteBatchIO(params string[] paths)
+    {
+        foreach (string path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+            else if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+    #endregion
 }
