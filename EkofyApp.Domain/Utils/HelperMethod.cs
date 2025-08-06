@@ -1,4 +1,4 @@
-﻿using EkofyApp.Domain.Entities;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Domain.Utils;

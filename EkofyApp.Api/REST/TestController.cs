@@ -5,6 +5,7 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
@@ -168,8 +169,6 @@ public class TestController : ControllerBase
         });
     }
 
-
-
     // Upload UseCase Handler
     [HttpPost("upload-multiple")]
     public async Task<IActionResult> uploadMultipleFilesManually(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
@@ -180,10 +179,15 @@ public class TestController : ControllerBase
         // Purpose: Thêm data thủ công
         string inputRootFolder = "Z:\\Projects\\EkofyProject\\Tracks\\Arcane";
         string inputMP3Folder = System.IO.Path.Combine(inputRootFolder, "MP3");
-        string outputWavFolder = System.IO.Path.Combine(inputRootFolder, "WAV");
+        string outputWavFolder = System.IO.Path.Combine(inputRootFolder, "WAV", "Temp");
         string outputHLSFolder = System.IO.Path.Combine(inputRootFolder, "HLS");
 
         string[] mp3Files = Directory.GetFiles(inputMP3Folder, "*.mp3");
+
+        if (!Directory.Exists(outputWavFolder))
+        {
+            Directory.CreateDirectory(outputWavFolder);
+        }
 
         int count = 0;
         foreach(string mp3File in mp3Files)
@@ -199,14 +203,14 @@ public class TestController : ControllerBase
                 return BadRequest("Failed to convert MP3 to WAV.");
             }
 
-            //// 1. Tạo hls từ file wav
+            // 1. Tạo hls từ file wav
             AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.CreateCustom(inputRootFolder, null, outputHLSFolder);
             string outputHlsPath = await ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
 
             count++;
         }
 
-       
+        HelperMethod.DeleteBatchIO(outputWavFolder);
 
         //// 2. Tạo fingerprint từ file wav
         //AudioFingerprint audioFingerprint = await fingerprintCustomService.GenerateFingerprint(wavFileResponse);

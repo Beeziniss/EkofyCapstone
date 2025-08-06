@@ -14,7 +14,6 @@ public sealed class ArtistService(IUnitOfWork unitOfWork) : IArtistService
         Artist artist = new()
         {
             Name = createArtistRequest.Name,
-            Genre = createArtistRequest.Genre,
         };
 
         await _unitOfWork.GetCollection<Artist>().InsertOneAsync(artist);

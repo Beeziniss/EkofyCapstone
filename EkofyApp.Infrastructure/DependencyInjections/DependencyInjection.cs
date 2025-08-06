@@ -490,7 +490,9 @@ public static class DependencyInjection
         //BsonSerializer.RegisterSerializer(typeof(UserProduct), new EnumMemberSerializer<UserProduct>());
         BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
         //BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
-        //BsonSerializer.RegisterSerializer(typeof(UserGender), new EnumMemberSerializer<UserGender>());
+
+        // Gender
+        BsonSerializer.RegisterSerializer(typeof(Gender), new EnumMemberSerializer<Gender>());
 
         //// Tracks
         //BsonSerializer.RegisterSerializer(typeof(PlaylistName), new EnumMemberSerializer<PlaylistName>());

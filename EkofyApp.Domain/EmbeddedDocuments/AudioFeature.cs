@@ -1,4 +1,4 @@
-﻿namespace EkofyApp.Domain.Entities;
+﻿namespace EkofyApp.Domain.EmbeddedDocuments;
 public sealed class AudioFeature
 {
     public float Tempo { get; set; }

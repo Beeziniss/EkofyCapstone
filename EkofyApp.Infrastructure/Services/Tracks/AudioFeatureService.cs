@@ -1,7 +1,7 @@
 ﻿using Audio;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
-using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.EmbeddedDocuments;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 public sealed class AudioFeatureService(AudioAnalyzer.AudioAnalyzerClient client) : IAudioAnalysisService

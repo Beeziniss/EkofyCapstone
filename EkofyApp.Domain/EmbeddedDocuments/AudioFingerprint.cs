@@ -1,4 +1,4 @@
-﻿namespace EkofyApp.Domain.Entities;
+﻿namespace EkofyApp.Domain.EmbeddedDocuments;
 public sealed class AudioFingerprint
 {
     public List<byte[]> CompressedFingerprints { get; set; } = [];

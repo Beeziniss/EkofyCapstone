@@ -1,5 +1,5 @@
 ﻿using EkofyApp.Application.Models.Wavs;
-using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.EmbeddedDocuments;
 
 namespace EkofyApp.Application.ServiceInterfaces.Tracks;
 public interface IAudioFingerprintService

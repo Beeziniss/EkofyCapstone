@@ -105,7 +105,7 @@ public sealed class FfmpegService : IFfmpegService
 
         string inputFileName = Path.GetFileNameWithoutExtension(inputFilePath);
 
-        string outputFolderTempPath = audioConvertPathOptions.CreateInputFolder();
+        string outputFolderTempPath = audioConvertPathOptions.CreateOutputFolder();
 
         string outputWavPath = string.Empty;
         long bitrate = default;
@@ -236,9 +236,9 @@ public sealed class FfmpegService : IFfmpegService
         }
         catch
         {
-            if (Directory.Exists(wavFileResponse.OutputWavPath))
+            if (File.Exists(wavFileResponse.OutputWavPath))
             {
-                Directory.Delete(wavFileResponse.OutputWavPath, true); // Xóa cả file bên trong
+                File.Delete(wavFileResponse.OutputWavPath);
             }
 
             if (Directory.Exists(outputFolder))
@@ -261,7 +261,7 @@ public sealed class FfmpegService : IFfmpegService
             //}
 
             // Xóa các thư mục sau khi đã xử lý xong
-            HelperMethod.DeleteBatchIO(wavFileResponse.OutputWavPath, keyDirectory);
+            HelperMethod.DeleteBatchIO(keyDirectory);
         }
 
         return targetRootFolder;
