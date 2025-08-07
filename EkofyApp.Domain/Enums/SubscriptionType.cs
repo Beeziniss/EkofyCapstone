@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
-public enum SubscriptionPlan
+public enum SubscriptionType
 {
     [EnumMember(Value = "Free")]
     Free,

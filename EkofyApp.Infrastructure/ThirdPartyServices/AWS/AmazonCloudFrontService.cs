@@ -175,35 +175,24 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         {
             GetObjectResponse response = await _s3Client.GetObjectAsync(_aWSSettings.BucketName, masterFilePath);
 
-            using StreamReader reader = new(response.ResponseStream);
-            StringBuilder stringBuilder = new();
-            string? line;
-
-            while ((line = await reader.ReadLineAsync()) != null)
+            string content;
+            using (StreamReader reader = new(response.ResponseStream))
             {
-                string trimmed = line.Trim();
-
-                if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith('#'))
-                {
-                    stringBuilder.AppendLine(trimmed);
-                    continue;
-                }
-
-                // Nếu dòng chứa bitrate và kết thúc bằng .m3u8, chuyển hướng thành URL gọi tới API proxy
-                if (trimmed.Contains("kbps") && trimmed.EndsWith(".m3u8"))
-                {
-                    // Chuyển hướng thành URL gọi tới API proxy .m3u8 bitrate
-                    string bitrate = trimmed.Split('/')[0];
-                    string apiUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}";
-                    stringBuilder.AppendLine(apiUrl);
-                }
-                else
-                {
-                    stringBuilder.AppendLine(trimmed);
-                }
+                content = await reader.ReadToEndAsync();
             }
 
-            return stringBuilder.ToString();
+            // TODO: Lấy danh sách bitrate từ cấu hình hoặc database
+            string[] bitrates = { "128kbps", "256kbps", "320kbps" }; // Sau này có thể lấy thêm từ cấu hình hoặc database
+
+            foreach (string bitrate in bitrates)
+            {
+                content = Regex.Replace(
+                    content,
+                    $@"{bitrate}/[^\s]+\.m3u8",
+                    $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}");
+            }
+
+            return content;
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
@@ -224,127 +213,175 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         string keyUri = $"{localHostUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
 
+        #region Stream line by line
+        //try
+        //{
+        //    using GetObjectResponse response = await _s3Client.GetObjectAsync(_aWSSettings.BucketName, bitrateHlsFilePath);
+
+        //    using StreamReader reader = new(response.ResponseStream);
+
+        //    #region Xử lý nội dung HLS Original
+        //    //string content = await reader.ReadToEndAsync();
+        //    //List<string> signedLines = [];
+        //    //string updatedLine;
+        //    //string[] lines = content.Split('\n');
+        //    //StringBuilder signedLines = new(capacity: content.Length + lines.Length * 16);
+
+        //    //foreach (string line in lines)
+        //    //{
+        //    //    string trimmed = line.Trim();
+
+        //    //    if (trimmed.StartsWith("#EXT-X-KEY"))
+        //    //    {
+        //    //        updatedLine = trimmed.Contains(keyUrlHidden)
+        //    //            ? trimmed.Replace(keyUrlHidden, keyUri)
+        //    //            : Regex.Replace(trimmed, "URI=\"[^\"]+\"", $"URI=\"{keyUri}\"");
+
+        //    //        signedLines.AppendLine(updatedLine);
+        //    //        continue;
+        //    //    }
+
+        //    //    #region Signed URL for .ts files
+        //    //    //if (trimmed.EndsWith(".ts"))
+        //    //    //{
+        //    //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+
+        //    //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+        //    //    //    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+        //    //    //        fullUrl,
+        //    //    //        new StringReader(privateKey),
+        //    //    //        _aWSSettings.KeyPairId,
+        //    //    //        expires
+        //    //    //    );
+
+        //    //    //    signedLines.Add(signedUrl);
+        //    //    //}
+        //    //    //else
+        //    //    //{
+        //    //    //    signedLines.Add(trimmed);
+        //    //    //}
+        //    //    #endregion
+
+        //    //    #region Signed Cookies for .ts files
+        //    //    //if (trimmed.EndsWith(".ts"))
+        //    //    //{
+        //    //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+        //    //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+        //    //    //    // KHÔNG ký nữa
+        //    //    //    signedLines.Add(fullUrl);
+
+        //    //    //    continue; // chỗ này có thể dùng else
+        //    //    //}
+
+        //    //    //// Các dòng khác như #EXTINF, #EXTM3U, v.v. giữ nguyên
+        //    //    //signedLines.Add(trimmed);
+        //    //    #endregion
+
+        //    //    #region API proxy
+        //    //    if (trimmed.EndsWith(".ts"))
+        //    //    {
+        //    //        // Chuyển hướng thành URL gọi tới API proxy .ts
+        //    //        string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+        //    //        signedLines.AppendLine(proxyUrl);
+        //    //    }
+        //    //    else
+        //    //    {
+        //    //        signedLines.AppendLine(trimmed);
+        //    //    }
+        //    //    #endregion
+        //    //}
+
+        //    //return signedLines.ToString();
+        //    #endregion
+
+        //    #region Xử lý nội dung HLS Enhanced by Streaming line by line
+        //    StringBuilder stringBuilder = new();
+        //    string? line;
+
+        //    while ((line = await reader.ReadLineAsync()) != null)
+        //    {
+        //        string trimmed = line.Trim();
+
+        //        if (string.IsNullOrWhiteSpace(trimmed))
+        //        {
+        //            continue;
+        //        }
+
+        //        if (trimmed.StartsWith("#EXT-X-KEY"))
+        //        {
+        //            string updatedLine = trimmed.Contains(keyUrlHidden)
+        //                ? trimmed.Replace(keyUrlHidden, keyUri)
+        //                : Regex.Replace(trimmed, "URI=\"[^\"]+\"", $"URI=\"{keyUri}\"");
+
+        //            stringBuilder.AppendLine(updatedLine);
+        //        }
+        //        else if (trimmed.EndsWith(".ts"))
+        //        {
+        //            string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+        //            stringBuilder.AppendLine(proxyUrl);
+        //        }
+        //        else
+        //        {
+        //            stringBuilder.AppendLine(trimmed);
+        //        }
+        //    }
+
+        //    return stringBuilder.ToString();
+        //    #endregion
+        //}
+        //catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        //{
+        //    throw new NotFoundCustomException($"OriginalBitrate file not found in S3: {bitrateHlsFilePath}");
+        //}
+        #endregion
+
+        #region Đọc 1 lần toàn bộ nội dung của file .m3u8
         try
         {
             using GetObjectResponse response = await _s3Client.GetObjectAsync(_aWSSettings.BucketName, bitrateHlsFilePath);
 
-            using StreamReader reader = new(response.ResponseStream);
-
-            #region Xử lý nội dung HLS Original
-            //string content = await reader.ReadToEndAsync();
-            //List<string> signedLines = [];
-            //string updatedLine;
-            //string[] lines = content.Split('\n');
-            //StringBuilder signedLines = new(capacity: content.Length + lines.Length * 16);
-
-            //foreach (string line in lines)
-            //{
-            //    string trimmed = line.Trim();
-
-            //    if (trimmed.StartsWith("#EXT-X-KEY"))
-            //    {
-            //        updatedLine = trimmed.Contains(keyUrlHidden)
-            //            ? trimmed.Replace(keyUrlHidden, keyUri)
-            //            : Regex.Replace(trimmed, "URI=\"[^\"]+\"", $"URI=\"{keyUri}\"");
-
-            //        signedLines.AppendLine(updatedLine);
-            //        continue;
-            //    }
-
-            //    #region Signed URL for .ts files
-            //    //if (trimmed.EndsWith(".ts"))
-            //    //{
-            //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
-
-            //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
-
-            //    //    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
-            //    //        fullUrl,
-            //    //        new StringReader(privateKey),
-            //    //        _aWSSettings.KeyPairId,
-            //    //        expires
-            //    //    );
-
-            //    //    signedLines.Add(signedUrl);
-            //    //}
-            //    //else
-            //    //{
-            //    //    signedLines.Add(trimmed);
-            //    //}
-            //    #endregion
-
-            //    #region Signed Cookies for .ts files
-            //    //if (trimmed.EndsWith(".ts"))
-            //    //{
-            //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
-            //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
-
-            //    //    // KHÔNG ký nữa
-            //    //    signedLines.Add(fullUrl);
-
-            //    //    continue; // chỗ này có thể dùng else
-            //    //}
-
-            //    //// Các dòng khác như #EXTINF, #EXTM3U, v.v. giữ nguyên
-            //    //signedLines.Add(trimmed);
-            //    #endregion
-
-            //    #region API proxy
-            //    if (trimmed.EndsWith(".ts"))
-            //    {
-            //        // Chuyển hướng thành URL gọi tới API proxy .ts
-            //        string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
-            //        signedLines.AppendLine(proxyUrl);
-            //    }
-            //    else
-            //    {
-            //        signedLines.AppendLine(trimmed);
-            //    }
-            //    #endregion
-            //}
-
-            //return signedLines.ToString();
-            #endregion
-
-            #region Xử lý nội dung HLS Enhanced by Streaming line by line
-            StringBuilder stringBuilder = new();
-            string? line;
-
-            while ((line = await reader.ReadLineAsync()) != null)
+            string content;
+            using (StreamReader reader = new(response.ResponseStream))
             {
-                string trimmed = line.Trim();
-
-                if (string.IsNullOrWhiteSpace(trimmed))
-                {
-                    continue;
-                }
-
-                if (trimmed.StartsWith("#EXT-X-KEY"))
-                {
-                    string updatedLine = trimmed.Contains(keyUrlHidden)
-                        ? trimmed.Replace(keyUrlHidden, keyUri)
-                        : Regex.Replace(trimmed, "URI=\"[^\"]+\"", $"URI=\"{keyUri}\"");
-
-                    stringBuilder.AppendLine(updatedLine);
-                }
-                else if (trimmed.EndsWith(".ts"))
-                {
-                    string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
-                    stringBuilder.AppendLine(proxyUrl);
-                }
-                else
-                {
-                    stringBuilder.AppendLine(trimmed);
-                }
+                // Đọc toàn bộ nội dung file .m3u8
+                content = await reader.ReadToEndAsync();
             }
 
-            return stringBuilder.ToString();
-            #endregion
+            // Thay dòng chứa #EXT-X-KEY (nếu cần sửa URI)
+            content = Regex.Replace(
+                content,
+                @"^#EXT-X-KEY:.*URI=""[^""]+""",
+                match =>
+                {
+                    string line = match.Value;
+                    return line.Contains(keyUrlHidden)
+                        ? line.Replace(keyUrlHidden, keyUri)
+                        : Regex.Replace(line, @"URI=""[^""]+""", $"URI=\"{keyUri}\"");
+                },
+                RegexOptions.Multiline
+            );
+
+            // Thay thế toàn bộ dòng kết thúc bằng .ts → thành proxy URL
+            content = Regex.Replace(
+                content,
+                @"^.*\.ts$",
+                match =>
+                {
+                    string segment = match.Value.Trim(); // ví dụ: 68610f394a7678a2c097b289_hls0.ts
+                    return $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{segment}?token={token}";
+                },
+                RegexOptions.Multiline
+            );
+
+            return content;
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             throw new NotFoundCustomException($"OriginalBitrate file not found in S3: {bitrateHlsFilePath}");
         }
+        #endregion
     }
 
     public string GenerateSignedRedirect(string trackId, string bitrate, string segment, string token)

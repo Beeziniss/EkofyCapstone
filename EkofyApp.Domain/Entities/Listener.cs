@@ -17,7 +17,7 @@ public sealed class Listener : TimeStamped, IEntityCustom
     public string? Email { get; set; } // Email address of the listener
 
     public UserRole Role { get; set; } = UserRole.Listener; // Role of the user, default is Listener
-    public SubscriptionPlan SubscriptionPlan { get; set; } = SubscriptionPlan.Free; // Subscription plan of the listener
+    public SubscriptionType SubscriptionType { get; set; } = SubscriptionType.Free; // Subscription type of the listener
 
     public bool IsVerified { get; set; } = false; // Indicates if the listener is verified
     public DateTime? VerifiedAt { get; set; } // Date when the listener was verified

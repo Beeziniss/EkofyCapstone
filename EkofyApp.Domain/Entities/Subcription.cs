@@ -9,6 +9,7 @@ public sealed class Subcription
     public string Id { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
-    public int Price { get; set; }
-    public int Duration { get; set; }
+    public decimal Price { get; set; }
+    public string Currency { get; set; } = "VND"; // Default currency is USD
+    public int DurationInDays { get; set; }
 }

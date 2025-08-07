@@ -1,4 +1,6 @@
 ﻿using Amazon.Runtime.Internal.Transform;
+using Amazon.S3;
+using Amazon.S3.Model;
 using EkofyApp.Application.Models.AudioFeatures;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces;
@@ -8,10 +10,15 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace EkofyApp.Api.REST;
 [Route("api/[controller]")]
@@ -263,4 +270,19 @@ public class TestController : ControllerBase
             FilesCount = mp3Files.Length
         });
     }
+
+    //[HttpGet("replace-content-optimized-1")]
+    //public IActionResult ReplaceContentOptimized1([FromServices] IFfmpegService ffmpegService)
+    //{
+    //    string result = ffmpegService.Testing();
+
+    //    return Ok(result);
+    //}
+
+    //[HttpGet("replace-content-optimized-2")]
+    //public IActionResult ReplaceContentOptimized2([FromServices] IFfmpegService ffmpegService)
+    //{
+    //    string result = ffmpegService.Testing2();
+    //    return Ok(result);
+    //}
 }

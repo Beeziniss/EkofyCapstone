@@ -1,9 +1,18 @@
-﻿using EkofyApp.Application.Models.Wavs;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
+using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
+using Newtonsoft.Json.Linq;
+using SharpCompress.Common;
+using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
 using Xabe.FFmpeg;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
@@ -266,4 +275,184 @@ public sealed class FfmpegService : IFfmpegService
 
         return targetRootFolder;
     }
+
+    //public string Testing()
+    //{
+    //    // Nhớ thay thành production URL
+    //    string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+
+    //    string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
+
+    //    string trackId = "64f0b1c8d3e4f2a5b6c7d8e9"; // Thay bằng trackId thực tế
+
+    //    // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
+    //    string masterFilePath = $"{prefixKey}/{trackId}/{trackId}_master.m3u8";
+
+    //    string filePath = "Z:\\Projects\\EkofyProject\\Tracks\\Arcane\\HLS\\689229a0ab6712e5fcf84f0b\\689229a0ab6712e5fcf84f0b_master.m3u8";
+
+    //    try
+    //    {
+    //        string content = File.ReadAllText(filePath);
+
+    //        // TODO: Lấy danh sách bitrate từ cấu hình hoặc database
+    //        string[] bitrates = { "128kbps", "256kbps", "320kbps" }; // Sau này có thể lấy thêm từ cấu hình hoặc database
+
+    //        foreach (string bitrate in bitrates)
+    //        {
+    //            content = Regex.Replace(
+    //                content,
+    //                $@"{bitrate}/[^\s]+\.m3u8",
+    //                $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token=abc");
+    //        }
+
+    //        return content;
+    //    }
+    //    catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+    //    {
+    //        throw new NotFoundCustomException($"Master file not found in S3: {masterFilePath}");
+    //    }
+    //}
+
+    //public string Testing2()
+    //{
+    //    string trackId = "64f0b1c8d3e4f2a5b6c7d8e9"; // Thay bằng trackId thực tế
+    //    string bitrate = "128kbps"; // Thay bằng bitrate thực tế
+    //    string token = "abc"; // Thay bằng token thực tế
+
+    //    string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
+
+    //    // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
+    //    string bitrateHlsFilePath = $"{prefixKey}/{trackId}/{bitrate}/{trackId}_hls.m3u8";
+
+    //    string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
+
+    //    string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+
+    //    string keyUri = $"{localHostUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
+
+    //    #region Stream line by line
+    //    try
+    //    {
+    //        string filePath = "Z:\\Projects\\EkofyProject\\Tracks\\Arcane\\HLS\\689229a0ab6712e5fcf84f0b\\128kbps\\689229a0ab6712e5fcf84f0b_hls.m3u8";
+
+    //        using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+    //        using StreamReader reader = new(fileStream);
+
+    //        #region Xử lý nội dung HLS Original
+    //        //string content = await reader.ReadToEndAsync();
+    //        //List<string> signedLines = [];
+    //        //string updatedLine;
+    //        //string[] lines = content.Split('\n');
+    //        //StringBuilder signedLines = new(capacity: content.Length + lines.Length * 16);
+
+    //        //foreach (string line in lines)
+    //        //{
+    //        //    string trimmed = line.Trim();
+
+    //        //    if (trimmed.StartsWith("#EXT-X-KEY"))
+    //        //    {
+    //        //        updatedLine = trimmed.Contains(keyUrlHidden)
+    //        //            ? trimmed.Replace(keyUrlHidden, keyUri)
+    //        //            : Regex.Replace(trimmed, "URI=\"[^\"]+\"", $"URI=\"{keyUri}\"");
+
+    //        //        signedLines.AppendLine(updatedLine);
+    //        //        continue;
+    //        //    }
+
+    //        //    #region Signed URL for .ts files
+    //        //    //if (trimmed.EndsWith(".ts"))
+    //        //    //{
+    //        //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+
+    //        //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+    //        //    //    string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+    //        //    //        fullUrl,
+    //        //    //        new StringReader(privateKey),
+    //        //    //        _aWSSettings.KeyPairId,
+    //        //    //        expires
+    //        //    //    );
+
+    //        //    //    signedLines.Add(signedUrl);
+    //        //    //}
+    //        //    //else
+    //        //    //{
+    //        //    //    signedLines.Add(trimmed);
+    //        //    //}
+    //        //    #endregion
+
+    //        //    #region Signed Cookies for .ts files
+    //        //    //if (trimmed.EndsWith(".ts"))
+    //        //    //{
+    //        //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+    //        //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
+
+    //        //    //    // KHÔNG ký nữa
+    //        //    //    signedLines.Add(fullUrl);
+
+    //        //    //    continue; // chỗ này có thể dùng else
+    //        //    //}
+
+    //        //    //// Các dòng khác như #EXTINF, #EXTM3U, v.v. giữ nguyên
+    //        //    //signedLines.Add(trimmed);
+    //        //    #endregion
+
+    //        //    #region API proxy
+    //        //    if (trimmed.EndsWith(".ts"))
+    //        //    {
+    //        //        // Chuyển hướng thành URL gọi tới API proxy .ts
+    //        //        string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+    //        //        signedLines.AppendLine(proxyUrl);
+    //        //    }
+    //        //    else
+    //        //    {
+    //        //        signedLines.AppendLine(trimmed);
+    //        //    }
+    //        //    #endregion
+    //        //}
+
+    //        //return signedLines.ToString();
+    //        #endregion
+
+    //        #region Xử lý nội dung HLS Enhanced by Streaming line by line
+    //        StringBuilder stringBuilder = new();
+    //        string? line;
+
+    //        while ((line = reader.ReadLine()) != null)
+    //        {
+    //            string trimmed = line.Trim();
+
+    //            if (string.IsNullOrWhiteSpace(trimmed))
+    //            {
+    //                continue;
+    //            }
+
+    //            if (trimmed.StartsWith("#EXT-X-KEY"))
+    //            {
+    //                string updatedLine = trimmed.Contains(keyUrlHidden)
+    //                    ? trimmed.Replace(keyUrlHidden, keyUri)
+    //                    : Regex.Replace(trimmed, "URI=\"[^\"]+\"", $"URI=\"{keyUri}\"");
+
+    //                stringBuilder.AppendLine(updatedLine);
+    //            }
+    //            else if (trimmed.EndsWith(".ts"))
+    //            {
+    //                string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+    //                stringBuilder.AppendLine(proxyUrl);
+    //            }
+    //            else
+    //            {
+    //                stringBuilder.AppendLine(trimmed);
+    //            }
+    //        }
+
+    //        return stringBuilder.ToString();
+    //        #endregion
+    //    }
+    //    catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+    //    {
+    //        throw new NotFoundCustomException($"OriginalBitrate file not found in S3: {bitrateHlsFilePath}");
+    //    }
+    //    #endregion
+    //}
 }
