@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -9,6 +8,8 @@ public sealed class Listener : TimeStamped, IEntityCustom
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!; // Unique identifier for the listener
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string UserId { get; set; } = null!; // Unique identifier for the user associated with the listener
 
     public string Name { get; set; } = null!; // Name of the listener, e.g., "John Doe"
     public string? AvatarImage { get; set; } // URL to the listener's avatar image
@@ -16,19 +17,13 @@ public sealed class Listener : TimeStamped, IEntityCustom
 
     public string? Email { get; set; } // Email address of the listener
 
-    public UserRole Role { get; set; } = UserRole.Listener; // Role of the user, default is Listener
-    public SubscriptionType SubscriptionType { get; set; } = SubscriptionType.Free; // Subscription type of the listener
-
     public bool IsVerified { get; set; } = false; // Indicates if the listener is verified
     public DateTime? VerifiedAt { get; set; } // Date when the listener was verified
 
+    public long FollowerCount { get; set; } = default; // Number of followers the listener has
+    public long FollowingCount { get; set; } = default; // Number of artists the listener is following
     [BsonRepresentation(BsonType.ObjectId)]
-    public List<string> Followers { get; set; } = [];
+    public List<string> LastFollowers { get; set; } = []; // List of last followers, storing their IDs
     [BsonRepresentation(BsonType.ObjectId)]
-    public List<string> Following { get; set; } = [];
-
-    public bool IsLinkedWithGoogle { get; set; }
-
-    public string? RefreshToken { get; set; }
-    public DateTime? RefreshTokenExpiryTime { get; set; }
+    public List<string> LastFollowing { get; set; } = []; // List of last following artists, storing their IDs
 }
