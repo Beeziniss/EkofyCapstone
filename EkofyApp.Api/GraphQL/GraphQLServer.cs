@@ -10,6 +10,7 @@ public static class GraphQLServer
     public static void RegisterGraphQLServer(this IServiceCollection services)
     {
         services.AddGraphQLServer()
+            .ModifyOptions(o => o.StrictValidation = true)
             .AddErrorFilter<GraphQLExceptionFilter>()
             .AddAuthorization()
             
@@ -39,7 +40,8 @@ public static class GraphQLServer
             
             // Custom scalars
             .AddType<UploadType>()
-            .AddType(new UInt32Type())
+            //.AddType(new UInt32Type())
+            .AddType<UInt32Type>()
             .BindRuntimeType<uint, UInt32Type>();
     }
 }

@@ -32,14 +32,13 @@ using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
@@ -58,7 +57,8 @@ public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
     {
-        services.AddAutoMapper(typeof(MappingProfile));
+        //services.AddAutoMapper(typeof(MappingProfile));
+        services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>()); // WTF IS THIS AFTER UPDATING NEW VERSION OF AUTO MAPPER
         services.ConfigRoute();
 
         services.AddHttpContextAccessor();
@@ -79,9 +79,19 @@ public static class DependencyInjection
 
         services.AddSignalR();
 
+        services.AddValidation();
         services.AddEnumMemberSerializer();
 
         //services.AddSwaggerGen();
+    }
+
+    public static void AddValidation(this IServiceCollection services)
+    {
+        //services.AddFluentValidationAutoValidation();
+        //services.AddFluentValidationClientsideAdapters();
+        //services.AddValidatorsFromAssemblyContaining<Program>();
+        //services.AddValidatorsFromAssemblyContaining<MappingProfile>();
+        //services.AddValidatorsFromAssemblyContaining<CreateArtistRequestValidator>();
     }
 
     public static void AddRedis(this IServiceCollection services)
@@ -188,8 +198,8 @@ public static class DependencyInjection
                                 el.Name != "lsid" &&
                                 el.Name != "signature" &&
                                 el.Name != "$clusterTime")];
-                                //el.Name != "$db" &&
-                                //el.Name != "cursor")];
+                    //el.Name != "$db" &&
+                    //el.Name != "cursor")];
 
                     // Log JSON format sau khi đã lọc
                     string json = JsonConvert.SerializeObject(JObject.Parse(filtered.ToJson()), Formatting.Indented);

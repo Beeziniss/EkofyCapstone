@@ -9,6 +9,8 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     private readonly IDatabase _redisDb = redisDb;
     private readonly ILogger<RedisCacheService> _logger = logger;
 
+    public IDatabase RedisDb => _redisDb;
+
     #region Default Methods
     public async Task SetAsync(string key, string value, TimeSpan? expiry = null)
     {
@@ -243,6 +245,60 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
 
         return CacheResult<T>.Fail();
+    }
+    #endregion
+
+    #region Hash Methods
+    [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
+    public async Task<ICacheResult<Dictionary<string, string?>>> TryGetHashManyAsync(string key, params string[] fields)
+    {
+        Dictionary<string, string?> result = [];
+
+        try
+        {
+            RedisValue[] redisFields = fields.Select(f => (RedisValue)f).ToArray();
+            RedisValue[] values = await _redisDb.HashGetAsync(key, redisFields);
+
+            result = fields.Zip(values, (f, v) => new { f, v })
+                           .ToDictionary(x => x.f, x => (string?)x.v);
+
+            TimeSpan? ttl = await GetTTLAsync(key);
+
+            return CacheResult<Dictionary<string, string?>>.From(result, ttl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when getting hash values from Redis for key {Key}", key);
+        }
+
+        return CacheResult<Dictionary<string, string?>>.Fail();
+    }
+
+    [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
+    public async Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null)
+    {
+        try
+        {
+            // Convert Dictionary<string, string?> thành HashEntry[]
+            HashEntry[] hashEntries = fields.Select(kvp => new HashEntry(kvp.Key, kvp.Value ?? string.Empty)).ToArray();
+
+            // Ghi nhiều field vào hash
+            await _redisDb.HashSetAsync(key, hashEntries);
+
+            // Nếu có TTL thì set luôn
+            if (expiry.HasValue)
+            {
+                await _redisDb.KeyExpireAsync(key, expiry);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when setting hash values to Redis for key {Key}", key);
+        }
+
+        return false;
     }
     #endregion
 }

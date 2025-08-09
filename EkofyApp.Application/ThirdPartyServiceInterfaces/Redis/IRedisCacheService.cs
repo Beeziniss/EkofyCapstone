@@ -1,4 +1,5 @@
 ﻿
+
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 public interface IRedisCacheService
 {
@@ -15,4 +16,10 @@ public interface IRedisCacheService
     Task RemoveAsync(string key);
     bool IsConnected();
     Task ClearCacheAsync();
+
+    [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
+    Task<ICacheResult<Dictionary<string, string?>>> TryGetHashManyAsync(string key, params string[] fields);
+
+    [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
+    Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
 }
