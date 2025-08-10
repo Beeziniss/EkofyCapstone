@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Domain.Utils;
 using FluentValidation;
 
-namespace EkofyApp.Application.Models.Auth;
+namespace EkofyApp.Application.Models.Auth.Listeners;
 public sealed class ListenerRegisterRequestValidator : AbstractValidator<ListenerRegisterRequest>
 {
     public ListenerRegisterRequestValidator()
@@ -13,13 +13,11 @@ public sealed class ListenerRegisterRequestValidator : AbstractValidator<Listene
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters long")
+            .MinimumLength(6).WithMessage("Password must be at least 8 characters long")
             .MaximumLength(100).WithMessage("Password must not exceed 100 characters");
 
         RuleFor(x => x.ConfirmPassword)
             .NotEmpty().WithMessage("Confirm Password is required")
-            .MinimumLength(8).WithMessage("Confirm Password must be at least 8 characters long")
-            .MaximumLength(100).WithMessage("Confirm Password must not exceed 100 characters")
             .Equal(x => x.Password).WithMessage("Passwords do not match");
 
         RuleFor(x => x.BirthDate)

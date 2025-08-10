@@ -1,4 +1,6 @@
 ﻿using EkofyApp.Application.Models.Auth;
+using EkofyApp.Application.Models.Auth.Listeners;
+using EkofyApp.Application.Models.Projections;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Domain.Entities;
@@ -7,6 +9,7 @@ using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
 public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
@@ -71,9 +74,61 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
         });
     }
 
-    public Task<string> LoginAsync(string email, string password)
+    public async Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest)
     {
-        throw new NotImplementedException();
+        // Define the filter to find the listener by email
+        FilterDefinitionBuilder<User> filterBuilder = Builders<User>.Filter;
+        FilterDefinition<User> userFilter = Builders<User>.Filter.And(
+            filterBuilder.Eq(l => l.Email, loginRequest.Email.Trim().ToLowerInvariant()),
+            filterBuilder.Eq(l => l.Status, UserStatus.Active),
+            filterBuilder.Eq(l => l.IsLinkedWithGoogle, false),
+            filterBuilder.AnyEq(l => l.Roles, UserRole.Listener)
+        );
+        ProjectionDefinition<UserProjection> listenerUserProjection = Builders<UserProjection>.Projection
+            .Include(lp => lp.Id)
+            .Include(lp => lp.ListenerProjection.Id)
+            .Include(lp => lp.Roles)
+            .Include(lp => lp.PasswordHash);
+
+        UserProjection userListener = await _unitOfWork.GetCollection<User>().Aggregate()
+            .Match(userFilter)
+            .Lookup<User, Listener, UserProjection>(
+                _unitOfWork.GetCollection<Listener>(),
+                user => user.Id,
+                listener => listener.UserId,
+                userProjection => userProjection.ListenerProjection
+            )
+            .Unwind(u => u.ListenerProjection, new AggregateUnwindOptions<UserProjection>
+            {
+                PreserveNullAndEmptyArrays = true
+            })
+            .Project<UserProjection>(listenerUserProjection)
+            .FirstOrDefaultAsync() ?? throw new BadRequestCustomException("Invalid email or password.");
+
+        // Kiểm tra mật khẩu
+        if (!VerifyPassword(loginRequest.Password, userListener.PasswordHash!))
+        {
+            throw new BadRequestCustomException("Invalid email or password.");
+        }
+
+        // Tạo claims
+        IEnumerable<Claim> claims =
+        [
+            new Claim("userId", userListener.Id),
+            new Claim("listenerId",userListener.ListenerProjection.Id),
+            new Claim(ClaimTypes.Role, string.Join(",", userListener.Roles)),
+        ];
+
+        // Tạo access token
+        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+
+        return new AuthListenerTokenResponse()
+        {
+            AccessToken = accessToken,
+            UserId = userListener.Id,
+            ListenerId = userListener.ListenerProjection.Id,
+            Roles = userListener.Roles,
+        };
     }
 
     // Methods

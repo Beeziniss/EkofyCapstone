@@ -1,0 +1,29 @@
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace EkofyApp.Application.Models.Projections;
+[BsonIgnoreExtraElements]
+public sealed class ListenerProjection
+{
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = null!; // Unique identifier for the listener
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string UserId { get; set; } = null!; // Unique identifier for the user associated with the listener
+
+    public string Name { get; set; } = null!; // Name of the listener, e.g., "John Doe"
+    public string Email { get; set; } = null!; // Email of the listener, e.g., "
+    public string? AvatarImage { get; set; } // URL to the listener's avatar image
+    public string? BannerImage { get; set; } // URL to the listener's banner image
+
+    public bool IsVerified { get; set; } = false; // Indicates if the listener is verified
+    public DateTime? VerifiedAt { get; set; } // Date when the listener was verified
+
+    public long FollowerCount { get; set; } = default; // Number of followers the listener has
+    public long FollowingCount { get; set; } = default; // Number of artists the listener is following
+    [BsonRepresentation(BsonType.ObjectId)]
+    public List<string> LastFollowers { get; set; } = []; // List of last followers, storing their IDs
+    [BsonRepresentation(BsonType.ObjectId)]
+    public List<string> LastFollowing { get; set; } = []; // List of last following artists, storing their IDs
+
+    //public UserProjection UserProjection { get; set; } = null!; // Projection of the user associated with the listener
+}

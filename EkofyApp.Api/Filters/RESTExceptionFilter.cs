@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using EkofyApp.Domain.Exceptions;
 using Serilog;
+using FluentValidation;
+using FluentValidation.Results;
 
 namespace EkofyApp.Api.Filters;
-public sealed class BaseExceptionFilter : IExceptionFilter
+public sealed class RESTExceptionFilter : IExceptionFilter
 {
-    public BaseExceptionFilter()
+    public RESTExceptionFilter()
     {
     }
 
@@ -16,6 +18,7 @@ public sealed class BaseExceptionFilter : IExceptionFilter
         ProblemDetails problem;
         Exception exception = context.Exception;
 
+        // Handle custom BaseException
         if (context.Exception is BaseException appEx)
         {
             //_logger.LogWarning(appEx, "=============================================================\nSystem error occurred at UTC+7 time: {Time}", TimeControl.GetUtcPlus7Time());

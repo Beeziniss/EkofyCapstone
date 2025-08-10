@@ -5,6 +5,9 @@ using Audio;
 using CloudinaryDotNet;
 using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
+using EkofyApp.Application.Models;
+using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.Auth;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
@@ -87,11 +90,7 @@ public static class DependencyInjection
 
     public static void AddValidation(this IServiceCollection services)
     {
-        //services.AddFluentValidationAutoValidation();
-        //services.AddFluentValidationClientsideAdapters();
-        //services.AddValidatorsFromAssemblyContaining<Program>();
-        //services.AddValidatorsFromAssemblyContaining<MappingProfile>();
-        //services.AddValidatorsFromAssemblyContaining<CreateArtistRequestValidator>();
+        services.AddValidatorsFromAssemblyContaining<ValidatorAssembly>();
     }
 
     public static void AddRedis(this IServiceCollection services)

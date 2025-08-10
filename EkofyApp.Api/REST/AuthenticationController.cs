@@ -1,4 +1,6 @@
-﻿using EkofyApp.Application.Models.Auth;
+﻿using EkofyApp.Api.Filters;
+using EkofyApp.Application.Models.Auth;
+using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -12,14 +14,36 @@ public class AuthenticationController(IAuthenticationService authenticationServi
 {
     private readonly IAuthenticationService _authenticationService = authenticationService;
 
-    [AllowAnonymous, HttpPost("listeners/register")]
+    [AllowAnonymous, HttpPost("register/listener")]
     public async Task<IActionResult> RegisterListenerAsync([FromBody] ListenerRegisterRequest registerRequest)
     {
+        var validationResult = new ListenerRegisterRequestValidator().Validate(registerRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+
+            return BadRequest(problemDetails);
+        }
+
         await _authenticationService.RegisterListenerAsync(registerRequest);
         return Created();
     }
 
-    // [AllowAnonymous, HttpPost("login")]
+    [AllowAnonymous, HttpPost("login/listener")]
+    public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginRequest)
+    {
+        var validationResult = new LoginRequestValidator().Validate(loginRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+            return BadRequest(problemDetails);
+        }
+
+        var result = await _authenticationService.LoginListenerAsync(loginRequest);
+        return Ok(new { Message = "Login Successfully", result });
+    }
 
     // [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
 

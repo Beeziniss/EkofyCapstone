@@ -1,6 +1,6 @@
 ﻿using EkofyApp.Domain.Enums;
 
-namespace EkofyApp.Application.Models.Auth;
+namespace EkofyApp.Application.Models.Auth.Listeners;
 public sealed record class ListenerRegisterRequest
 {
     public string Email { get; init; } = default!; // User's email address, e.g., "

@@ -19,7 +19,7 @@ public sealed class Program
         // Add services to the container.
         builder.Services.AddControllers(options =>
         {
-            options.Filters.Add<BaseExceptionFilter>();
+            options.Filters.Add<RESTExceptionFilter>();
         }).AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
