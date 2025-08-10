@@ -57,8 +57,8 @@ public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
     {
-        //services.AddAutoMapper(typeof(MappingProfile));
-        services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>()); // WTF IS THIS AFTER UPDATING NEW VERSION OF AUTO MAPPER
+        //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
+        services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
         services.ConfigRoute();
 
         services.AddHttpContextAccessor();
@@ -499,10 +499,10 @@ public static class DependencyInjection
         //// User
         //BsonSerializer.RegisterSerializer(typeof(UserProduct), new EnumMemberSerializer<UserProduct>());
         BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
-        //BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
+        BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
 
-        // Gender
-        BsonSerializer.RegisterSerializer(typeof(Gender), new EnumMemberSerializer<Gender>());
+        // UserGender
+        BsonSerializer.RegisterSerializer(typeof(UserGender), new EnumMemberSerializer<UserGender>());
 
         //// Tracks
         //BsonSerializer.RegisterSerializer(typeof(PlaylistName), new EnumMemberSerializer<PlaylistName>());

@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.ServiceInterfaces.Authentication;
+﻿using EkofyApp.Application.Models.Auth;
+using EkofyApp.Application.ServiceInterfaces.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,12 @@ public class AuthenticationController(IAuthenticationService authenticationServi
 {
     private readonly IAuthenticationService _authenticationService = authenticationService;
 
-    //[AllowAnonymous, HttpPost("register")]
+    [AllowAnonymous, HttpPost("listeners/register")]
+    public async Task<IActionResult> RegisterListenerAsync([FromBody] ListenerRegisterRequest registerRequest)
+    {
+        await _authenticationService.RegisterListenerAsync(registerRequest);
+        return Created();
+    }
 
     // [AllowAnonymous, HttpPost("login")]
 

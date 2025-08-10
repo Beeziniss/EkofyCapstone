@@ -6,7 +6,7 @@ public sealed class IdentityCard
     public string Number { get; set; } = null!; // Số căn cước công dân
     public string FullName { get; set; } = null!;
     public DateTime DateOfBirth { get; set; }
-    public Gender Gender { get; set; }
+    public UserGender Gender { get; set; }
     public string PlaceOfOrigin { get; set; } = null!;
     public string Nationality { get; set; } = null!;
 

@@ -9,7 +9,7 @@ public class ArtistMutation(IArtistService artistService)
 {
     private readonly IArtistService _artistService = artistService;
 
-    public async Task<bool> CreateArtistAsync(CreateArtistRequest createArtistRequest)
+    public async Task<bool> RegisterArtistManualAsync(CreateArtistRequest createArtistRequest)
     {
         return await _artistService.CreateArtistAsync(createArtistRequest);
     }

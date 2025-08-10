@@ -33,6 +33,14 @@ public sealed class HelperMethod
 
         return utcPlus7Now;
     }
+
+    public static DateOnly GetUtcPlus7DateOnly()
+    {
+        // Get the current UTC time and add a 7-hour offset
+        DateTime utcPlus7Now = DateTime.UtcNow.AddHours(7);
+        // Return the DateOnly part of the UTC+7 time
+        return DateOnly.FromDateTime(utcPlus7Now);
+    }
     #endregion
 
     #region Operation System Handle

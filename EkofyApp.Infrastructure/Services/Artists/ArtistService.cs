@@ -13,7 +13,10 @@ public sealed class ArtistService(IUnitOfWork unitOfWork) : IArtistService
     {
         Artist artist = new()
         {
+            UserId = createArtistRequest.UserId,
             Name = createArtistRequest.Name,
+            Biography = createArtistRequest.Biography,
+            IdentityCard = createArtistRequest.IdentityCard,
         };
 
         await _unitOfWork.GetCollection<Artist>().InsertOneAsync(artist);

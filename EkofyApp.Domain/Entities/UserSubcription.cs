@@ -19,7 +19,8 @@ public sealed class UserSubcription : TimeStamped, IEntityCustom
     public UserRole Role { get; set; }
     public SubscriptionTier Tier { get; set; }
 
-    public Status Status { get; set; } = Status.Active; // Default status is Active
+    // Dùng để xác định trạng thái của subscription
+    public SubcriptionStatus Status { get; set; } = SubcriptionStatus.Active; // Default status is Active
 
     public DateTime PeriodStart { get; set; } // Start date of the subscription period
     public DateTime PeriodEnd { get; set; } // End date of the subscription period

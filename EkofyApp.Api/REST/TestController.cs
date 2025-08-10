@@ -1,6 +1,8 @@
 ﻿using Amazon.Runtime.Internal.Transform;
 using Amazon.S3;
 using Amazon.S3.Model;
+using AutoMapper;
+using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.AudioFeatures;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces;
@@ -197,7 +199,7 @@ public class TestController : ControllerBase
         }
 
         int count = 0;
-        foreach(string mp3File in mp3Files)
+        foreach (string mp3File in mp3Files)
         {
             // Convert sang WAV
             AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.CreateCustom(inputRootFolder, null, outputWavFolder);

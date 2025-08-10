@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
-public enum Gender
+public enum UserGender
 {
     [EnumMember(Value = "Male")]
     Male,

@@ -12,9 +12,12 @@ public sealed class User : Auditable, IEntityCustom
     public string Email { get; set; } = null!;
     public string? PasswordHash { get; set; } // If null that means the user log in with Google or Facebook
 
+    public UserGender Gender { get; set; }
+    [BsonRepresentation(BsonType.String)]
+    public DateTime BirthDate { get; set; }
     public List<UserRole> Roles { get; set; } = []; // "Listener","Artist","Admin","Moderator"
 
-    public bool IsActive { get; set; } = false;
+    public UserStatus Status { get; set; } = UserStatus.Inactive; // Default status is Inactive
     public bool IsLinkedWithGoogle { get; set; }
 
     public string? RefreshToken { get; set; }

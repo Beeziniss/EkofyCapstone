@@ -11,6 +11,11 @@ namespace EkofyApp.Application.DatabaseContext
         {
             return _database;
         }
+
+        public IMongoClient GetMongoClient()
+        {
+            return _database.Client;
+        }
     }
 
 }

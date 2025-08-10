@@ -12,10 +12,9 @@ public sealed class Listener : TimeStamped, IEntityCustom
     public string UserId { get; set; } = null!; // Unique identifier for the user associated with the listener
 
     public string Name { get; set; } = null!; // Name of the listener, e.g., "John Doe"
+    public string Email { get; set; } = null!; // Email of the listener, e.g., "
     public string? AvatarImage { get; set; } // URL to the listener's avatar image
     public string? BannerImage { get; set; } // URL to the listener's banner image
-
-    public string? Email { get; set; } // Email address of the listener
 
     public bool IsVerified { get; set; } = false; // Indicates if the listener is verified
     public DateTime? VerifiedAt { get; set; } // Date when the listener was verified

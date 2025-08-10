@@ -4,6 +4,7 @@ using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Text.Json.Serialization;
 
 namespace EkofyApp.Api;
 public sealed class Program
@@ -19,6 +20,9 @@ public sealed class Program
         builder.Services.AddControllers(options =>
         {
             options.Filters.Add<BaseExceptionFilter>();
+        }).AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
         // Register Serilog 
@@ -45,7 +49,7 @@ public sealed class Program
             options.SwaggerDoc("v1", new() { Title = "EkofyApp API", Version = "v1" });
             options.CustomSchemaIds(type => type.FullName);
 
-            // JWT Authentication without requiring "Bearer " prefix
+            // JWT ListenerRegisterRequest without requiring "Bearer " prefix
             options.AddSecurityDefinition("JWT", new OpenApiSecurityScheme
             {
                 Name = "Authorization",

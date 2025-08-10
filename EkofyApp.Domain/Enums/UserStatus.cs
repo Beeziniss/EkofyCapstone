@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
-public enum Status
+public enum UserStatus
 {
     [EnumMember(Value = "Active")]
     Active,
