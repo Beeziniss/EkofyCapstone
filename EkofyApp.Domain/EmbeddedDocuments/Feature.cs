@@ -11,7 +11,7 @@ public sealed class Feature : TimeStamped, IEntityCustom
     public string Id { get; set; } = null!; // Unique identifier for the feature
 
     public string Name { get; set; } = null!; // Name of the feature, e.g., "Advanced Analytics"
-
+    public string Code { get; set; } = null!; // Unique code for the feature, e.g., "advanced_analytics"
     public string Description { get; set; } = null!; // Description of the feature, e.g., "Access to advanced analytics tools"
 
     public FeatureValueType ValueType { get; set; } // Type of the feature value, e.g., String, Number, Boolean

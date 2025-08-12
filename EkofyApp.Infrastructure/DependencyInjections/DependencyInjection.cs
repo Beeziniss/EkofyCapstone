@@ -13,6 +13,7 @@ using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
+using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
@@ -29,6 +30,7 @@ using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
+using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
@@ -258,6 +260,7 @@ public static class DependencyInjection
         services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
         services.AddScoped<IJsonWebToken, JsonWebToken>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IEffectiveFeatureService, EffectiveFeatureService>();
 
         // GraphQL Services
         services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();

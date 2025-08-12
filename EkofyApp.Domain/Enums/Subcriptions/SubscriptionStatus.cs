@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums.Subcriptions;
-public enum SubcriptionStatus
+public enum SubscriptionStatus
 {
     [EnumMember(Value = "Inactive")]
     Inactive,

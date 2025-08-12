@@ -15,7 +15,7 @@ public sealed class User : Auditable, IEntityCustom
     public UserGender Gender { get; set; }
     [BsonRepresentation(BsonType.String)]
     public DateTime BirthDate { get; set; }
-    public List<UserRole> Roles { get; set; } = []; // "Listener","Artist","Admin","Moderator"
+    public UserRole Role { get; set; } // "Listener","Artist","Admin","Moderator"
 
     public UserStatus Status { get; set; } = UserStatus.Inactive; // Default status is Inactive
     public bool IsLinkedWithGoogle { get; set; }

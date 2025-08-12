@@ -19,8 +19,8 @@ public sealed class Track : IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> ArtistId { get; set; } = [];
 
-    public AudioFeature AudioFeature { get; set; } // Contains audio features
-    public AudioFingerprint AudioFingerprint { get; set; } // Unique identifier for the audio content
+    public AudioFeature AudioFeature { get; set; } = null!; // Contains audio features
+    public AudioFingerprint AudioFingerprint { get; set; } = null!; // Unique identifier for the audio content
 
     public bool IsPublished { get; set; } = false; // Indicates if the track is public or private
     public bool IsApproved { get; set; } = false; // Indicates if the track is visible to users

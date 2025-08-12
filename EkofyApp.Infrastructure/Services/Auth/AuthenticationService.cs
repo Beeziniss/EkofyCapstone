@@ -56,7 +56,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 PasswordHash = HashPassword(registerRequest.Password),
                 BirthDate = registerRequest.BirthDate.Date,
                 Gender = registerRequest.Gender,
-                Roles = [UserRole.Listener], // Mặc định là Listener
+                Role = UserRole.Listener, // Mặc định là Listener
                 IsLinkedWithGoogle = false,
             };
 
@@ -82,12 +82,12 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             filterBuilder.Eq(l => l.Email, loginRequest.Email.Trim().ToLowerInvariant()),
             filterBuilder.Eq(l => l.Status, UserStatus.Active),
             filterBuilder.Eq(l => l.IsLinkedWithGoogle, false),
-            filterBuilder.AnyEq(l => l.Roles, UserRole.Listener)
+            filterBuilder.Eq(l => l.Role, UserRole.Listener)
         );
         ProjectionDefinition<UserProjection> listenerUserProjection = Builders<UserProjection>.Projection
             .Include(lp => lp.Id)
             .Include(lp => lp.ListenerProjection.Id)
-            .Include(lp => lp.Roles)
+            .Include(lp => lp.Role)
             .Include(lp => lp.PasswordHash);
 
         UserProjection userListener = await _unitOfWork.GetCollection<User>().Aggregate()
@@ -116,7 +116,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
         [
             new Claim("userId", userListener.Id),
             new Claim("listenerId",userListener.ListenerProjection.Id),
-            new Claim(ClaimTypes.Role, string.Join(",", userListener.Roles)),
+            new Claim(ClaimTypes.Role, userListener.Role.ToString()),
         ];
 
         // Tạo access token
@@ -127,7 +127,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             AccessToken = accessToken,
             UserId = userListener.Id,
             ListenerId = userListener.ListenerProjection.Id,
-            Roles = userListener.Roles,
+            Role = userListener.Role,
         };
     }
 

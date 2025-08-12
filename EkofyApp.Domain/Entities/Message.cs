@@ -6,18 +6,18 @@ public sealed class Message
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!; // Unique identifier for the message
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string ConversationId { get; set; }
+    public string ConversationId { get; set; } = null!; // Unique identifier for the conversation this message belongs to
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string SenderId { get; set; }
+    public string SenderId { get; set; } = null!; // Unique identifier for the sender of the message
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string ReceiverId { get; set; }
+    public string ReceiverId { get; set; } = null!; // Unique identifier for the receiver of the message
 
-    public string Text { get; set; }
+    public string Text { get; set; } = null!;
 
     public bool IsRead { get; set; } = false;
 
