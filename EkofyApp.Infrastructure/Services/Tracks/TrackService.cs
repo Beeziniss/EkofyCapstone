@@ -12,7 +12,11 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper) : ITrac
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
 
-    // Implement methods from ITrackService here
+    public IQueryable<Track> GetTracksQueryable()
+    {
+        return _unitOfWork.GetCollection<Track>().AsQueryable();
+    }
+
     public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
     {
         Track track = await _unitOfWork.GetCollection<Track>()

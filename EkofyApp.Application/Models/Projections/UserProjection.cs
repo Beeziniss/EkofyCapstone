@@ -28,5 +28,6 @@ public sealed class UserProjection
 
     public DateTime? LastLoginAt { get; set; }
 
-    public ListenerProjection ListenerProjection { get; set; } = null!; // Projection for Listener details
+    public ListenerProjection? ListenerProjection { get; set; } = default!; // Projection for Listener details
+    public ArtistProjection? ArtistProjection { get; set; } = default!; // Projection for Artist details
 }

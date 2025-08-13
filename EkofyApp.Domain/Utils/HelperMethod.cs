@@ -4,7 +4,7 @@ using EkofyApp.Domain.Enums;
 namespace EkofyApp.Domain.Utils;
 public sealed class HelperMethod
 {
-    public static IEnumerable<long> GetValidBitrates()
+    public static IEnumerable<long> GetValidBitratesEnumrable()
     {
         // Đơn vị kbps -> 128000 tương đương 128 kbps
 
@@ -12,6 +12,11 @@ public sealed class HelperMethod
         IEnumerable<long> validBitrates = [128000, 256000, 320000];
 
         return validBitrates;
+    }
+
+    public static string[] GetValidBitratesArray()
+    {
+        return ["128kbps", "256kbps", "320kbps"];
     }
 
     #region UTC+7 Time Zone
@@ -197,5 +202,63 @@ public sealed class HelperMethod
             }
         }
     }
+    #endregion
+
+    #region Calculate Identity Card Expiry
+    public static DateTime CalculateIdentityCardExpiry(DateTime dateOfBirth)
+    {
+        // Input phải là 7+ Time Zone
+        if (dateOfBirth.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Date of birth must be in UTC+7 time zone.");
+        }
+
+        DateTime now = GetUtcPlus7Time();
+
+        // Validate that the date of birth is in the past
+        if (dateOfBirth > now)
+        {
+            throw new ArgumentException("Date of birth must be in the past.");
+        }
+
+        int age = now.Year - dateOfBirth.Year;
+        if (now < dateOfBirth.AddYears(age))
+        {
+            age--;
+        }
+
+        return age switch
+        {
+            < 25 => dateOfBirth.AddYears(25),
+            < 40 => dateOfBirth.AddYears(40),
+            < 60 => dateOfBirth.AddYears(60),
+            _ => DateTime.MaxValue
+        };
+    }
+    #endregion
+
+    #region Calculate Age
+    public static int GetExactAge(DateTime birthDate)
+    {
+        DateTime today = GetUtcPlus7Time().Date;
+
+        int age = today.Year - birthDate.Year;
+        if (today < birthDate.AddYears(age))
+        {
+            age--;
+        }
+
+        return age;
+    }
+
+    #endregion
+
+    #region Regex Validation
+    public static string RegexPatternAlpha() => @"^[\p{L}]+$";
+    public static string RegexPatternAlphaWithSpace() => @"^[\p{L} ]+$";
+    public static string RegexPatternAlphanumeric() => @"^[\p{L}0-9]+$";
+    public static string RegexPatternAlphaNumericWithSpace() => @"^[\p{L}0-9 ]+$";
+    public static string RegexPatternAlphaNumericWithSpecific() => @"^[\p{L}0-9_- ]+$";
+    public static string RegexPatternIdentityCardNumber() => @"^\d{9}|\d{12}$";
     #endregion
 }

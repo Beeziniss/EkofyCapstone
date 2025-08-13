@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Domain.Enums;
 
-namespace EkofyApp.Application.Models.Auth.Listeners;
-public sealed record class ListenerRegisterRequest
+namespace EkofyApp.Application.Models.Auth.Artists;
+public sealed record class ArtistRegisterRequest
 {
     // User registration details
     public string Email { get; init; } = default!; // User's email address, e.g., "
@@ -10,6 +10,7 @@ public sealed record class ListenerRegisterRequest
     public DateTime BirthDate { get; init; } // User's birth date, e.g., "
     public UserGender Gender { get; init; }
 
-    // For the listener profile
-    public string Name { get; init; } = default!; // Name of the listener, e.g., "John Doe"
+    // For the artist profile
+    public string Name { get; init; } = default!; // Name of the artist
+    public CreateIdentityCardRequest IdentityCard { get; init; } = null!; // Identity card details for the artist
 }

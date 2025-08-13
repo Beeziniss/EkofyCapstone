@@ -204,7 +204,7 @@ public sealed class FfmpegService : IFfmpegService
             IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullCustomException("Audio Stream is null");
             //long bitrate = audioStream.OriginalBitrate;
 
-            foreach (long bitrateIndex in HelperMethod.GetValidBitrates())
+            foreach (long bitrateIndex in HelperMethod.GetValidBitratesEnumrable())
             {
                 if (bitrateIndex > wavFileResponse.OriginalBitrate)
                 {

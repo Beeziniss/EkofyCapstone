@@ -7,6 +7,8 @@ public enum UserRole
     Admin,
     [EnumMember(Value = "Moderator")]
     Moderator,
+    [EnumMember(Value = "Artist")]
+    Artist,
     [EnumMember(Value = "Listener")]
     Listener,
     [EnumMember(Value = "Guest")]

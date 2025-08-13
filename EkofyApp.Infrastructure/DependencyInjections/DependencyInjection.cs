@@ -15,6 +15,7 @@ using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
@@ -32,6 +33,7 @@ using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
+using EkofyApp.Infrastructure.Services.Users;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
@@ -261,10 +263,11 @@ public static class DependencyInjection
         services.AddScoped<IJsonWebToken, JsonWebToken>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<IEffectiveFeatureService, EffectiveFeatureService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IUserService, UserService>();
+        //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
-        services.AddScoped<ITrackGraphQLService, TrackGraphQLService>();
-        services.AddScoped<IArtistGraphQLService, ArtistGraphQLService>();
         services.AddScoped<IChatGraphQLService, ChatGraphQLService>();
 
         // Third Party Services

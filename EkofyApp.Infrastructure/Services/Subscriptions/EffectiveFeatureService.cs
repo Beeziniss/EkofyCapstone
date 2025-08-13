@@ -1,26 +1,39 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Subscriptions;
-public sealed class EffectiveFeatureService(IUnitOfWork unitOfWork) : IEffectiveFeatureService
+public sealed class EffectiveFeatureService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IEffectiveFeatureService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public async Task BuildAsync(EffectiveFeature effectiveFeature)
+    public async Task BuildAsync(CreateEffectiveFeatureRequest createEffectiveFeatureRequest)
     {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        UserRole userRole = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value switch
+        {
+            "Listener" => UserRole.Listener,
+            "Artist" => UserRole.Artist,
+            _ => throw new UnauthorizedCustomException("Your role is not supported.")
+        };
+
         await _unitOfWork.GetCollection<EffectiveFeature>().InsertOneAsync(new EffectiveFeature
         {
-            UserId = effectiveFeature.UserId,
-            Role = effectiveFeature.Role, // Default role, can be updated later
-            SubscriptionId = effectiveFeature.SubscriptionId, // Initially no subscription
-            SubscriptionCode = effectiveFeature.SubscriptionCode,
-            SubscriptionVersion = effectiveFeature.SubscriptionVersion,
-            FeatureCodes = effectiveFeature.FeatureCodes, // No features initially
-            ValidUntil = effectiveFeature.ValidUntil // Set to current time, will be updated later
+            UserId = userId,
+            Role = userRole, // Default role, can be updated later
+            SubscriptionId = createEffectiveFeatureRequest.SubscriptionId, // Initially no subscription
+            SubscriptionCode = createEffectiveFeatureRequest.SubscriptionCode,
+            SubscriptionVersion = createEffectiveFeatureRequest.SubscriptionVersion,
+            FeatureCodes = createEffectiveFeatureRequest.FeatureCodes, // No features initially
+            ValidUntil = createEffectiveFeatureRequest.ValidUntil // Set to current time, will be updated later
         });
     }
 

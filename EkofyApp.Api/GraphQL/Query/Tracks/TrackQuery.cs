@@ -5,20 +5,14 @@ namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class TrackQuery(ITrackService trackService, ITrackGraphQLService trackGraphQLService)
+public class TrackQuery(ITrackService trackService)
 {
     private readonly ITrackService _trackService = trackService;
-    private readonly ITrackGraphQLService _trackGraphQLService = trackGraphQLService;
 
     // TracksDB
     public IQueryable<Track> GetTracks()
     {
-        return _trackGraphQLService.GetTracksQueryableDB();
-    }
-
-    public IEnumerable<Track> GetTracksIe()
-    {
-        return _trackGraphQLService.GetTracksQueryableDB();
+        return _trackService.GetTracksQueryable();
     }
 
     #region Original

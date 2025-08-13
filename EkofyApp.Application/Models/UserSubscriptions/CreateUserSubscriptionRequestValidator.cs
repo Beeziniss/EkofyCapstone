@@ -6,10 +6,6 @@ public sealed class CreateUserSubscriptionRequestValidator : AbstractValidator<C
 {
     public CreateUserSubscriptionRequestValidator()
     {
-        RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("User ID is required.")
-            .MaximumLength(50).WithMessage("User ID must not exceed 50 characters.");
-
         RuleFor(x => x.SubscriptionId)
             .NotEmpty().WithMessage("Subscription ID is required.")
             .MaximumLength(50).WithMessage("Subscription ID must not exceed 50 characters.");

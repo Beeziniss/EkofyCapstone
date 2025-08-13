@@ -1,10 +1,10 @@
 ﻿using EkofyApp.Domain.Enums;
 
-namespace EkofyApp.Application.Models.Auth;
-public sealed record class AuthListenerTokenResponse
+namespace EkofyApp.Application.Models.Auth.Artists;
+public sealed record class AuthArtistTokenResponse
 {
     public string AccessToken { get; init; } = null!;
     public string UserId { get; init; } = null!;
-    public string ListenerId { get; init; } = null!;
+    public string ArtistId { get; init; } = null!;
     public UserRole Role { get; init; }
 }

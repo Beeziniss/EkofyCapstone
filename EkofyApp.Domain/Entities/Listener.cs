@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.EmbeddedDocuments;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -25,4 +26,6 @@ public sealed class Listener : TimeStamped, IEntityCustom
     public List<string> LastFollowers { get; set; } = []; // List of last followers, storing their IDs
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> LastFollowing { get; set; } = []; // List of last following artists, storing their IDs
+
+    public Restriction Restriction { get; set; } = null!; // Optional restriction details for the listener
 }

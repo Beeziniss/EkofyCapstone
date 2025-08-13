@@ -14,7 +14,7 @@ public sealed class EffectiveFeature
 
     // For audit/debug
     [BsonRepresentation(BsonType.ObjectId)]
-    public string? SubscriptionId { get; set; }
+    public string SubscriptionId { get; set; } = null!; // Unique identifier for the subscription plan
 
     public UserRole Role { get; set; }
 

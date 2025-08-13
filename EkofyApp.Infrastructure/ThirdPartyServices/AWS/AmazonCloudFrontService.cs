@@ -29,7 +29,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //if (cached == "1") return true;
         //if (cached == "0") return false;
 
-        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("Id")
+        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
         string key = Environment.GetEnvironmentVariable("HLS_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY is not set in the environment");
@@ -94,7 +94,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             throw new ValidationCustomException("Track id cannot be null or empty");
         }
 
-        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("Id")
+        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
         string? hlsKey = Environment.GetEnvironmentVariable("HLS_KEY");
@@ -181,8 +181,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 content = await reader.ReadToEndAsync();
             }
 
-            // TODO: Lấy danh sách bitrate từ cấu hình hoặc database
-            string[] bitrates = { "128kbps", "256kbps", "320kbps" }; // Sau này có thể lấy thêm từ cấu hình hoặc database
+            string[] bitrates = HelperMethod.GetValidBitratesArray(); // Sau này có thể lấy thêm từ cấu hình hoặc database
 
             foreach (string bitrate in bitrates)
             {

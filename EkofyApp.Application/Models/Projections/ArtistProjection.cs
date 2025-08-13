@@ -1,10 +1,9 @@
-﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.EmbeddedDocuments;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace EkofyApp.Domain.Entities;
-public sealed class Artist : TimeStamped, IEntityCustom
+namespace EkofyApp.Application.Models.Projections;
+public sealed class ArtistProjection
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

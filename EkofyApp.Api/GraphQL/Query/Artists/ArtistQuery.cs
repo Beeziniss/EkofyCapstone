@@ -5,13 +5,12 @@ namespace EkofyApp.Api.GraphQL.Query.Artists;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class ArtistQuery(IArtistService artistService, IArtistGraphQLService artistGraphQLService)
+public sealed class ArtistQuery(IArtistService artistService)
 {
     private readonly IArtistService _artistService = artistService;
-    private readonly IArtistGraphQLService _artistGraphQLService = artistGraphQLService;
 
     public IQueryable<Artist> GetArtists()
     {
-        return _artistGraphQLService.GetArtistsQueryable();
+        return _artistService.GetArtistsQueryable();
     }
 }

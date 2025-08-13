@@ -1,7 +1,6 @@
 ﻿namespace EkofyApp.Application.Models.UserSubscriptions;
 public sealed record class CreateUserSubscriptionRequest
 {
-    public string UserId { get; init; } = null!; // Unique identifier for the user
     public string SubscriptionId { get; init; } = null!; // Unique identifier for the subscription plan
     public DateTime PeriodStart { get; init; } // Start date of the subscription
     public DateTime PeriodEnd { get; init; } // Optional end date of the subscription, if applicable

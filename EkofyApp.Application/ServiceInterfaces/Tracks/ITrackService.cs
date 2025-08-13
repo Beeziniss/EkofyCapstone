@@ -9,5 +9,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task CreateTrackAsync(CreateTrackRequest trackResponse);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         Task<IEnumerable<TrackResponse>> GetTracksAsync();
+        IQueryable<Track> GetTracksQueryable();
     }
 }

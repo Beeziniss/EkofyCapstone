@@ -1,9 +1,9 @@
 ﻿
-using EkofyApp.Domain.Entities;
+using EkofyApp.Application.Models.Subscriptions;
 
 namespace EkofyApp.Application.ServiceInterfaces.Subscriptions;
 public interface IEffectiveFeatureService
 {
-    Task BuildAsync(EffectiveFeature effectiveFeature);
+    Task BuildAsync(CreateEffectiveFeatureRequest createEffectiveFeatureRequest);
     Task RebuildAsync(string userId);
 }
