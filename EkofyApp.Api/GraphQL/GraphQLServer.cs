@@ -36,7 +36,8 @@ public static class GraphQLServer
             // Schema
             .AddQueryType<QueryInitialization>()
             .AddMutationType<MutationInitialization>()
-            .AddTypes()
+            //.AddTypes()
+            .AddGraphQLTypes()
             
             // Custom scalars
             .AddType<UploadType>()
