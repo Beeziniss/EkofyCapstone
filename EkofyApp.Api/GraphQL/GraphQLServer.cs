@@ -2,6 +2,7 @@
 using EkofyApp.Api.GraphQL.Mutation;
 using EkofyApp.Api.GraphQL.Query;
 using EkofyApp.Api.GraphQL.Scalars;
+using HotChocolate.Types.Pagination;
 using StackExchange.Redis;
 
 namespace EkofyApp.Api.GraphQL;
@@ -27,11 +28,19 @@ public static class GraphQLServer
             //    return ConnectionMultiplexer.Connect(config);
             //})
 
-            // MongoDB integration
+            // Configuration
             .AddProjections()
-            .AddMongoDbFiltering()
-            .AddMongoDbSorting()
-            .AddMongoDbPagingProviders()
+            .AddFiltering()
+            .AddSorting()
+            .AddQueryableCursorPagingProvider(defaultProvider: false)
+            .AddQueryableOffsetPagingProvider(defaultProvider: true)
+            .AddPagingArguments()
+
+            // MongoDB integration
+            //.AddMongoDbProjections()
+            //.AddMongoDbFiltering()
+            //.AddMongoDbSorting()
+            //.AddMongoDbPagingProviders()
             
             // Schema
             .AddQueryType<QueryInitialization>()

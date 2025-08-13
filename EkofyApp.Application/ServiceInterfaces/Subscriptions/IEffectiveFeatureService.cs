@@ -5,5 +5,5 @@ namespace EkofyApp.Application.ServiceInterfaces.Subscriptions;
 public interface IEffectiveFeatureService
 {
     Task BuildAsync(CreateEffectiveFeatureRequest createEffectiveFeatureRequest);
-    Task RebuildAsync(string userId);
+    Task RebuildAsync();
 }

@@ -37,21 +37,27 @@ public sealed class EffectiveFeatureService(IUnitOfWork unitOfWork, IHttpContext
         });
     }
 
-    public async Task RebuildAsync(string userId)
+    public async Task RebuildAsync()
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            // TODO: Lookup for better performance
-            UserRole userRole = await _unitOfWork.GetCollection<User>()
-                .Find(u => u.Id == userId)
-                .Project(u => u.Role)
-                .FirstOrDefaultAsync();
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+            UserRole userRole = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value switch
+            {
+                "Listener" => UserRole.Listener,
+                "Artist" => UserRole.Artist,
+                _ => throw new UnauthorizedCustomException("Your role is not supported.")
+            };
 
             UserSubscription userSubscription = await _unitOfWork.GetCollection<UserSubscription>()
                 .Find(s => s.UserId == userId && s.CanceledAt != null)
                 .SortByDescending(s => s.PeriodStart)
                 .FirstOrDefaultAsync();
 
+            // TODO: Có nên để user Free Tier có EffectiveFeature không?
+            // Và nếu có thì nên để FeatureCodes là empty
+            // Nếu không có subscription thì xóa EffectiveFeature cũ
             if (userSubscription == null)
             {
                 // Remove old effective features if any
