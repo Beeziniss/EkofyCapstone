@@ -378,8 +378,6 @@ AudioFeatureExtractor/.venv/
 AudioFeatureExtractor/*.pyc
 AudioFeatureExtractor/*.pyo
 AudioFeatureExtractor/*.pyd
-AudioFeatureExtractor/*_pb2.py
-AudioFeatureExtractor/*_pb2_grpc.py
 
 # Nếu dùng VSCode/PyCharm
 AudioFeatureExtractor/.vscode/
