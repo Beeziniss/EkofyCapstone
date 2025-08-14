@@ -16,7 +16,7 @@ public class UserQueryEType : ObjectTypeExtension<UserQuery>
             .UseFiltering()
             .UseSorting();
 
-        descriptor.Field(x => x.GetUserByIdAsync(default!));
-            //.Authorize([UserRole.Admin.ToString()]);
+        descriptor.Field(x => x.GetUserByIdAsync(default!))
+        .Authorize([UserRole.Admin.ToString()]);
     }
 }

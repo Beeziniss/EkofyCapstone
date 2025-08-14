@@ -11,5 +11,5 @@ public sealed record class CreateSubscriptionRequest
     public decimal Price { get; init; } // Price of the subscription plan
 
     public SubscriptionTier Tier { get; init; } // Subscription tier (e.g., Free, Premium, etc.)
-    public List<CreateFeatureRequest> Features { get; init; } = []; // List of features included in the subscription plan
+    public List<CreateEntitlementRequest> Features { get; init; } = []; // List of features included in the subscription plan
 }

@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Serilog;
 
 namespace EkofyApp.Api.Filters;
@@ -15,23 +16,17 @@ public sealed class GraphQLExceptionFilter : IErrorFilter
                 .WithMessage(baseException.Message)
                 .WithCode($"{baseException.GetType().Name}")
                 .SetExtension("status", baseException.StatusCode);
-                //.SetExtension("type", baseException.ErrorType);
+            //.SetExtension("type", baseException.ErrorType);
         }
 
         // Handle specific exceptions that are not BaseException
         if (error.Exception is null)
         {
-            string code = error.Code ?? "BAD_REQUEST";
+            string code = error.Code ?? "UNKNOWN_ERROR";
 
-            int status = code switch
-            {
-                "AUTH_NOT_AUTHENTICATED" => 401, // chưa đăng nhập / token invalid
-                "AUTH_NOT_AUTHORIZED" => 403, // không đủ quyền/role
-                "HC0015" or "HC0016" or "HC0017" => 400, // ví dụ các mã validation (tùy version)
-                _ => 400
-            };
+            int status = GraphQLErrorHelper.MapErrorCodeToStatus(code);
 
-            Log.Error("GraphQL Error: {Message}", error.Message);
+            Log.Fatal("GraphQL Error: {Message}", error.Message);
 
             // Giữ nguyên thông điệp gốc để client hiểu đúng ngữ cảnh
             return error

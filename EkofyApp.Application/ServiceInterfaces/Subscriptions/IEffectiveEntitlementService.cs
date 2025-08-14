@@ -2,8 +2,8 @@
 using EkofyApp.Application.Models.Subscriptions;
 
 namespace EkofyApp.Application.ServiceInterfaces.Subscriptions;
-public interface IEffectiveFeatureService
+public interface IEffectiveEntitlementService
 {
-    Task BuildAsync(CreateEffectiveFeatureRequest createEffectiveFeatureRequest);
+    Task BuildAsync(CreateEffectiveEntitlementRequest createEffectiveFeatureRequest);
     Task RebuildAsync();
 }

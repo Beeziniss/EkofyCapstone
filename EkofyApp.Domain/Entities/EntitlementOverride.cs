@@ -12,5 +12,5 @@ public sealed class EntitlementOverride
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!; // Unique identifier for the user
 
-    public List<Feature> Features { get; set; } = []; // List of features that are overridden for the user
+    public List<Entitlement> Features { get; set; } = []; // List of features that are overridden for the user
 }

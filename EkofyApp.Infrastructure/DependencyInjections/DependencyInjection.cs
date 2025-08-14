@@ -6,8 +6,6 @@ using CloudinaryDotNet;
 using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
-using EkofyApp.Application.Models.Artists;
-using EkofyApp.Application.Models.Auth;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
@@ -262,7 +260,7 @@ public static class DependencyInjection
         services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
         services.AddScoped<IJsonWebToken, JsonWebToken>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
-        services.AddScoped<IEffectiveFeatureService, EffectiveFeatureService>();
+        services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IUserService, UserService>();
         //services.AddScoped<IChatService, ChatService>();
@@ -505,8 +503,6 @@ public static class DependencyInjection
         //BsonSerializer.RegisterSerializer(typeof(UserProduct), new EnumMemberSerializer<UserProduct>());
         BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
         BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
-
-        // UserGender
         BsonSerializer.RegisterSerializer(typeof(UserGender), new EnumMemberSerializer<UserGender>());
 
         //// Tracks
@@ -524,5 +520,8 @@ public static class DependencyInjection
 
         //// Reccomendation
         //BsonSerializer.RegisterSerializer(typeof(Algorithm), new EnumMemberSerializer<Algorithm>());
+
+        // Common
+        BsonSerializer.RegisterSerializer(typeof(EntitlementValueType), new EnumMemberSerializer<EntitlementValueType>());
     }
 }

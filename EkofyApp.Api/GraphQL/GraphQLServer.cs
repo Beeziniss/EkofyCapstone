@@ -11,12 +11,19 @@ public static class GraphQLServer
     public static void RegisterGraphQLServer(this IServiceCollection services)
     {
         services.AddGraphQLServer()
-            .ModifyOptions(o => o.StrictValidation = true)
+            .ModifyOptions(o =>
+            {
+                o.StrictValidation = true;
+            })
             .AddErrorFilter<GraphQLExceptionFilter>()
             .AddAuthorization()
-            
+
+            // Disable introspection
+            .DisableIntrospection(false)
+
             // Performance optimizations
-            .AddMaxExecutionDepthRule(5)
+            // Có liên quan đến Introspection, nếu rule thấp thì không auto-fetch được schema
+            .AddMaxExecutionDepthRule(20)
             .AddMaxAllowedFieldCycleDepthRule(50)
             .AddCostAnalyzer()  // Analyze query cost
 
@@ -41,16 +48,17 @@ public static class GraphQLServer
             //.AddMongoDbFiltering()
             //.AddMongoDbSorting()
             //.AddMongoDbPagingProviders()
-            
+
             // Schema
             .AddQueryType<QueryInitialization>()
             .AddMutationType<MutationInitialization>()
             .AddTypes()
-            
+
             // Custom scalars
             .AddType<UploadType>()
             //.AddType(new UInt32Type())
             .AddType<UInt32Type>()
+            .AddType<EntitlementValueScalar>()
             .BindRuntimeType<uint, UInt32Type>();
     }
 }

@@ -25,7 +25,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork) : ISubscriptionS
             Version = createSubscriptionRequest.Version,
             Price = createSubscriptionRequest.Price,
             Tier = createSubscriptionRequest.Tier,
-            Features = createSubscriptionRequest.Features.Select(f => new Feature
+            Entitlements = createSubscriptionRequest.Features.Select(f => new Entitlement
             {
                 Name = f.Name,
                 Code = f.Code,

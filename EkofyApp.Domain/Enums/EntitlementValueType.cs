@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
-public enum FeatureValueType
+public enum EntitlementValueType
 {
     [EnumMember(Value = "String")]
     String,

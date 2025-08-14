@@ -12,6 +12,10 @@
 
             descriptor.Field(x => x.ConvertToHlsAsync(default!, default!, default!))
                 .AllowAnonymous();
+
+            descriptor.Field(x => x.CreateEntilement(default!, default!, default!))
+                .AllowAnonymous()
+                .Description("Create a test entitlement for demonstration purposes.");
         }
     }
 }

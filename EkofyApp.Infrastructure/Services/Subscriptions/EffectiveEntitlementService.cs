@@ -9,12 +9,12 @@ using MongoDB.Driver;
 using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Subscriptions;
-public sealed class EffectiveFeatureService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IEffectiveFeatureService
+public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IEffectiveEntitlementService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public async Task BuildAsync(CreateEffectiveFeatureRequest createEffectiveFeatureRequest)
+    public async Task BuildAsync(CreateEffectiveEntitlementRequest createEffectiveEntitlementRequest)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
@@ -25,15 +25,15 @@ public sealed class EffectiveFeatureService(IUnitOfWork unitOfWork, IHttpContext
             _ => throw new UnauthorizedCustomException("Your role is not supported.")
         };
 
-        await _unitOfWork.GetCollection<EffectiveFeature>().InsertOneAsync(new EffectiveFeature
+        await _unitOfWork.GetCollection<EffectiveEntitlement>().InsertOneAsync(new EffectiveEntitlement
         {
             UserId = userId,
             Role = userRole, // Default role, can be updated later
-            SubscriptionId = createEffectiveFeatureRequest.SubscriptionId, // Initially no subscription
-            SubscriptionCode = createEffectiveFeatureRequest.SubscriptionCode,
-            SubscriptionVersion = createEffectiveFeatureRequest.SubscriptionVersion,
-            FeatureCodes = createEffectiveFeatureRequest.FeatureCodes, // No features initially
-            ValidUntil = createEffectiveFeatureRequest.ValidUntil // Set to current time, will be updated later
+            SubscriptionId = createEffectiveEntitlementRequest.SubscriptionId, // Initially no subscription
+            SubscriptionCode = createEffectiveEntitlementRequest.SubscriptionCode,
+            SubscriptionVersion = createEffectiveEntitlementRequest.SubscriptionVersion,
+            FeatureCodes = createEffectiveEntitlementRequest.FeatureCodes, // No features initially
+            ValidUntil = createEffectiveEntitlementRequest.ValidUntil // Set to current time, will be updated later
         });
     }
 
@@ -55,30 +55,30 @@ public sealed class EffectiveFeatureService(IUnitOfWork unitOfWork, IHttpContext
                 .SortByDescending(s => s.PeriodStart)
                 .FirstOrDefaultAsync();
 
-            // TODO: Có nên để user Free Tier có EffectiveFeature không?
+            // TODO: Có nên để user Free Tier có EffectiveEntitlement không?
             // Và nếu có thì nên để FeatureCodes là empty
-            // Nếu không có subscription thì xóa EffectiveFeature cũ
+            // Nếu không có subscription thì xóa EffectiveEntitlement cũ
             if (userSubscription == null)
             {
                 // Remove old effective features if any
-                await _unitOfWork.GetCollection<EffectiveFeature>().DeleteManyAsync(f => f.UserId == userId);
+                await _unitOfWork.GetCollection<EffectiveEntitlement>().DeleteManyAsync(f => f.UserId == userId);
                 return;
             }
 
             Subscription subscription = await _unitOfWork.GetCollection<Subscription>().Find(s => s.Id == userSubscription.SubscriptionId).FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Subscription not found.");
 
-            EffectiveFeature effectiveFeature = new()
+            EffectiveEntitlement effectiveEntitlement = new()
             {
                 UserId = userId,
                 Role = userRole,
                 SubscriptionId = subscription.Id,
                 SubscriptionCode = subscription.Code,
                 SubscriptionVersion = subscription.Version,
-                FeatureCodes = subscription.Features.Select(s => s.Code).ToList(),
+                FeatureCodes = subscription.Entitlements.Select(s => s.Code).ToList(),
                 ValidUntil = userSubscription.PeriodEnd
             };
 
-            await _unitOfWork.GetCollection<EffectiveFeature>().ReplaceOneAsync(ef => ef.UserId == userId, effectiveFeature);
+            await _unitOfWork.GetCollection<EffectiveEntitlement>().ReplaceOneAsync(ef => ef.UserId == userId, effectiveEntitlement);
         });
     }
 }

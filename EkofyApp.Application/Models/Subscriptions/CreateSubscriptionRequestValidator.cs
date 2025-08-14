@@ -23,6 +23,6 @@ public sealed class CreateSubscriptionRequestValidator : AbstractValidator<Creat
             .IsInEnum().WithMessage("Invalid subscription tier.");
 
         RuleForEach(x => x.Features)
-            .SetValidator(new CreateFeatureRequestValidator());
+            .SetValidator(new CreateEntitlementRequestValidator());
     }
 }

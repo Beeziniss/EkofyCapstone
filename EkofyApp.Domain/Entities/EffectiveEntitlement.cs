@@ -1,9 +1,10 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class EffectiveFeature
+public sealed class EffectiveEntitlement : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

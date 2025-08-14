@@ -1,5 +1,8 @@
-﻿using EkofyApp.Application.Models.Wavs;
+﻿using EkofyApp.Api.GraphQL.Scalars;
+using EkofyApp.Application.Models.Wavs;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 
@@ -44,6 +47,21 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test
             string trackIdTemp = ObjectId.GenerateNewId().ToString();
 
             return await ffmpegService.ConvertToHlsAsync(wavFileResponse, AudioConvertPathOptions.ForConvertToHls(trackIdTemp));
+        }
+
+        public async Task<bool> CreateEntilement([Service] IUnitOfWork unitOfWork, Domain.Enums.EntitlementValueType featureValueType, [GraphQLType(typeof(EntitlementValueScalar))] object value)
+        {
+            await unitOfWork.GetCollection<Entitlement>().InsertOneAsync(new Entitlement
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                Name = "Test Entitlement",
+                Code = "test_entitlement",
+                Description = "This is a test entitlement",
+                ValueType = featureValueType,
+                Value = value,
+                ExpiredAt = DateTime.UtcNow.AddDays(30)
+            });
+            return true;
         }
     }
 }
