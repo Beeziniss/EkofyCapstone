@@ -27,6 +27,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
 		<PackageReference Include="MongoDB.Bson" Version="3.4.2" />
 		<PackageReference Include="MongoDB.Driver" Version="3.4.2" />
+		<PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
 		<PackageReference Include="SoundFingerprinting" Version="12.3.0" />
 		<PackageReference Include="StackExchange.Redis" Version="2.8.58" />
 		<PackageReference Include="Xabe.FFmpeg" Version="6.0.2" />
