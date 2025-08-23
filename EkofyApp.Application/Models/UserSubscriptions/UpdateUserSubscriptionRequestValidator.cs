@@ -16,6 +16,6 @@ public sealed class UpdateUserSubscriptionRequestValidator : AbstractValidator<U
 
         RuleFor(x => x.CanceledAt)
             .NotEmpty().WithMessage("CanceledAt must not be empty.")
-            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7Time()).WithMessage("Cancel time must be in the present or past");
+            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Cancel time must be in the present or past");
     }
 }

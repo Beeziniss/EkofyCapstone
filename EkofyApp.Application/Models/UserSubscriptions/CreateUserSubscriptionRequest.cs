@@ -2,8 +2,8 @@
 public sealed record class CreateUserSubscriptionRequest
 {
     public string SubscriptionId { get; init; } = null!; // Unique identifier for the subscription plan
-    public DateTime PeriodStart { get; init; } // Start date of the subscription
-    public DateTime PeriodEnd { get; init; } // Optional end date of the subscription, if applicable
+    public DateTimeOffset PeriodStart { get; init; } // Start date of the subscription
+    public DateTimeOffset PeriodEnd { get; init; } // Optional end date of the subscription, if applicable
 
     public bool AutoRenew { get; init; } = false; // Indicates if the subscription auto-renews
 

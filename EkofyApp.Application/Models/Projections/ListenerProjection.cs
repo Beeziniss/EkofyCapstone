@@ -16,7 +16,7 @@ public sealed class ListenerProjection
     public string? BannerImage { get; set; } // URL to the listener's banner image
 
     public bool IsVerified { get; set; } = false; // Indicates if the listener is verified
-    public DateTime? VerifiedAt { get; set; } // Date when the listener was verified
+    public DateTimeOffset? VerifiedAt { get; set; } // Date when the listener was verified
 
     public long FollowerCount { get; set; } = default; // Number of followers the listener has
     public long FollowingCount { get; set; } = default; // Number of artists the listener is following

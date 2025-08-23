@@ -2,7 +2,7 @@
 
 namespace EkofyApp.Api.GraphQL.Query.Chats;
 
-public class ChatQueryEType : ObjectTypeExtension<ChatQuery>
+public class ChatQueryExtension : ObjectTypeExtension<ChatQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<ChatQuery> descriptor)
     {

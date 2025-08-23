@@ -1,5 +1,4 @@
-﻿using EkofyApp.Application.Models.Auth;
-using EkofyApp.Application.Models.Auth.Artists;
+﻿using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.Models.Projections;
 using EkofyApp.Application.ServiceInterfaces;
@@ -7,20 +6,19 @@ using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity.Data;
+using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Claims;
 using LoginRequest = EkofyApp.Application.Models.Auth.LoginRequest;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
+public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IJsonWebToken _jsonWebToken = jsonWebToken;
-    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     private static string HashPassword(string password)
     {
@@ -156,8 +154,8 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 Id = userId,
                 Email = registerRequest.Email.Trim().ToLowerInvariant(),
                 PasswordHash = HashPassword(registerRequest.Password),
-                BirthDate = registerRequest.BirthDate.Date,
-                Gender = registerRequest.Gender,
+                BirthDate = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.DateOfBirth.Date),
+                Gender = registerRequest.IdentityCard.Gender,
                 Role = UserRole.Artist,
                 IsLinkedWithGoogle = false,
             };
@@ -178,13 +176,14 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 {
                     Number = registerRequest.IdentityCard.Number,
                     FullName = registerRequest.IdentityCard.FullName,
-                    DateOfBirth = registerRequest.IdentityCard.DateOfBirth,
+                    DateOfBirth = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.DateOfBirth.Date),
                     Gender = registerRequest.IdentityCard.Gender,
                     PlaceOfOrigin = registerRequest.IdentityCard.PlaceOfOrigin,
                     Nationality = registerRequest.IdentityCard.Nationality,
                     PlaceOfResidence = registerRequest.IdentityCard.PlaceOfResidence,
                     FrontImage = registerRequest.IdentityCard.FrontImage,
                     BackImage = registerRequest.IdentityCard.BackImage,
+                    ValidUntil = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.ValidUntil.Date),
                 }
             };
 
@@ -200,7 +199,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
         FilterDefinitionBuilder<User> filterBuilder = Builders<User>.Filter;
         FilterDefinition<User> userFilter = Builders<User>.Filter.And(
             filterBuilder.Eq(a => a.Email, loginRequest.Email.Trim().ToLowerInvariant()),
-            filterBuilder.Eq(a => a.Status, UserStatus.Active),
+            //filterBuilder.Eq(a => a.Status, UserStatus.Active),
             filterBuilder.Eq(a => a.IsLinkedWithGoogle, false),
             filterBuilder.Eq(a => a.Role, UserRole.Artist)
         );
@@ -209,6 +208,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             .Include(ap => ap.Id)
             .Include(ap => ap.ArtistProjection!.Id)
             .Include(ap => ap.Role)
+            .Include(ap => ap.Status)
             .Include(ap => ap.PasswordHash);
 
         UserProjection userArtist = await _unitOfWork.GetCollection<User>().Aggregate()
@@ -230,6 +230,19 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
         if (!VerifyPassword(loginRequest.Password, userArtist.PasswordHash!))
         {
             throw new BadRequestCustomException("Invalid email or password.");
+        }
+
+        switch (userArtist.Status)
+        {
+            case UserStatus.Inactive:
+                throw new UnauthorizedCustomException("Your account is not active.");
+            case UserStatus.Banned:
+                throw new UnauthorizedCustomException("Your account has been banned.");
+            // Mặc định là Active
+            case UserStatus.Active:
+                break;
+            default:
+                throw new BadRequestCustomException("Invalid user status.");
         }
 
         // Tạo claims

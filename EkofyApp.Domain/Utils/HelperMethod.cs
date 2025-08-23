@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Exceptions;
+using TimeZoneConverter;
 
 namespace EkofyApp.Domain.Utils;
 public sealed class HelperMethod
@@ -19,7 +21,7 @@ public sealed class HelperMethod
         return ["128kbps", "256kbps", "320kbps"];
     }
 
-    #region UTC+7 Time Zone
+    #region Time Zone
     public static DateTime GetUtcPlus7Time()
     {
         #region Chỉ chạy được trên local nếu publish thì sẽ lỗi
@@ -45,6 +47,50 @@ public sealed class HelperMethod
         DateTime utcPlus7Now = DateTime.UtcNow.AddHours(7);
         // Return the DateOnly part of the UTC+7 time
         return DateOnly.FromDateTime(utcPlus7Now);
+    }
+
+    public static DateTimeOffset ConvertDateTimeToUtcPlus7TimeOffset(DateTime dateTime)
+    {
+        // IANA TimeZone (dùng chung cho mọi nền tảng)
+        string ianaTimeZone = "Asia/Ho_Chi_Minh";
+
+        // Chuyển đổi sang Windows TimeZone (dùng được cho cả Windows & Linux)
+        string windowsTimeZone = TZConvert.IanaToWindows(ianaTimeZone);
+
+        // Lấy TimeZoneInfo phù hợp
+        TimeZoneInfo tzi = TimeZoneInfo.FindSystemTimeZoneById(windowsTimeZone);
+
+        // Chuyển đổi UTC → Local time
+        return TimeZoneInfo.ConvertTimeFromUtc(dateTime, tzi);
+    }
+
+    public static DateTimeOffset GetUtcPlus7TimeOffset()
+    {
+        return DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7));
+    }
+
+    public static DateTimeOffset GetUtcTimeOffset(int hoursOffset)
+    {
+        // Tính toán thời gian với offset
+        return DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(hoursOffset));
+    }
+
+    public static DateTimeOffset GetServerTimeOffset()
+    {
+        // Lấy thời gian hiện tại của server (UTC+7)
+        return DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7));
+    }
+
+    /// <summary>
+    /// Dùng cho kiểm soát đầu vào time của dữ liệu từ bên ngoài
+    /// </summary>
+    /// <param name="dateTime"></param>
+    /// <returns></returns>
+    public static DateTimeOffset NormalizeToUtcPlus7TimeOffset(DateTimeOffset dateTime)
+    {
+        string tzId = TZConvert.IanaToWindows("Asia/Ho_Chi_Minh");
+        TimeZoneInfo tzInfo = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+        return TimeZoneInfo.ConvertTime(dateTime, tzInfo);
     }
     #endregion
 
@@ -205,20 +251,21 @@ public sealed class HelperMethod
     #endregion
 
     #region Calculate Identity Card Expiry
+    [Obsolete("Wrong data type (instead of DateTimeOffset).")]
     public static DateTime CalculateIdentityCardExpiry(DateTime dateOfBirth)
     {
         // Input phải là 7+ Time Zone
         if (dateOfBirth.Kind != DateTimeKind.Utc)
         {
-            throw new ArgumentException("Date of birth must be in UTC+7 time zone.");
+            throw new BadRequestCustomException("Date of birth must be in UTC+7 time zone.");
         }
 
-        DateTime now = GetUtcPlus7Time();
+        DateTime now = DateTime.UtcNow.AddHours(7);
 
         // Validate that the date of birth is in the past
         if (dateOfBirth > now)
         {
-            throw new ArgumentException("Date of birth must be in the past.");
+            throw new BadRequestCustomException("Date of birth must be in the past.");
         }
 
         int age = now.Year - dateOfBirth.Year;
@@ -238,12 +285,31 @@ public sealed class HelperMethod
     #endregion
 
     #region Calculate Age
+    [Obsolete("Use GetExactAge(DateTimeOffset) instead.")]
     public static int GetExactAge(DateTime birthDate)
     {
         DateTime today = GetUtcPlus7Time().Date;
 
         int age = today.Year - birthDate.Year;
         if (today < birthDate.AddYears(age))
+        {
+            age--;
+        }
+
+        return age;
+    }
+
+    public static int GetExactAge(DateTimeOffset birthDate)
+    {
+        // Chuyển ngày hiện tại về giờ VN (UTC+7)
+        DateTimeOffset today = DateTime.UtcNow.AddHours(7).Date;
+
+        // Chuyển ngày sinh về giờ UTC+7 để so sánh đúng (nếu cần)
+        DateTimeOffset birthLocal = birthDate.ToOffset(today.Offset).Date;
+
+        int age = today.Year - birthLocal.Year;
+
+        if (today < birthLocal.AddYears(age))
         {
             age--;
         }
@@ -258,7 +324,7 @@ public sealed class HelperMethod
     public static string RegexPatternAlphaWithSpace() => @"^[\p{L} ]+$";
     public static string RegexPatternAlphanumeric() => @"^[\p{L}0-9]+$";
     public static string RegexPatternAlphaNumericWithSpace() => @"^[\p{L}0-9 ]+$";
-    public static string RegexPatternAlphaNumericWithSpecific() => @"^[\p{L}0-9_- ]+$";
+    public static string RegexPatternAlphaNumericWithSpecific() => @"^[\p{L}0-9 ,./\-_]+$";
     public static string RegexPatternIdentityCardNumber() => @"^\d{9}|\d{12}$";
     #endregion
 }

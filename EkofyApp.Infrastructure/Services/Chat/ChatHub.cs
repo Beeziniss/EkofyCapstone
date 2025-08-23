@@ -62,7 +62,6 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                     {
                         Id = ObjectId.GenerateNewId().ToString(),
                         UserIds = [senderId, receiverId],
-                        CreatedAt = HelperMethod.GetUtcPlus7Time(),
                     };
                     await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(conversation);
                 }
@@ -76,7 +75,7 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                 SenderId = senderId,
                 ReceiverId = receiverId,
                 Text = text,
-                SentAt = HelperMethod.GetUtcPlus7Time(),
+                SentAt = HelperMethod.GetUtcPlus7TimeOffset(),
             };
 
             await _unitOfWork.GetCollection<Message>().InsertOneAsync(message);
@@ -90,7 +89,7 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                     SentAt = message.SentAt,
                     IsReadBy = [senderId]
                 })
-                .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7Time());
+                .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
             await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(
                 Builders<Conversation>.Filter.Eq(c => c.Id, conversationId),

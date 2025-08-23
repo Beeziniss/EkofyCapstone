@@ -1,11 +1,11 @@
 ﻿namespace EkofyApp.Application.Models.AudioFingerprints;
-public record AudioFingerprintResponse
+public sealed record AudioFingerprintResponse
 {
-    public List<byte[]> CompressedFingerprints { get; set; } = [];
-    public List<uint> SequenceNumbers { get; set; } = [];
-    public List<float> StartsAt { get; set; } = [];
-    public List<byte[]> OriginalPoints { get; set; } = [];
-    public double Duration { get; set; } // Duration in seconds
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public List<byte[]> CompressedFingerprints { get; init; } = [];
+    public List<uint> SequenceNumbers { get; init; } = [];
+    public List<float> StartsAt { get; init; } = [];
+    public List<byte[]> OriginalPoints { get; init; } = [];
+    public double Duration { get; init; } // Duration in seconds
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
 }

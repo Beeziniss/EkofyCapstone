@@ -19,6 +19,6 @@ public sealed class CreateEffectiveEntitlementRequestValidator : AbstractValidat
             .GreaterThan(0).WithMessage("Subscription Version must be greater than 0");
 
         RuleFor(x => x.ValidUntil)
-            .GreaterThanOrEqualTo(HelperMethod.GetUtcPlus7Time()).WithMessage("Expiration date must be in the future.");
+            .GreaterThanOrEqualTo(x => HelperMethod.NormalizeToUtcPlus7TimeOffset(x.ValidUntil)).WithMessage("Expiration date must be in the future.");
     }
 }

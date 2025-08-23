@@ -9,5 +9,6 @@ public interface IAmazonCloudFrontService
     string RefreshSignedUrl(string trackId, string oldToken, int expireMinutes = 5);
     Task<string> GetMasterPlaylistAsync(string trackId, string token);
     Task<string> GetBitratePlaylistAsync(string trackId, string bitrate, string token);
-    string GenerateSignedRedirect(string trackId, string bitrate, string segment, string token);
+    string GenerateStreamingSignedURL(string trackId, string bitrate, string segment, string token);
+    string GenerateOriginalSignedURL(string trackId);
 }

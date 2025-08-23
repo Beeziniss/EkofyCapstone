@@ -75,7 +75,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     {
         _amazonCloudFrontService.ValidateHlsToken(trackId, token);
 
-        string redirectUrl = _amazonCloudFrontService.GenerateSignedRedirect(trackId, bitrate, segment, token);
+        string redirectUrl = _amazonCloudFrontService.GenerateStreamingSignedURL(trackId, bitrate, segment, token);
         return Redirect(redirectUrl);
     }
 }

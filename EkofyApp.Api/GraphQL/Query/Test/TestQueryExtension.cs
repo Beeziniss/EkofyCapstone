@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Query.Test;
 
-public sealed class TestQueryEType : ObjectTypeExtension<TestQuery>
+public sealed class TestQueryExtension : ObjectTypeExtension<TestQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<TestQuery> descriptor)
     {

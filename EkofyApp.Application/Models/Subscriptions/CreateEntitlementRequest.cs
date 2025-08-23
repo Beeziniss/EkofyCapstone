@@ -9,5 +9,5 @@ public sealed record class CreateEntitlementRequest
 
     public EntitlementValueType ValueType { get; init; } // Type of the feature value, e.g., String, Number, Boolean
     public object? Value { get; init; } // Value of the feature, can be a string, number, or boolean depending on the feature type
-    public DateTime? ExpiredAt { get; init; } // Optional expiration date for the feature, if applicable
+    public DateTimeOffset? ExpiredAt { get; init; } // Optional expiration date for the feature, if applicable
 }

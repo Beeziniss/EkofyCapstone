@@ -24,8 +24,8 @@ public sealed class Message
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> DeletedFor { get; set; } = [];
 
-    public DateTime SentAt { get; set; }
+    public DateTimeOffset SentAt { get; set; }
 
     //[BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-    //public DateTime ExpireAt { get; set; } = DateTime.UtcNow.AddDays(30);
+    //public DateTimeOffset ExpireAt { get; set; } = DateTime.UtcNow.AddDays(30);
 }

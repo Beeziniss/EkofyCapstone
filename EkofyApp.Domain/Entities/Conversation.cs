@@ -1,8 +1,9 @@
-﻿using MongoDB.Bson;
+﻿using EkofyApp.Domain.Base;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Conversation
+public sealed class Conversation : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -14,10 +15,6 @@ public sealed class Conversation
     public LastMessage? LastMessage { get; set; }
 
     public List<DeletedForEntry> DeletedFor { get; set; } = []; // userId => true if deleted
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
 }
 
 public sealed class DeletedForEntry
@@ -35,7 +32,7 @@ public sealed class LastMessage
     [BsonRepresentation(BsonType.ObjectId)]
     public string SenderId { get; set; } = null!; // Unique identifier for the sender of the last message
 
-    public DateTime SentAt { get; set; }
+    public DateTimeOffset SentAt { get; set; }
 
     public List<string> IsReadBy { get; set; } = [];
 }

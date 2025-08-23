@@ -90,14 +90,15 @@ public sealed class FfmpegService : IFfmpegService
         catch
         {
             // Xoá thư mục tạm nếu có lỗi xảy ra
-            if (Directory.Exists(inputFolderTempPath))
-            {
-                Directory.Delete(inputFolderTempPath, true); // Xóa cả file bên trong
-            }
-            if (Directory.Exists(outputFolderTempPath))
-            {
-                Directory.Delete(outputFolderTempPath, true); // Xóa cả file bên trong
-            }
+            HelperMethod.DeleteBatchIO(inputFolderTempPath, outputFolderTempPath);
+            //if (Directory.Exists(inputFolderTempPath))
+            //{
+            //    Directory.Delete(inputFolderTempPath, true); // Xóa cả file bên trong
+            //}
+            //if (Directory.Exists(outputFolderTempPath))
+            //{
+            //    Directory.Delete(outputFolderTempPath, true); // Xóa cả file bên trong
+            //}
         }
 
         return new WavFileResponse()
@@ -127,7 +128,9 @@ public sealed class FfmpegService : IFfmpegService
             // Lấy thông tin âm thanh
             IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(inputFilePath);
             if (!mediaInfo.AudioStreams.Any())
+            {
                 throw new InvalidOperationException("Tệp âm thanh không chứa stream âm thanh hợp lệ.");
+            }
 
             IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault()
                 ?? throw new ArgumentNullException("Audio Stream is null");
@@ -143,10 +146,12 @@ public sealed class FfmpegService : IFfmpegService
         }
         catch
         {
-            if (Directory.Exists(outputFolderTempPath))
-            {
-                Directory.Delete(outputFolderTempPath, true);
-            }
+            // Xoá thư mục tạm nếu có lỗi xảy ra
+            HelperMethod.DeleteBatchIO(outputFolderTempPath);
+            //if (Directory.Exists(outputFolderTempPath))
+            //{
+            //    Directory.Delete(outputFolderTempPath, true);
+            //}
         }
 
         return new WavFileResponse()
@@ -235,34 +240,30 @@ public sealed class FfmpegService : IFfmpegService
             // Tạo master.m3u8 ở folder gốc (targetFolder)
             string masterFilePath = Path.Combine(targetRootFolder, $"{audioConvertPathOptions.TargetFolder}_master.m3u8");
             List<string> lines = ["#EXTM3U"];
-            foreach ((long bitrate, string relativePath) entry in playlistEntries.OrderBy(e => e.bitrate))
+            foreach ((long bitrate, string relativePath) in playlistEntries.OrderBy(e => e.bitrate))
             {
-                lines.Add($"#EXT-X-STREAM-INF:BANDWIDTH={entry.bitrate}");
-                lines.Add(entry.relativePath);
+                lines.Add($"#EXT-X-STREAM-INF:BANDWIDTH={bitrate}");
+                lines.Add(relativePath);
             }
 
             await File.WriteAllLinesAsync(masterFilePath, lines);
         }
         catch
         {
-            if (File.Exists(wavFileResponse.OutputWavPath))
-            {
-                File.Delete(wavFileResponse.OutputWavPath);
-            }
-
-            if (Directory.Exists(outputFolder))
-            {
-                Directory.Delete(outputFolder, true); // Xóa cả file bên trong
-            }
-        }
-        finally
-        {
-            //// Xóa file WAV input nếu tồn tại
             //if (File.Exists(wavFileResponse.OutputWavPath))
             //{
             //    File.Delete(wavFileResponse.OutputWavPath);
             //}
 
+            //if (Directory.Exists(outputFolder))
+            //{
+            //    Directory.Delete(outputFolder, true); // Xóa cả file bên trong
+            //}
+
+            HelperMethod.DeleteBatchIO(outputFolder, wavFileResponse.OutputWavPath);
+        }
+        finally
+        {
             //// Xóa folder key sau khi sử dụng
             //if (Directory.Exists(keyDirectory))
             //{

@@ -1,5 +1,7 @@
 ﻿
 
+using EkofyApp.Application.Models.Tracks;
+
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 public interface IRedisCacheService
 {
@@ -22,4 +24,5 @@ public interface IRedisCacheService
 
     [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
     Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
+    Task<ICacheResult<IEnumerable<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20);
 }

@@ -1,8 +1,8 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Api.GraphQL.Query.Users;
 
-public class UserQueryEType : ObjectTypeExtension<UserQuery>
+public class UserQueryExtension : ObjectTypeExtension<UserQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<UserQuery> descriptor)
     {

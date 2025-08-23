@@ -52,7 +52,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
                     new PlaylistTracksInfo
                     {
                         TrackId = addToPlaylistRequest.TrackId,
-                        AddedTime = HelperMethod.GetUtcPlus7Time(),
+                        AddedTime = HelperMethod.GetUtcPlus7TimeOffset(),
                     }
                 ]
             });
@@ -69,7 +69,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             .Push(x => x.TracksInfo, new PlaylistTracksInfo
             {
                 TrackId = addToPlaylistRequest.TrackId,
-                AddedTime = HelperMethod.GetUtcPlus7Time(),
+                AddedTime = HelperMethod.GetUtcPlus7TimeOffset(),
             });
         UpdateResult updateResult = await _unitOfWork.GetCollection<Playlist>()
             .UpdateOneAsync(x => x.Id == playlist.Id, updateDefinition);
@@ -94,7 +94,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
                     new PlaylistTracksInfo
                     {
                         TrackId = addToPlaylistRequest.TrackId,
-                        AddedTime = HelperMethod.GetUtcPlus7Time(),
+                        AddedTime = HelperMethod.GetUtcPlus7TimeOffset(),
                     }
                 ]
             });
@@ -111,7 +111,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             .Push(x => x.TracksInfo, new PlaylistTracksInfo
             {
                 TrackId = addToPlaylistRequest.TrackId,
-                AddedTime = HelperMethod.GetUtcPlus7Time(),
+                AddedTime = HelperMethod.GetUtcPlus7TimeOffset(),
             });
         UpdateResult updateResult = await _unitOfWork.GetCollection<Playlist>().UpdateOneAsync(x => x.Id == favoritePlaylist.Id, updateDefinition);
     }

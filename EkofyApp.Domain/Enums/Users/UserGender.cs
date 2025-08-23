@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace EkofyApp.Domain.Enums;
+namespace EkofyApp.Domain.Enums.Users;
 public enum UserGender
 {
     [EnumMember(Value = "Male")]
@@ -9,4 +9,6 @@ public enum UserGender
     Female,
     [EnumMember(Value = "Other")]
     Other,
+    [EnumMember(Value = "NotSpecified")]
+    NotSpecified
 }

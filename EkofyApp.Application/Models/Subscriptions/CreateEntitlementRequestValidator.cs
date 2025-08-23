@@ -34,7 +34,7 @@ public sealed class CreateEntitlementRequestValidator : AbstractValidator<Create
             .WithMessage("Value cannot be null for non-boolean feature types.");
 
         RuleFor(x => x.ExpiredAt)
-            .GreaterThan(HelperMethod.GetUtcPlus7Time()).When(x => x.ExpiredAt.HasValue)
+            .GreaterThan(HelperMethod.GetUtcPlus7TimeOffset()).When(x => x.ExpiredAt.HasValue)
             .WithMessage("Expiration date must be in the future.");
     }
 }

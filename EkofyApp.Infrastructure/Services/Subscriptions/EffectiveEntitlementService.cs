@@ -2,7 +2,7 @@
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Domain.Entities;
-using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
@@ -32,7 +32,7 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork, IHttpCon
             SubscriptionId = createEffectiveEntitlementRequest.SubscriptionId, // Initially no subscription
             SubscriptionCode = createEffectiveEntitlementRequest.SubscriptionCode,
             SubscriptionVersion = createEffectiveEntitlementRequest.SubscriptionVersion,
-            FeatureCodes = createEffectiveEntitlementRequest.FeatureCodes, // No features initially
+            EntitlementCodes = createEffectiveEntitlementRequest.FeatureCodes, // No features initially
             ValidUntil = createEffectiveEntitlementRequest.ValidUntil // Set to current time, will be updated later
         });
     }
@@ -56,7 +56,7 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork, IHttpCon
                 .FirstOrDefaultAsync();
 
             // TODO: Có nên để user Free Tier có EffectiveEntitlement không?
-            // Và nếu có thì nên để FeatureCodes là empty
+            // Và nếu có thì nên để EntitlementCodes là empty
             // Nếu không có subscription thì xóa EffectiveEntitlement cũ
             if (userSubscription == null)
             {
@@ -74,7 +74,7 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork, IHttpCon
                 SubscriptionId = subscription.Id,
                 SubscriptionCode = subscription.Code,
                 SubscriptionVersion = subscription.Version,
-                FeatureCodes = subscription.Entitlements.Select(s => s.Code).ToList(),
+                EntitlementCodes = subscription.Entitlements.Select(s => s.Code).ToList(),
                 ValidUntil = userSubscription.PeriodEnd
             };
 

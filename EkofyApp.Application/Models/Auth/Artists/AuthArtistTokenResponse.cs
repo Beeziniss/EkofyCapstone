@@ -1,4 +1,4 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Application.Models.Auth.Artists;
 public sealed record class AuthArtistTokenResponse

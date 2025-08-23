@@ -1,5 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -13,17 +13,24 @@ public sealed class User : Auditable, IEntityCustom
     public string? PasswordHash { get; set; } // If null that means the user log in with Google or Facebook
 
     public UserGender Gender { get; set; }
-    [BsonRepresentation(BsonType.String)]
-    public DateTime BirthDate { get; set; }
+    public DateTimeOffset BirthDate { get; set; }
     public UserRole Role { get; set; } // "Listener","Artist","Admin","Moderator"
 
     public UserStatus Status { get; set; } = UserStatus.Inactive; // Default status is Inactive
     public bool IsLinkedWithGoogle { get; set; }
 
     public string? RefreshToken { get; set; }
-    public DateTime? RefreshTokenExpiryTime { get; set; }
+    public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
 
     public string? FCMToken { get; set; } // Firebase Cloud Messaging token for push notifications
 
-    public DateTime? LastLoginAt { get; set; }
+    public DateTimeOffset? LastLoginAt { get; set; }
+
+    // TODO: Giả định nếu user không muốn dùng app để nghe nhạc
+    // Mà chỉ muốn dùng app để mua gói của nghệ sĩ để yêu cầu nghệ sĩ viết / sáng tác / remix / ... thì sao
+    // Thì có thể không cần có các thông tin liên quan đến listeners
+    // Resolved: Chả ảnh hưởng vì thông tin của listner phần lớn là từ user
+    // Chỉ cần đăng ký tài khoản là mặc định có thể trở thành listener
+    // Mà không cần phải có thông tin gì đặc biệt cả
+    // Bàng cách này có thể giải quyết được là user đó vừa có thể nghe nhạc vừa có thể mua gói của nghệ sĩ
 }

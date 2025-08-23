@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums.Subcriptions;
-public enum SubcriptionCycle
+public enum SubscriptionCycle
 {
     [EnumMember(Value = "Weekly")]
     Weekly,

@@ -6,5 +6,5 @@ public sealed class PlaylistTracksInfo
 {
     [BsonRepresentation(BsonType.ObjectId)]
     public string TrackId { get; set; } = null!;
-    public DateTime AddedTime { get; set; }
+    public DateTimeOffset AddedTime { get; set; }
 }

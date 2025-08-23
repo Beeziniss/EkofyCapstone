@@ -1,12 +1,12 @@
 ﻿using EkofyApp.Domain.Entities;
 
-namespace EkofyApp.Api.GraphQL.Query.Tracks;
+namespace EkofyApp.Api.GraphQL.EntityTypeExtension;
 
-public class TrackEType : ObjectTypeExtension<Track>
+public class TrackObjectExtension : ObjectTypeExtension<Track>
 {
     protected override void Configure(IObjectTypeDescriptor<Track> descriptor)
     {
-        //descriptor.Field(x => x.ArtistId).IsProjected(true); 
+        //descriptor.Field(x => x.MainArtistIds).IsProjected(true); 
 
         descriptor.Field(x => x.AudioFeature).Ignore();
         descriptor.Field(x => x.AudioFingerprint).Ignore();
@@ -25,7 +25,7 @@ public class TrackEType : ObjectTypeExtension<Track>
         //        var artistDataLoader = context.Service<DataLoaderCustomOneToOne<Artist>>();
         //        var mapper = context.Service<IMapper>();
 
-        //        var artist = await artistDataLoader.LoadAsync(track.ArtistId, context.RequestAborted);
+        //        var artist = await artistDataLoader.LoadAsync(track.MainArtistIds, context.RequestAborted);
         //        return mapper.Map<ArtistResponse>(artist);
         //    });
     }

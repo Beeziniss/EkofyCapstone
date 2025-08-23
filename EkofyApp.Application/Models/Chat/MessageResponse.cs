@@ -1,10 +1,10 @@
 ﻿namespace EkofyApp.Application.Models.Chat;
-public record MessageResponse
+public sealed record MessageResponse
 {
-    public string Id { get; set; }
-    public string SenderId { get; set; }
-    public string Text { get; set; }
-    public DateTime SentAt { get; set; }
-    public bool IsRead { get; set; }
-    public bool IsDeleted { get; set; } // nếu cần hiển thị "Đã thu hồi"
+    public string Id { get; init; }
+    public string SenderId { get; init; }
+    public string Text { get; init; }
+    public DateTimeOffset SentAt { get; init; }
+    public bool IsRead { get; init; }
+    public bool IsDeleted { get; init; } // nếu cần hiển thị "Đã thu hồi"
 }

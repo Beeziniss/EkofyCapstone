@@ -6,6 +6,7 @@ public interface IPlaylistService
 {
     Task AddToFavoriteAsync(AddToPlaylistRequest addToPlaylistRequest);
     Task AddToPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest);
+    Task CreatePlaylistAsync(CreatePlaylistRequest createPlaylistRequest);
     Task DeletePlaylistAsync(string playlistId);
     IQueryable<Playlist> GetPlaylistsQueryable();
     Task RemoveFromPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest);

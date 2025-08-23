@@ -1,4 +1,4 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Enums.Users;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -17,5 +17,5 @@ public sealed class Follows : IEntityCustom
     public string FollowedId { get; set; } = null!; // Unique identifier for the user being followed
     public UserRole FollowedType { get; set; } // Type of the followed entity, e.g., "artist", "podcast", etc.
 
-    public DateTime CreatedAt { get; set; } // Timestamp when the follow relationship was created
+    public DateTimeOffset CreatedAt { get; set; } // Timestamp when the follow relationship was created
 }

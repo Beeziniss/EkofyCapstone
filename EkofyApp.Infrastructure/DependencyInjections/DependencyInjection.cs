@@ -20,9 +20,13 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Artist;
+using EkofyApp.Domain.Enums.Subcriptions;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
+using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
@@ -97,20 +101,29 @@ public static class DependencyInjection
 
     public static void AddRedis(this IServiceCollection services)
     {
-        string redisHost = Environment.GetEnvironmentVariable("REDIS_PUBLIC_ENDPOINT") ?? throw new Exception("REDIS_PUBLIC_ENDPOINT is not set in the environment");
+        string publicEndpoint = Environment.GetEnvironmentVariable("REDIS_PUBLIC_ENDPOINT") ?? throw new Exception("REDIS_PUBLIC_ENDPOINT is not set in the environment");
 
-        string redisUser = Environment.GetEnvironmentVariable("REDIS_USERNAME") ?? throw new UnconfiguredEnvironmentCustomException("REDIS_USERNAME is not set in the environment");
+        string username = Environment.GetEnvironmentVariable("REDIS_USERNAME") ?? throw new UnconfiguredEnvironmentCustomException("REDIS_USERNAME is not set in the environment");
 
-        string redisPassword = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? throw new Exception("REDIS_PASSWORD is not set in the environment");
+        string password = Environment.GetEnvironmentVariable("REDIS_PASSWORD") ?? throw new Exception("REDIS_PASSWORD is not set in the environment");
+
+        RedisSetting redisSetting = new()
+        {
+            ConnectionStringNoSSL = $"rediss://{username}:{password}@{publicEndpoint}",
+            ConnectionStringSSL = $"rediss://{username}:{password}@{publicEndpoint}",
+            PublicEndpoint = publicEndpoint,
+            Username = username,
+            Password = password
+        };
 
         ConfigurationOptions options;
         if (HelperMethod.IsWindows())
         {
             options = new()
             {
-                EndPoints = { redisHost },
-                User = redisUser,
-                Password = redisPassword,
+                EndPoints = { publicEndpoint },
+                User = username,
+                Password = password,
                 Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
                 AbortOnConnectFail = false
             };
@@ -119,9 +132,9 @@ public static class DependencyInjection
         {
             options = new()
             {
-                EndPoints = { redisHost },
-                User = redisUser,
-                Password = redisPassword,
+                EndPoints = { publicEndpoint },
+                User = username,
+                Password = password,
                 Ssl = true, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
                 AbortOnConnectFail = false
             };
@@ -145,6 +158,7 @@ public static class DependencyInjection
             return multiplexer.GetDatabase();
         });
 
+        services.AddSingleton(redisSetting);
         services.AddScoped<IRedisCacheService, RedisCacheService>();
     }
 
@@ -482,7 +496,10 @@ public static class DependencyInjection
             Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? throw new UnconfiguredEnvironmentCustomException("Region is not set in environment"),
             CloudFrontDomainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new UnconfiguredEnvironmentCustomException("CloudFrontDomainUrl is not set in environment"),
             CloudFrontDistributionId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DISTRIBUTION_ID") ?? throw new UnconfiguredEnvironmentCustomException("CloudFrontDistributionId is not set in environment"),
-            KeyPairId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_KEY_PAIR_ID") ?? throw new UnconfiguredEnvironmentCustomException("KeyPairId is not set in environment")
+            KeyPairId = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_KEY_PAIR_ID") ?? throw new UnconfiguredEnvironmentCustomException("KeyPairId is not set in environment"),
+            ResourcePrefixStreaming = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_STREAMING") ?? throw new UnconfiguredEnvironmentCustomException("ResourcePrefixStreaming is not set in environment"),
+            ResourcePrefixOriginal = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY_ORIGINAL") ?? throw new UnconfiguredEnvironmentCustomException("ResourcePrefixOriginal is not set in environment"),
+            ResourcePrefixTesting = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY_TESTING") ?? throw new UnconfiguredEnvironmentCustomException("ResourcePrefixTesting is not set in environment"),
         };
 
         // Register the AWSSetting with DI
@@ -499,29 +516,45 @@ public static class DependencyInjection
         // Category
         BsonSerializer.RegisterSerializer(typeof(CategoryType), new EnumMemberSerializer<CategoryType>());
 
-        //// User
+        // User
         //BsonSerializer.RegisterSerializer(typeof(UserProduct), new EnumMemberSerializer<UserProduct>());
         BsonSerializer.RegisterSerializer(typeof(UserRole), new EnumMemberSerializer<UserRole>());
         BsonSerializer.RegisterSerializer(typeof(UserStatus), new EnumMemberSerializer<UserStatus>());
         BsonSerializer.RegisterSerializer(typeof(UserGender), new EnumMemberSerializer<UserGender>());
 
-        //// Tracks
+        // Artist
+        BsonSerializer.RegisterSerializer(typeof(ArtistType), new EnumMemberSerializer<ArtistType>());
+        BsonSerializer.RegisterSerializer(typeof(ArtistRole), new EnumMemberSerializer<ArtistRole>());
+
+        // Tracks
         //BsonSerializer.RegisterSerializer(typeof(PlaylistName), new EnumMemberSerializer<PlaylistName>());
         //BsonSerializer.RegisterSerializer(typeof(RestrictionReason), new EnumMemberSerializer<RestrictionReason>());
-        //BsonSerializer.RegisterSerializer(typeof(Mood), new EnumMemberSerializer<Mood>());
+        BsonSerializer.RegisterSerializer(typeof(MoodType), new EnumMemberSerializer<MoodType>());
 
-        //// Cloudinary
+        // Cloudinary
         //BsonSerializer.RegisterSerializer(typeof(AudioTagChild), new EnumMemberSerializer<AudioTagChild>());
         //BsonSerializer.RegisterSerializer(typeof(AudioTagParent), new EnumMemberSerializer<AudioTagParent>());
         //BsonSerializer.RegisterSerializer(typeof(ImageTag), new EnumMemberSerializer<ImageTag>());
 
-        //// Album
-        //BsonSerializer.RegisterSerializer(typeof(ReleaseStatus), new EnumMemberSerializer<ReleaseStatus>());
+        // Album
+        BsonSerializer.RegisterSerializer(typeof(AlbumType), new EnumMemberSerializer<AlbumType>());
 
-        //// Reccomendation
+        // Release
+        BsonSerializer.RegisterSerializer(typeof(ReleaseStatus), new EnumMemberSerializer<ReleaseStatus>());
+
+        // Reccomendation
         //BsonSerializer.RegisterSerializer(typeof(Algorithm), new EnumMemberSerializer<Algorithm>());
+
+        // Document
+        BsonSerializer.RegisterSerializer(typeof(DocumentType), new EnumMemberSerializer<DocumentType>());
+
+        // Subscription
+        BsonSerializer.RegisterSerializer(typeof(SubscriptionTier), new EnumMemberSerializer<SubscriptionTier>());
+        BsonSerializer.RegisterSerializer(typeof(SubscriptionStatus), new EnumMemberSerializer<SubscriptionStatus>());
+        BsonSerializer.RegisterSerializer(typeof(SubscriptionCycle), new EnumMemberSerializer<SubscriptionCycle>());
 
         // Common
         BsonSerializer.RegisterSerializer(typeof(EntitlementValueType), new EnumMemberSerializer<EntitlementValueType>());
+        BsonSerializer.RegisterSerializer(typeof(RestrictionType), new EnumMemberSerializer<RestrictionType>());
     }
 }

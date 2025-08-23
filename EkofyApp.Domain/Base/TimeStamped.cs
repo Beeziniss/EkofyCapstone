@@ -3,7 +3,7 @@
 namespace EkofyApp.Domain.Base;
 public abstract class TimeStamped
 {
-    public DateTime CreatedAt { get; set; } = HelperMethod.GetUtcPlus7Time();
-    public DateTime? UpdatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = HelperMethod.GetUtcPlus7TimeOffset();
+    public DateTimeOffset? UpdatedAt { get; set; }
 }
 

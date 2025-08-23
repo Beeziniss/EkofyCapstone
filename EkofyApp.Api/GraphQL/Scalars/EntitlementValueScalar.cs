@@ -23,19 +23,30 @@ public sealed class EntitlementValueScalar : ScalarType<object>
             case BooleanValueNode bv: return bv.Value;
 
             case IntValueNode iv:
-                if (long.TryParse(iv.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
-                    return (l <= int.MaxValue && l >= int.MinValue) ? (object)(int)l : l;
+                {
+                    if (long.TryParse(iv.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
+                        return (l <= int.MaxValue && l >= int.MinValue) ? (object)(int)l : l;
+                }
                 throw new SerializationException("Invalid integer value.", this);
 
             case FloatValueNode fv:
-                if (decimal.TryParse(fv.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var dec)) return dec;
-                if (double.TryParse(fv.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var dbl)) return dbl;
+                {
+                    if (decimal.TryParse(fv.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var dec))
+                        return dec;
+                }
+                {
+                    if (double.TryParse(fv.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var dbl))
+                        return dbl;
+                }
                 throw new SerializationException("Invalid floating-point value.", this);
 
             case ListValueNode list:
                 {
                     var arr = new List<object?>();
-                    foreach (var item in list.Items) arr.Add(ParseLiteral(item));
+                    foreach (var item in list.Items)
+                    {
+                        arr.Add(ParseLiteral(item));
+                    }
                     return arr;
                 }
 
@@ -68,24 +79,36 @@ public sealed class EntitlementValueScalar : ScalarType<object>
 
             case IEnumerable en when runtimeValue is not string:
                 {
-                    var items = new List<IValueNode>();
-                    foreach (var it in en) items.Add(ParseValue(it));
+                    List<IValueNode> items = [];
+                    foreach (object? it in en)
+                    {
+                        items.Add(ParseValue(it));
+                    }
+
                     return new ListValueNode(items);
                 }
 
             case IDictionary<string, object?> dict:
                 {
-                    var fields = new List<ObjectFieldNode>();
-                    foreach (var kv in dict) fields.Add(new ObjectFieldNode(kv.Key, ParseValue(kv.Value)));
+                    List<ObjectFieldNode> fields = [];
+                    foreach (KeyValuePair<string, object?> kv in dict)
+                    {
+                        fields.Add(new ObjectFieldNode(kv.Key, ParseValue(kv.Value)));
+                    }
+
                     return new ObjectValueNode(fields);
                 }
 
             default:
                 {
                     // POCO -> object value
-                    var props = runtimeValue.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
-                    var fields = new List<ObjectFieldNode>();
-                    foreach (var p in props) fields.Add(new ObjectFieldNode(p.Name, ParseValue(p.GetValue(runtimeValue))));
+                    PropertyInfo[] props = runtimeValue.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+                    List<ObjectFieldNode> fields = [];
+                    foreach (PropertyInfo p in props)
+                    {
+                        fields.Add(new ObjectFieldNode(p.Name, ParseValue(p.GetValue(runtimeValue))));
+                    }
+
                     return new ObjectValueNode(fields);
                 }
         }
@@ -95,8 +118,14 @@ public sealed class EntitlementValueScalar : ScalarType<object>
 
     public override bool TrySerialize(object? runtimeValue, out object? resultValue)
     {
-        try { resultValue = MakeJsonFriendly(runtimeValue); return true; }
-        catch { resultValue = null; return false; }
+        try
+        {
+            resultValue = MakeJsonFriendly(runtimeValue); return true;
+        }
+        catch
+        {
+            resultValue = null; return false;
+        }
     }
 
     public override bool TryDeserialize(object? resultValue, out object? runtimeValue)
@@ -112,33 +141,49 @@ public sealed class EntitlementValueScalar : ScalarType<object>
 
     public override bool IsInstanceOfType(object? value) =>
         value is null or string or bool or int or long or double or decimal or float
-        or DateTime or DateTimeOffset
         or IEnumerable or IDictionary<string, object?> or JsonElement;
 
     private static object? MakeJsonFriendly(object? v)
     {
-        if (v is null) return null;
-        if (v is string or bool or int or long or double or decimal or float) return v;
-        if (v is DateTime dt) return dt.ToUniversalTime().ToString("o");
-        if (v is DateTimeOffset dto) return dto.UtcDateTime.ToString("o");
+        if (v is null)
+        {
+            return null;
+        }
+
+        if (v is string or bool or int or long or double or decimal or float)
+        {
+            return v;
+        }
 
         if (v is IEnumerable en && v is not string)
         {
-            var list = new List<object?>();
-            foreach (var item in en) list.Add(MakeJsonFriendly(item));
+            List<object?> list = [];
+            foreach (object? item in en)
+            {
+                list.Add(MakeJsonFriendly(item));
+            }
+
             return list;
         }
 
         if (v is IDictionary<string, object?> dict)
         {
-            var map = new Dictionary<string, object?>(StringComparer.Ordinal);
-            foreach (var kv in dict) map[kv.Key] = MakeJsonFriendly(kv.Value);
+            Dictionary<string, object?> map = new(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, object?> kv in dict)
+            {
+                map[kv.Key] = MakeJsonFriendly(kv.Value);
+            }
+
             return map;
         }
 
-        var props = v.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
-        var d = new Dictionary<string, object?>(StringComparer.Ordinal);
-        foreach (var p in props) d[p.Name] = MakeJsonFriendly(p.GetValue(v));
+        PropertyInfo[] props = v.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        Dictionary<string, object?> d = new(StringComparer.Ordinal);
+        foreach (PropertyInfo p in props)
+        {
+            d[p.Name] = MakeJsonFriendly(p.GetValue(v));
+        }
+
         return d;
     }
 
@@ -147,7 +192,7 @@ public sealed class EntitlementValueScalar : ScalarType<object>
         return je.ValueKind switch
         {
             JsonValueKind.Null => null,
-            JsonValueKind.String => je.TryGetDateTime(out var dt) ? dt : je.GetString(),
+            JsonValueKind.String => je.GetString(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             JsonValueKind.Number => je.TryGetInt64(out var l) ? l :
@@ -160,15 +205,23 @@ public sealed class EntitlementValueScalar : ScalarType<object>
 
         static List<object?> ToList(JsonElement a)
         {
-            var list = new List<object?>();
-            foreach (var el in a.EnumerateArray()) list.Add(JsonToObject(el));
+            List<object?> list = [];
+            foreach (JsonElement el in a.EnumerateArray())
+            {
+                list.Add(JsonToObject(el));
+            }
+
             return list;
         }
 
         static Dictionary<string, object?> ToDict(JsonElement o)
         {
-            var d = new Dictionary<string, object?>(StringComparer.Ordinal);
-            foreach (var prop in o.EnumerateObject()) d[prop.Name] = JsonToObject(prop.Value);
+            Dictionary<string, object?> d = new(StringComparer.Ordinal);
+            foreach (JsonProperty prop in o.EnumerateObject())
+            {
+                d[prop.Name] = JsonToObject(prop.Value);
+            }
+
             return d;
         }
     }

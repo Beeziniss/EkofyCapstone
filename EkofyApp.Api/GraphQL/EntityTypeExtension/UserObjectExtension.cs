@@ -1,8 +1,8 @@
 ﻿using EkofyApp.Domain.Entities;
 
-namespace EkofyApp.Api.GraphQL.Query.Users;
+namespace EkofyApp.Api.GraphQL.EntityTypeExtension;
 
-public sealed class UserEType : ObjectTypeExtension<User>
+public sealed class UserObjectExtension : ObjectTypeExtension<User>
 {
     protected override void Configure(IObjectTypeDescriptor<User> descriptor)
     {

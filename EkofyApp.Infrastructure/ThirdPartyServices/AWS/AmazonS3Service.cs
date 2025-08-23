@@ -5,6 +5,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
+using System.Linq;
 using System.Net;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.AWS;
@@ -43,7 +44,41 @@ public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) 
         await processStream(response.ResponseStream); // Tự Dispose sau khi callback xong
     }
 
-    public async Task UploadFileAsync(Stream audioStream, string trackId)
+    public async Task RemoveTagAsync(string trackId, List<KeyTag> keyTags)
+    {
+        string bucket = _aWSSettings.BucketName;
+        string key = $"original-audio/{trackId}";
+
+        // Lấy tag hiện tại
+        GetObjectTaggingRequest taggingRequest = new()
+        {
+            BucketName = bucket,
+            Key = key
+        };
+
+        GetObjectTaggingResponse taggingResponse = await _s3Client.GetObjectTaggingAsync(taggingRequest);
+
+        // Xóa tags theo keyTags
+        List<Tag> updatedTags = taggingResponse.Tagging
+            .Where(x => !keyTags.Contains(Enum.Parse<KeyTag>(x.Key)))
+            .ToList();
+
+        // Gửi lại các tag mới
+        PutObjectTaggingRequest putTagRequest = new()
+        {
+            BucketName = bucket,
+            Key = key,
+
+            Tagging = new Tagging
+            {
+                TagSet = updatedTags
+            }
+        };
+
+        await _s3Client.PutObjectTaggingAsync(putTagRequest);
+    }
+
+    public async Task UploadOriginalAudioAsync (Stream audioStream, string trackId, bool isAutoDelete = true)
     {
         string bucket = _aWSSettings.BucketName;
         string key = $"original-audio/{trackId}";
@@ -53,7 +88,12 @@ public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) 
             InputStream = audioStream,
             BucketName = bucket,
             Key = key,
-            ContentType = "audio/mpeg"
+            ContentType = "audio/mpeg",
+            TagSet =
+            [
+                isAutoDelete ? new Tag { Key = "delete", Value = "true" } : null
+            ]
+
         };
 
         // Đặt điều kiện: chỉ upload nếu object không tồn tại
@@ -116,5 +156,26 @@ public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) 
         }
 
         return;
+    }
+
+    public async Task DeleteOriginalAudioAsync(string trackId)
+    {
+        string bucket = _aWSSettings.BucketName;
+        string key = $"original-audio/{trackId}";
+
+        DeleteObjectRequest deleteRequest = new()
+        {
+            BucketName = bucket,
+            Key = key
+        };
+
+        try
+        {
+            await _s3Client.DeleteObjectAsync(deleteRequest);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new NotFoundCustomException("File not found in S3");
+        }
     }
 }

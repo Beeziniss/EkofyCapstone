@@ -1,4 +1,4 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Application.Models.Auth.Listeners;
 public sealed record class AuthListenerTokenResponse

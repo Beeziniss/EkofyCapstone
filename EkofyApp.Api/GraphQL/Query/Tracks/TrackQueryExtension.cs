@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
-public class TrackQueryEType : ObjectTypeExtension<TrackQuery>
+public class TrackQueryExtension : ObjectTypeExtension<TrackQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<TrackQuery> descriptor)
     {

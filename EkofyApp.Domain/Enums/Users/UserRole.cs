@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace EkofyApp.Domain.Enums;
+namespace EkofyApp.Domain.Enums.Users;
 public enum UserRole
 {
     [EnumMember(Value = "Admin")]

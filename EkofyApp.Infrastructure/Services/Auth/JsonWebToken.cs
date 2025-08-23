@@ -15,15 +15,15 @@ public sealed class JsonWebToken : IJsonWebToken
         int expiresInDays = 30; //set default expire time is 7 days
 
         //get secret key from appsettings.json
-        var secretKey = Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new Exception("JWT's Secret Mode property is not set in environment or not found");
+        string secretKey = Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new Exception("JWT's Secret Mode property is not set in environment or not found");
 
         //convert secret key to byte array
-        var symmetricKey = Encoding.UTF8.GetBytes(secretKey);
+        byte[] symmetricKey = Encoding.UTF8.GetBytes(secretKey);
 
         //create token with JwtSecurityTokenHandler
-        var tokenHandler = new JwtSecurityTokenHandler();
+        JwtSecurityTokenHandler tokenHandler = new();
 
-        var tokenDescriptor = new JwtSecurityToken(
+        JwtSecurityToken tokenDescriptor = new(
             //issuer: "https://localhost:7018", //set issuer is localhost
 
             //audience: "https://localhost:7018", //set audience is localhost
@@ -37,7 +37,7 @@ public sealed class JsonWebToken : IJsonWebToken
                                 SecurityAlgorithms.HmacSha256Signature) //use HmacSha256Signature algorithm to sign token
         );
         //write token with tokenDescriptor above
-        var token = tokenHandler.WriteToken(tokenDescriptor);
+        string token = tokenHandler.WriteToken(tokenDescriptor);
         return token;
     }
 
@@ -66,10 +66,10 @@ public sealed class JsonWebToken : IJsonWebToken
 
     public JwtSecurityToken DecodeToken(string token)
     {
-        var tokenHandler = new JwtSecurityTokenHandler();
+        JwtSecurityTokenHandler tokenHandler = new();
 
         // Giải mã token JWT mà không cần xác thực
-        var decodedToken = tokenHandler.ReadJwtToken(token);
+        JwtSecurityToken decodedToken = tokenHandler.ReadJwtToken(token);
         return decodedToken;
     }
 }

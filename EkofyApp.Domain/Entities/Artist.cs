@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Domain.Base;
 using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums.Artist;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -14,6 +15,9 @@ public sealed class Artist : TimeStamped, IEntityCustom
     public string Name { get; set; } = null!; // Name of the artist, e.g., "John Doe"
     public string Email { get; set; } = null!; // Email of the artist, e.g., "
 
+    public ArtistType ArtistType { get; set; } // Type of artist, e.g., Individual, Band, etc.
+    public List<ArtistMember> Members { get; set; } = []; // List of members in the artist group, if applicable
+
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> CategoryIds { get; set; } = []; // Genre of the artist, e.g., "Pop", "Rock", etc.
 
@@ -24,9 +28,13 @@ public sealed class Artist : TimeStamped, IEntityCustom
     public string? BannerImage { get; set; } // URL to the artist's banner image
 
     public bool IsVerified { get; set; } = false; // Indicates if the artist is verified (Sound Better platform)
-    public DateTime? VerifiedAt { get; set; } // Date when the artist was verified
+    public DateTimeOffset? VerifiedAt { get; set; } // Date when the artist was verified
 
+    // TODO: Sẽ thêm các vấn đề liên quan đến bản quyền, hợp đồng, v.v. sau
+    // Có liên quan đến CCCD của nghệ sĩ, có thể là một đối tượng riêng biệt hoặc nhúng vào đây
+    // Resolve the legal documents and restrictions for the artist
     public IdentityCard IdentityCard { get; set; } = null!;
+    public List<LegalDocument> LegalDocuments { get; set; } = []; // List of legal documents associated with the artist, e.g., contracts, agreements, etc.
 
     public Restriction Restriction { get; set; } = null!;
 }

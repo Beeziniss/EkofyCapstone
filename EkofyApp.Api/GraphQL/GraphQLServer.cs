@@ -18,6 +18,9 @@ public static class GraphQLServer
             .AddErrorFilter<GraphQLExceptionFilter>()
             .AddAuthorization()
 
+            // Validation
+            .AddFairyBread()
+
             // Disable introspection
             .DisableIntrospection(false)
 
@@ -54,9 +57,10 @@ public static class GraphQLServer
             .AddMutationType<MutationInitialization>()
             .AddTypes()
 
-            // Custom scalars
+            // Default Scalar Types
             .AddType<UploadType>()
-            //.AddType(new UInt32Type())
+
+            // Custom Scalar Types
             .AddType<UInt32Type>()
             .AddType<EntitlementValueScalar>()
             .BindRuntimeType<uint, UInt32Type>();

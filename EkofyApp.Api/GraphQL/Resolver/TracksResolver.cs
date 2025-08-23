@@ -13,7 +13,7 @@ public sealed class TracksResolver
         DataLoaderCustomOneToOne<Artist> artistByIdDataLoader,
         CancellationToken cancellationToken)
     {
-        return await artistByIdDataLoader.LoadAsync(track.ArtistId, cancellationToken) ?? [];
+        return await artistByIdDataLoader.LoadAsync(track.MainArtistIds, cancellationToken) ?? [];
     }
 
     public async Task<IEnumerable<Category?>> GetCategoryAsync(

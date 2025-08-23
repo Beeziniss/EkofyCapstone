@@ -5,7 +5,7 @@ namespace EkofyApp.Domain.Base;
 public abstract class Auditable : TimeStamped
 {
     [BsonRepresentation(BsonType.ObjectId)]
-    public string? CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = null!;
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string? UpdatedBy { get; set; }

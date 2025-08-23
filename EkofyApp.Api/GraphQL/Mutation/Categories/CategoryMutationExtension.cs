@@ -1,6 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.Mutation.Categories;
 
-public class CategoryMutationEType : ObjectTypeExtension<CategoryMutation>
+public class CategoryMutationExtension : ObjectTypeExtension<CategoryMutation>
 {
     protected override void Configure(IObjectTypeDescriptor<CategoryMutation> descriptor)
     {

@@ -1,4 +1,4 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Enums.Users;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -15,18 +15,18 @@ public sealed class UserProjection
 
     public UserGender Gender { get; set; }
     [BsonRepresentation(BsonType.String)]
-    public DateTime BirthDate { get; set; }
+    public DateTimeOffset BirthDate { get; set; }
     public UserRole Role { get; set; } // "Listener","Artist","Admin","Moderator"
 
     public UserStatus Status { get; set; } = UserStatus.Inactive; // Default status is Inactive
     public bool IsLinkedWithGoogle { get; set; }
 
     public string? RefreshToken { get; set; }
-    public DateTime? RefreshTokenExpiryTime { get; set; }
+    public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
 
     public string? FCMToken { get; set; } // Firebase Cloud Messaging token for push notifications
 
-    public DateTime? LastLoginAt { get; set; }
+    public DateTimeOffset? LastLoginAt { get; set; }
 
     public ListenerProjection? ListenerProjection { get; set; } = default!; // Projection for Listener details
     public ArtistProjection? ArtistProjection { get; set; } = default!; // Projection for Artist details

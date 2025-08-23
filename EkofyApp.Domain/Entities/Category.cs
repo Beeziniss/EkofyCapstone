@@ -1,8 +1,9 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Category : IEntityCustom
+public sealed class Category : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
@@ -17,6 +18,4 @@ public sealed class Category : IEntityCustom
 
     public string? Description { get; set; }
     public bool IsVisible { get; set; } = true; // Indicates if the category is visible to users
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
 }

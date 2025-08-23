@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Wavs;
+﻿using EkofyApp.Application.Models.AudioFingerprints;
+using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.EmbeddedDocuments;
@@ -38,7 +39,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
             StartsAt = hashes.Audio.Select(h => h.StartsAt).ToList(),
             OriginalPoints = hashes.Audio.Select(h => h.OriginalPoint).ToList(),
             Duration = hashes.Audio.DurationInSeconds,
-            CreatedAt = HelperMethod.GetUtcPlus7Time(),
+            CreatedAt = HelperMethod.GetUtcPlus7TimeOffset(),
             UpdatedAt = null
         };
 
@@ -46,10 +47,11 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
     }
 
     #region Sequantial Query
-    public async Task<double> GetMatchConfidenceScore(WavFileResponse wavFileResponse)
+    public async Task<AudioFingerprintResult> GetMatchConfidenceScore(WavFileResponse wavFileResponse)
     {
         SoundFingerprintingAudioService audioService = new();
         double bestConfidence = 0;
+        TrackInfo bestMatchTrack = null!;
 
         try
         {
@@ -60,27 +62,37 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
                 .UsingServices(audioService)
                 .Hash();
 
-            IEnumerable<AudioFingerprint> audioFingerprints = await _unitOfWork.GetCollection<Track>().Find(_ => true)
-                .Project(track => track.AudioFingerprint)
+            //IEnumerable<AudioFingerprint> audioFingerprints = await _unitOfWork.GetCollection<Track>().Find(_ => true)
+            //    .Project(track => track.AudioFingerprint)
+            //    .ToListAsync();
+
+            ProjectionDefinition<Track> projection = Builders<Track>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Name)
+                .Include(x => x.CreatedBy)
+                .Include(x => x.AudioFingerprint);
+
+            IEnumerable<Track> trackAudioFingerprints = await _unitOfWork.GetCollection<Track>().Find(_ => true)
+                .Project<Track>(projection)
                 .ToListAsync();
 
             InMemoryModelService tempModelService = new();
 
-            foreach (AudioFingerprint audioFingerprint in audioFingerprints)
+            foreach (Track trackAudioFingerprint in trackAudioFingerprints)
             {
-                TrackInfo track = new("track_name_temp", "temp", "unknown");
+                TrackInfo track = new(trackAudioFingerprint.Id, trackAudioFingerprint.Name, trackAudioFingerprint.CreatedBy);
 
-                HashedFingerprint[] hashesFromDb = new HashedFingerprint[audioFingerprint.CompressedFingerprints.Count];
-                for (int i = 0; i < audioFingerprint.CompressedFingerprints.Count; i++)
+                HashedFingerprint[] hashesFromDb = new HashedFingerprint[trackAudioFingerprint.AudioFingerprint.CompressedFingerprints.Count];
+                for (int i = 0; i < trackAudioFingerprint.AudioFingerprint.CompressedFingerprints.Count; i++)
                 {
                     hashesFromDb[i] = new HashedFingerprint(
-                        DataEncryptionExtensions.DecompressToIntArray(audioFingerprint.CompressedFingerprints[i]),
-                        audioFingerprint.SequenceNumbers[i],
-                        audioFingerprint.StartsAt[i],
-                        audioFingerprint.OriginalPoints[i]);
+                        DataEncryptionExtensions.DecompressToIntArray(trackAudioFingerprint.AudioFingerprint.CompressedFingerprints[i]),
+                        trackAudioFingerprint.AudioFingerprint.SequenceNumbers[i],
+                        trackAudioFingerprint.AudioFingerprint.StartsAt[i],
+                        trackAudioFingerprint.AudioFingerprint.OriginalPoints[i]);
                 }
 
-                Hashes audioHashes = new(hashesFromDb, audioFingerprint.CompressedFingerprints.Count * 0.928, MediaType.Audio);
+                Hashes audioHashes = new(hashesFromDb, trackAudioFingerprint.AudioFingerprint.CompressedFingerprints.Count * 0.928, MediaType.Audio);
 
                 AVHashes avHashes = new(audioHashes, null);
 
@@ -92,9 +104,10 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
                     .UsingServices(tempModelService, audioService)
                     .Query();
 
-                if (queryResult.BestMatch?.Audio.Confidence * 100 > bestConfidence)
+                if (queryResult.BestMatch?.Audio?.Confidence * 100 > bestConfidence)
                 {
-                    bestConfidence = queryResult.BestMatch.Audio.Confidence * 100;
+                    bestConfidence = queryResult.BestMatch!.Audio!.Confidence * 100;
+                    bestMatchTrack = track;
                 }
             }
             #endregion
@@ -115,8 +128,14 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
-        
-        return bestConfidence;
+
+        return new()
+        {
+            BestConfidence = bestConfidence,
+            TrackId = bestMatchTrack.Id,
+            TrackName = bestMatchTrack.Title,
+            ArtistId = bestMatchTrack.Artist
+        };
     }
     #endregion
 
@@ -175,7 +194,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
     //                    .UsingServices(tempModelService, audioService)
     //                    .Query();
 
-    //                double confidence = (queryResult.BestMatch?.Audio.Confidence ?? 0) * 100;
+    //                double confidence = (queryResult.BestMatch?.Audio.BestConfidence ?? 0) * 100;
 
     //                // Cập nhật kết quả tốt nhất một cách thread-safe
     //                lock (lockObj)

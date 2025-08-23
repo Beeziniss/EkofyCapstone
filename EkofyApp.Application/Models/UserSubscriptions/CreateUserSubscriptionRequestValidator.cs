@@ -12,11 +12,11 @@ public sealed class CreateUserSubscriptionRequestValidator : AbstractValidator<C
 
         RuleFor(x => x.PeriodStart)
             .NotEmpty().WithMessage("Period start date is required.")
-            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7Time()).WithMessage("Period start date must be in the present.")
+            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Period start date must be in the present.")
             .LessThanOrEqualTo(x => x.PeriodEnd).WithMessage("Period start date must be before or equal to period end date.");
 
         RuleFor(x => x.PeriodEnd)
             .NotEmpty().WithMessage("Period end date is required.")
-            .GreaterThanOrEqualTo(HelperMethod.GetUtcPlus7Time()).WithMessage("Period end date must be in the future or present.");
+            .GreaterThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Period end date must be in the future or present.");
     }
 }

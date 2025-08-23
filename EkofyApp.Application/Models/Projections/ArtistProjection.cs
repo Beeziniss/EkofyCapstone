@@ -23,7 +23,7 @@ public sealed class ArtistProjection
     public string? BannerImage { get; set; } // URL to the artist's banner image
 
     public bool IsVerified { get; set; } = false; // Indicates if the artist is verified (Sound Better platform)
-    public DateTime? VerifiedAt { get; set; } // Date when the artist was verified
+    public DateTimeOffset? VerifiedAt { get; set; } // Date when the artist was verified
 
     public IdentityCard IdentityCard { get; set; } = null!;
 

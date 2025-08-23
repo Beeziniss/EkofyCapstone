@@ -1,6 +1,7 @@
 ﻿using Amazon.CloudFront;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.Util;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -8,6 +9,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -166,10 +168,10 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         // Nhớ thay thành production URL
         string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
-        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
+        string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
 
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
-        string masterFilePath = $"{prefixKey}/{trackId}/{trackId}_master.m3u8";
+        string masterFilePath = $"{prefixKeyStreaming}/{trackId}/{trackId}_master.m3u8";
 
         try
         {
@@ -201,10 +203,10 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
     public async Task<string> GetBitratePlaylistAsync(string trackId, string bitrate, string token)
     {
-        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
+        string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
 
         // Nhớ chỉnh lại Root Folder là Streaming Audio thay vì Testing
-        string bitrateHlsFilePath = $"{prefixKey}/{trackId}/{bitrate}/{trackId}_hls.m3u8";
+        string bitrateHlsFilePath = $"{prefixKeyStreaming}/{trackId}/{bitrate}/{trackId}_hls.m3u8";
 
         string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
@@ -243,7 +245,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //    //    #region Signed URL for .ts files
         //    //    //if (trimmed.EndsWith(".ts"))
         //    //    //{
-        //    //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+        //    //    //    string relativePath = $"{prefixKeyOriginal}/{trackId}/{bitrate}/{trimmed}";
 
         //    //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
 
@@ -265,7 +267,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //    //    #region Signed Cookies for .ts files
         //    //    //if (trimmed.EndsWith(".ts"))
         //    //    //{
-        //    //    //    string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{trimmed}";
+        //    //    //    string relativePath = $"{prefixKeyOriginal}/{trackId}/{bitrate}/{trimmed}";
         //    //    //    string fullUrl = $"{_aWSSettings.CloudFrontDomainUrl}/{relativePath}";
 
         //    //    //    // KHÔNG ký nữa
@@ -383,14 +385,14 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         #endregion
     }
 
-    public string GenerateSignedRedirect(string trackId, string bitrate, string segment, string token)
+    public string GenerateStreamingSignedURL(string trackId, string bitrate, string segment, string token)
     {
-        string prefixKey = Environment.GetEnvironmentVariable("AWS_MASTER_PREFIX_KEY") ?? throw new UnconfiguredEnvironmentCustomException("AWS_MASTER_PREFIX_KEY is not configured");
+        string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
 
         // Đường dẫn đến file .ts
-        string relativePath = $"{prefixKey}/{trackId}/{bitrate}/{segment}";
+        string relativePath = $"{prefixKeyStreaming}/{trackId}/{bitrate}/{segment}";
 
-        string domainUrl = Environment.GetEnvironmentVariable("AWS_CLOUDFRONT_DOMAIN_URL") ?? throw new UnconfiguredEnvironmentCustomException("AWS_CLOUDFRONT_DOMAIN_URL is not configured");
+        string domainUrl = _aWSSettings.CloudFrontDomainUrl;
 
         // Tạo URL đầy đủ
         string fullUrl = $"{domainUrl}/{relativePath}";
@@ -411,6 +413,35 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             expires
         );
 
+        return signedUrl;
+    }
+
+    public string GenerateOriginalSignedURL(string trackId)
+    {
+        string prefixKeyOriginal = _aWSSettings.ResourcePrefixOriginal;
+
+        // Đường dẫn đến file gốc
+        string relativePath = $"{prefixKeyOriginal}/{trackId}";
+        string domainUrl = _aWSSettings.CloudFrontDomainUrl;
+
+        // Tạo URL đầy đủ
+        string fullUrl = $"{domainUrl}/{relativePath}";
+
+        // Đọc private key từ file
+        string privateKeyPath = HelperMethod.ResolvePath(PathTag.Base, "PrivateKeys");
+        privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+        using StreamReader privateKeyStream = new(privateKeyPath);
+
+        // Thời gian hết hạn của signed URL
+        DateTimeOffset expires = HelperMethod.GetUtcPlus7TimeOffset().AddMinutes(2);
+
+        // Ký URL
+        string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+            fullUrl,
+            privateKeyStream,
+            _aWSSettings.KeyPairId,
+            expires.UtcDateTime
+        );
         return signedUrl;
     }
 }

@@ -1,4 +1,6 @@
-﻿using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+﻿using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+using EkofyApp.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -9,14 +11,12 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     private readonly IDatabase _redisDb = redisDb;
     private readonly ILogger<RedisCacheService> _logger = logger;
 
-    public IDatabase RedisDb => _redisDb;
-
     #region Default Methods
     public async Task SetAsync(string key, string value, TimeSpan? expiry = null)
     {
         try
         {
-            await _redisDb.StringSetAsync(key, value, expiry);
+            await _redisDb.StringSetAsync(key, value, expiry, when: When.NotExists);
         }
         catch (Exception ex)
         {
@@ -180,7 +180,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         try
         {
             string json = JsonSerializer.Serialize(value);
-            await _redisDb.StringSetAsync(key, json, expiry);
+            await _redisDb.StringSetAsync(key, json, expiry, when: When.NotExists);
         }
         catch (Exception ex)
         {
@@ -301,4 +301,48 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         return false;
     }
     #endregion
+
+    public async Task<ICacheResult<IEnumerable<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "track:*:requestUpload").ToArray();
+
+            List<TrackTempRequest> allRequests = [];
+
+            foreach (RedisKey key in keys)
+            {
+                try
+                {
+                    RedisValue value = await _redisDb.StringGetAsync(key);
+
+                    if (value.HasValue)
+                    {
+                        TrackTempRequest? request = JsonSerializer.Deserialize<TrackTempRequest>(value!);
+                        if (request != null)
+                        {
+                            allRequests.Add(request);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize track upload request. Key: {key}");
+                }
+            }
+
+            IEnumerable<TrackTempRequest> paged = allRequests.OrderBy(r => r.RequestedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return CacheResult<IEnumerable<TrackTempRequest>>.From(paged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Redis] Failed to get pending track uploads.");
+            return CacheResult<IEnumerable<TrackTempRequest>>.Fail();
+        }
+    }
 }

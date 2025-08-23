@@ -21,7 +21,7 @@ public sealed class CreateIdentityCardRequestValidator : AbstractValidator<Creat
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Date of Birth is required")
             .Must(date => HelperMethod.GetExactAge(date) >= 14).WithMessage("Date of Birth must be at least 14 years old")
-            .GreaterThan(DateTime.MinValue).WithMessage("Date of Birth must be a valid date");
+            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
 
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Gender must be Male or Female or Other");
@@ -30,11 +30,11 @@ public sealed class CreateIdentityCardRequestValidator : AbstractValidator<Creat
             .NotEmpty().WithMessage("Place of Origin is required")
             .MinimumLength(3).WithMessage("Place of Origin must be at least 3 characters long")
             .MaximumLength(100).WithMessage("Place of Origin must not exceed 100 characters")
-            .Matches(HelperMethod.RegexPatternAlphaNumericWithSpace()).WithMessage("Full Name must contain only letters and spaces");
+            .Matches(HelperMethod.RegexPatternAlphaNumericWithSpecific()).WithMessage("Place of Origin must contain only letters and spaces");
 
         RuleFor(x => x.Nationality)
             .NotEmpty().WithMessage("Nationality is required")
-            .Matches(HelperMethod.RegexPatternAlphaNumericWithSpace()).WithMessage("Full Name must contain only letters and spaces");
+            .Matches(HelperMethod.RegexPatternAlphaNumericWithSpace()).WithMessage("Nationality must contain only letters and spaces");
 
         RuleFor(x => x.PlaceOfResidence)
             .NotEmpty().WithMessage("Place of Residence is required");
@@ -49,7 +49,6 @@ public sealed class CreateIdentityCardRequestValidator : AbstractValidator<Creat
             .Must(url => Uri.IsWellFormedUriString(url, UriKind.Absolute)).WithMessage("Back Image URL must be a valid URL");
 
         RuleFor(x => x.ValidUntil)
-            .Must(date => HelperMethod.CalculateIdentityCardExpiry(date) <= HelperMethod.GetUtcPlus7Time()).WithMessage("Valid Until must be valid")
-            .GreaterThanOrEqualTo(HelperMethod.GetUtcPlus7Time()).WithMessage("Valid Until date must be in the future");
+            .GreaterThanOrEqualTo(x => HelperMethod.NormalizeToUtcPlus7TimeOffset(x.ValidUntil)).WithMessage("Valid Until date must be in the future");
     }
 }

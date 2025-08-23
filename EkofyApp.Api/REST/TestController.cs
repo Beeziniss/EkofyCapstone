@@ -9,12 +9,14 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -27,8 +29,8 @@ namespace EkofyApp.Api.REST;
 [ApiController]
 public class TestController : ControllerBase
 {
-    [HttpPost("upload-mp3")]
-    public async Task<IActionResult> UploadMp3(IFormFile file, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IUnitOfWork unitOfWork)
+    [Authorize(Roles = "Artist"), HttpPost("upload-mp3")]
+    public async Task<IActionResult> UploadMp3(IFormFile file, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IUnitOfWork unitOfWork, [FromServices] IRedisCacheService redisCacheService)
     {
         if (file == null || file.Length == 0)
         {
@@ -49,14 +51,16 @@ public class TestController : ControllerBase
             Description = "Uploaded MP3 file",
             CategoryIds = [],
             Tags = ["cho phép gắn sẵn"],
-            ArtistId = [ObjectId.GenerateNewId().ToString()], // ObjectId (string) của Artist
-            CreatedAt = HelperMethod.GetUtcPlus7Time(),
+            MainArtistIds = [],
         };
 
-        await unitOfWork.GetCollection<Track>().InsertOneAsync(track);
+        //await unitOfWork.GetCollection<Track>().InsertOneAsync(track);
+
+        // Lưu request vào redis
+        await redisCacheService.SetAsync($"track:{trackId}:requestUpload", track, TimeSpan.FromDays(3));
 
         // Upload file lên S3
-        await amazonS3Service.UploadFileAsync(stream, trackId);
+        await amazonS3Service.UploadOriginalAudioAsync(stream, trackId);
 
         return Ok(new
         {
@@ -99,6 +103,7 @@ public class TestController : ControllerBase
         // Tài nguyên từ file vật lý
         // TODO: Viết hàm xử lý batch HLS folder
         // Purpose: Thêm data thủ công
+        // Resolved: Đã có hàm upload multiple files manually
 
         // 1. Tạo hls từ file wav
         AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
@@ -270,6 +275,22 @@ public class TestController : ControllerBase
             Message = "Upload UseCase Handler Successfully",
             Count = count,
             FilesCount = mp3Files.Length
+        });
+    }
+
+    [HttpGet("original-audio/{trackId}")]
+    public IActionResult GetOriginalAudio([FromServices] IAmazonCloudFrontService amazonS3Service, string trackId)
+    {
+        if (string.IsNullOrEmpty(trackId))
+        {
+            return BadRequest("Track ID is required.");
+        }
+
+        // Byte-range request handling
+        return Ok(new
+        {
+            Message = "Original audio retrieved successfully",
+            Url = amazonS3Service.GenerateOriginalSignedURL(trackId)
         });
     }
 
