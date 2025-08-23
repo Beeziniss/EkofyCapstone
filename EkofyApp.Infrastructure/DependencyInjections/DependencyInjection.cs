@@ -20,6 +20,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.RabbitMQ;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -38,6 +39,7 @@ using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
+using EkofyApp.Infrastructure.ThirdPartyServices.RabbitMQ;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -79,6 +81,8 @@ public static class DependencyInjection
         services.AddServices();
 
         services.AddGrpcClient();
+
+        services.AddRabbitMQ();
 
         services.AddMomo();
         services.AddAmazonWebService();
@@ -524,5 +528,15 @@ public static class DependencyInjection
 
         //// Reccomendation
         //BsonSerializer.RegisterSerializer(typeof(Algorithm), new EnumMemberSerializer<Algorithm>());
+    }
+
+    public static void AddRabbitMQ(this IServiceCollection services)
+    {
+        //services.AddSingleton<IRabbitMQConnection>(new RabbitMQConnection());
+        //services.AddScoped<IMessageProducer, RabbitMQProducer>();
+        //services.AddHostedService<RabbitMQConsumer>();
+
+        // để chạy cần docker cho rabbitMQ, tạm thời chưa mở để chạy dc local
+        // docker run -d --hostname my-rabbitmq-server --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
     }
 }
