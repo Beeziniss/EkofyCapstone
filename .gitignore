@@ -364,6 +364,7 @@ FodyWeavers.xsd
 
 #Ignore .env
 *.env
+*.env.*
 
 # Ignore Private keys
 PrivateKeys/private_key.pem
