@@ -58,35 +58,6 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
             return true;
         }
 
-        // TODO: Thêm mutation hiển thị danh sách track chờ duyệt
-        // Resolved: Đã có
-        public async Task<IEnumerable<TrackTempRequest>> GetPendingTrackUploadRequestsAsync()
-        {
-            ICacheResult<IEnumerable<TrackTempRequest>> requests = await _redisCacheService.GetPendingTrackUploadsAsync();
-            if (requests.Success)
-            {
-                return requests.Value!;
-            }
-
-            return [];
-        }
-
-        public async Task<Track> GetMetadataTrackUploadRequestAsync(string trackId)
-        {
-            ICacheResult<Track> cacheResult = await _redisCacheService.TryGetAsync<Track>($"track:{trackId}:requestUpload");
-            if (!cacheResult.Success)
-            {
-                throw new NotFoundCustomException("Track upload request not found or expired.");
-            }
-
-            return cacheResult.Value!;
-        }
-
-        public string GetOriginalFileTrackUploadRequest(string trackId)
-        {
-            return _amazonS3Service.GetOriginalAudioSignedUrl(trackId);
-        }
-
         internal async Task CheckTrackFingerprintAsync(Stream stream)
         {
             AudioConvertPathOptions audioConvertPathOptions = AudioConvertPathOptions.ForConvertToWav();

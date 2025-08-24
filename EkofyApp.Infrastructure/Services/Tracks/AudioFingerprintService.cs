@@ -51,7 +51,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
     {
         SoundFingerprintingAudioService audioService = new();
         double bestConfidence = 0;
-        TrackInfo bestMatchTrack = null!;
+        TrackInfo bestMatchTrack = new(string.Empty, string.Empty, string.Empty);
 
         try
         {

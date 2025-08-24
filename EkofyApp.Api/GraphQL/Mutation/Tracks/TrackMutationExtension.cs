@@ -8,15 +8,6 @@
             descriptor.Field(x => x.UploadTrackAsync(default!, default!))
                 .Authorize(roles: "Artist");
 
-            descriptor.Field(x => x.GetPendingTrackUploadRequestsAsync())
-                .Authorize(roles: "Moderator");
-
-            descriptor.Field(x => x.GetMetadataTrackUploadRequestAsync(default!))
-                .Authorize(roles: "Moderator");
-
-            descriptor.Field(x => x.GetOriginalFileTrackUploadRequest(default!))
-                .Authorize(roles: "Moderator");
-
             descriptor.Field(x => x.ApproveTrackUploadRequestAsync(default!))
                 .Authorize(roles: "Moderator");
 

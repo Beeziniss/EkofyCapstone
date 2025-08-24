@@ -1,18 +1,51 @@
-﻿using EkofyApp.Application.ServiceInterfaces.Tracks;
+﻿using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Exceptions;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class TrackQuery(ITrackService trackService)
+public class TrackQuery(ITrackService trackService, IAmazonS3Service amazonS3Service, IRedisCacheService redisCacheService)
 {
     private readonly ITrackService _trackService = trackService;
+    private readonly IAmazonS3Service _amazonS3Service = amazonS3Service;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
     // TracksDB
     public IQueryable<Track> GetTracks()
     {
         return _trackService.GetTracksQueryable();
+    }
+
+    public async Task<IEnumerable<TrackTempRequest>> GetPendingTrackUploadRequestsAsync()
+    {
+        ICacheResult<IEnumerable<TrackTempRequest>> requests = await _redisCacheService.GetPendingTrackUploadsAsync();
+        if (requests.Success)
+        {
+            return requests.Value!;
+        }
+
+        return [];
+    }
+
+    public async Task<Track> GetMetadataTrackUploadRequestAsync(string trackId)
+    {
+        ICacheResult<Track> cacheResult = await _redisCacheService.TryGetAsync<Track>($"track:{trackId}:requestUpload");
+        if (!cacheResult.Success)
+        {
+            throw new NotFoundCustomException("Track upload request not found or expired.");
+        }
+
+        return cacheResult.Value!;
+    }
+
+    public string GetOriginalFileTrackUploadRequest(string trackId)
+    {
+        return _amazonS3Service.GetOriginalAudioSignedUrl(trackId);
     }
 
     #region Original
