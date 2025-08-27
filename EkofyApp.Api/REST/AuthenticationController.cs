@@ -80,6 +80,36 @@ public class AuthenticationController(IAuthenticationService authenticationServi
     }
     #endregion
 
+    [AllowAnonymous, HttpPost("login/moderator")]
+    public async Task<IActionResult> LoginModeratorAsync([FromBody] LoginRequest loginRequest)
+    {
+        var validationResult = new LoginRequestValidator().Validate(loginRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+            return BadRequest(problemDetails);
+        }
+
+        var result = await _authenticationService.LoginModeratorAsync(loginRequest);
+        return Ok(new { Message = "Login Successfully", result });
+    }
+
+    [AllowAnonymous, HttpPost("login/admin")]
+    public async Task<IActionResult> LoginAdminAsync([FromBody] LoginRequest loginRequest)
+    {
+        var validationResult = new LoginRequestValidator().Validate(loginRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+            return BadRequest(problemDetails);
+        }
+
+        var result = await _authenticationService.LoginAdminAsync(loginRequest);
+        return Ok(new { Message = "Login Successfully", result });
+    }
+
     // [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
 
     // [AllowAnonymous, HttpPost("forgot-password")]

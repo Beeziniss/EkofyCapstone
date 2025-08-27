@@ -9,11 +9,11 @@ namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class TrackQuery(ITrackService trackService, IAmazonS3Service amazonS3Service, IRedisCacheService redisCacheService)
+public class TrackQuery(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonCloudFrontService amazonCloudFrontService)
 {
     private readonly ITrackService _trackService = trackService;
-    private readonly IAmazonS3Service _amazonS3Service = amazonS3Service;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
+    private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
     // TracksDB
     public IQueryable<Track> GetTracks()
@@ -32,9 +32,9 @@ public class TrackQuery(ITrackService trackService, IAmazonS3Service amazonS3Ser
         return [];
     }
 
-    public async Task<Track> GetMetadataTrackUploadRequestAsync(string trackId)
+    public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string trackId)
     {
-        ICacheResult<Track> cacheResult = await _redisCacheService.TryGetAsync<Track>($"track:{trackId}:requestUpload");
+        ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
         if (!cacheResult.Success)
         {
             throw new NotFoundCustomException("Track upload request not found or expired.");
@@ -45,7 +45,7 @@ public class TrackQuery(ITrackService trackService, IAmazonS3Service amazonS3Ser
 
     public string GetOriginalFileTrackUploadRequest(string trackId)
     {
-        return _amazonS3Service.GetOriginalAudioSignedUrl(trackId);
+        return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
     }
 
     #region Original

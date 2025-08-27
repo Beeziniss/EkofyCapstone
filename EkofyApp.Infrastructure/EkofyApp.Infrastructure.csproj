@@ -9,7 +9,7 @@
 	<ItemGroup>
 		<PackageReference Include="AWSSDK.Core" Version="4.0.0.25" />
 		<PackageReference Include="AWSSDK.Extensions.CloudFront.Signers" Version="4.0.0.1" />
-		<PackageReference Include="AWSSDK.S3" Version="4.0.6.8" />
+		<PackageReference Include="AWSSDK.S3" Version="4.0.6.9" />
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="Google.Protobuf" Version="3.32.0" />
 		<PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
@@ -30,6 +30,8 @@
 		<PackageReference Include="NReco.Text.AhoCorasickDoubleArrayTrie" Version="1.1.1" />
 		<PackageReference Include="SoundFingerprinting" Version="12.3.0" />
 		<PackageReference Include="StackExchange.Redis" Version="2.9.11" />
+		<PackageReference Include="Stripe.net" Version="48.4.0" />
+		<PackageReference Include="Syncfusion.Pdf.Net.Core" Version="30.2.7" />
 		<PackageReference Include="Xabe.FFmpeg" Version="6.0.2" />
 	</ItemGroup>
 

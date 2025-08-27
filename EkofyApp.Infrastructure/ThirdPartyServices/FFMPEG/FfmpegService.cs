@@ -1,18 +1,9 @@
-﻿using Amazon.S3;
-using Amazon.S3.Model;
-using EkofyApp.Application.Models.Wavs;
+﻿using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
-using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
-using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
-using Newtonsoft.Json.Linq;
-using SharpCompress.Common;
-using System.Net;
-using System.Text;
-using System.Text.RegularExpressions;
 using Xabe.FFmpeg;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;

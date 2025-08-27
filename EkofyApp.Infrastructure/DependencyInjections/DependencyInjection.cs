@@ -11,9 +11,11 @@ using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
+using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
@@ -33,9 +35,11 @@ using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
+using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Users;
+using EkofyApp.Infrastructure.Services.Works;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
@@ -58,6 +62,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Refit;
 using StackExchange.Redis;
+using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
 
@@ -67,7 +72,8 @@ public static class DependencyInjection
     public static void AddDependencyInjection(this IServiceCollection services)
     {
         //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
-        services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
+        services.AddAutoMapperExtension();
+        services.AddSyncfusionExtension();
         services.ConfigRoute();
 
         services.AddHttpContextAccessor();
@@ -92,6 +98,21 @@ public static class DependencyInjection
         services.AddEnumMemberSerializer();
 
         //services.AddSwaggerGen();
+    }
+
+    public static void AddSyncfusionExtension(this IServiceCollection services)
+    {
+        string licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY") ?? throw new UnconfiguredEnvironmentCustomException("SYNC_FUSION_LICENSE_KEY is not set in the environment");
+        SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+    }
+
+    public static void AddAutoMapperExtension(this IServiceCollection services)
+    {
+        services.AddAutoMapper(cfg =>
+        {
+            cfg.LicenseKey = Environment.GetEnvironmentVariable("AUTOMAPPER_LICENSE_KEY") ?? throw new UnconfiguredEnvironmentCustomException("AUTOMAPPER_LICENSE_KEY is not set in the environment");
+            cfg.AddProfile<MappingProfile>();
+        });
     }
 
     public static void AddValidation(this IServiceCollection services)
@@ -277,6 +298,8 @@ public static class DependencyInjection
         services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IWorkService, WorkService>();
+        services.AddScoped<IRecordingService, RecordingService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -530,6 +553,7 @@ public static class DependencyInjection
         //BsonSerializer.RegisterSerializer(typeof(PlaylistName), new EnumMemberSerializer<PlaylistName>());
         //BsonSerializer.RegisterSerializer(typeof(RestrictionReason), new EnumMemberSerializer<RestrictionReason>());
         BsonSerializer.RegisterSerializer(typeof(MoodType), new EnumMemberSerializer<MoodType>());
+        BsonSerializer.RegisterSerializer(typeof(TrackType), new EnumMemberSerializer<TrackType>());
 
         // Cloudinary
         //BsonSerializer.RegisterSerializer(typeof(AudioTagChild), new EnumMemberSerializer<AudioTagChild>());

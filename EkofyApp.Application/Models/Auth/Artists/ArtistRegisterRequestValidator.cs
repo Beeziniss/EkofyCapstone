@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Enums.Artist;
+using EkofyApp.Domain.Utils;
 using FluentValidation;
 
 namespace EkofyApp.Application.Models.Auth.Artists;
@@ -28,6 +29,14 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Gender must be Male or Female or Other");
 
+        RuleFor(x => x.PhoneNumber)
+            .NotEmpty().WithMessage("Phone number is required.")
+            .MaximumLength(15).WithMessage("Phone number must not exceed 15 characters")
+            .Matches(HelperMethod.RegexPatternPhoneNumber()).When(x => !string.IsNullOrEmpty(x.PhoneNumber)).WithMessage("Invalid phone number format");
+
+        RuleFor(x => x.IsLegalRepresentative)
+            .NotEmpty().WithMessage("Is Legal Representative is required");
+
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Name is required")
             .MinimumLength(3).WithMessage("Name must be at least 3 characters long")
@@ -35,6 +44,11 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
 
         RuleFor(x => x.ArtistType)
             .IsInEnum().WithMessage("Artist Type must be Individual, Band, or Other");
+
+        RuleFor(x => x.Members)
+            .NotEmpty().When(x => x.ArtistType != ArtistType.Individual).WithMessage("Artist Members List cannot be null")
+            .ForEach(x => x.SetValidator(new CreateArtistMemberRequestValidator())).When(x => x.ArtistType != ArtistType.Individual).WithMessage("Artist Members are required for non-individual artists.");
+
 
         RuleFor(x => x.IdentityCard)
             .NotNull().WithMessage("Identity Card is required")

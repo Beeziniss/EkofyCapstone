@@ -1,5 +1,9 @@
-﻿using EkofyApp.Application.Models.Auth.Artists;
+﻿using AutoMapper;
+using CloudinaryDotNet.Actions;
+using EkofyApp.Application.Models.Auth.Admins;
+using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
+using EkofyApp.Application.Models.Auth.Moderators;
 using EkofyApp.Application.Models.Projections;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
@@ -15,10 +19,11 @@ using System.Security.Claims;
 using LoginRequest = EkofyApp.Application.Models.Auth.LoginRequest;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken) : IAuthenticationService
+public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IMapper mapper) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IJsonWebToken _jsonWebToken = jsonWebToken;
+    private readonly IMapper _mapper = mapper;
 
     private static string HashPassword(string password)
     {
@@ -154,11 +159,25 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 Id = userId,
                 Email = registerRequest.Email.Trim().ToLowerInvariant(),
                 PasswordHash = HashPassword(registerRequest.Password),
-                BirthDate = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.DateOfBirth.Date),
-                Gender = registerRequest.IdentityCard.Gender,
+                BirthDate = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.BirthDate.Date),
+                Gender = registerRequest.Gender,
+                PhoneNumber = registerRequest.PhoneNumber,
                 Role = UserRole.Artist,
                 IsLinkedWithGoogle = false,
             };
+
+            List<ArtistMember> artistMembers = _mapper.Map<List<ArtistMember>>(registerRequest.Members);
+            if (!registerRequest.IsLegalRepresentative)
+            {
+                artistMembers.Add(new ArtistMember
+                {
+                    FullName = registerRequest.IdentityCard.FullName,
+                    Email = registerRequest.Email.Trim().ToLowerInvariant(),
+                    PhoneNumber = registerRequest.PhoneNumber,
+                    IsLeader = true,
+                    Gender = registerRequest.IdentityCard.Gender,
+                });
+            }
 
             Artist artist = new()
             {
@@ -169,6 +188,9 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 {
                     Type = RestrictionType.None, // Mặc định không có hạn chế
                 },
+
+                ArtistType = registerRequest.ArtistType,
+                Members = artistMembers,
 
                 // TODO: Cập nhật thông tin thật nha và tạm thời không validate IdentityCard
                 // Vì đang giả định thông tin này là đúng và được xử lý từ phía client có dùng AI FPT
@@ -262,6 +284,102 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             UserId = userArtist.Id,
             ArtistId = userArtist.ArtistProjection.Id,
             Role = userArtist.Role,
+        };
+    }
+
+    public async Task<AuthModeratorTokenResponse> LoginModeratorAsync(LoginRequest loginRequest)
+    {
+        User moderator = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Email == loginRequest.Email.Trim().ToLowerInvariant()
+                && u.Role == UserRole.Moderator)
+            .Project<User>(Builders<User>.Projection.Include(x => x.Id)
+                .Include(x => x.Role)
+                .Include(x => x.Status)
+                .Include(x => x.PasswordHash))
+            .FirstOrDefaultAsync() ?? throw new BadRequestCustomException("Invalid email or password.");
+
+        // Kiểm tra mật khẩu
+        if (!VerifyPassword(loginRequest.Password, moderator.PasswordHash!))
+        {
+            throw new BadRequestCustomException("Invalid email or password.");
+        }
+
+        switch (moderator.Status)
+        {
+            case UserStatus.Inactive:
+                throw new UnauthorizedCustomException("Your account is not active.");
+            case UserStatus.Banned:
+                throw new UnauthorizedCustomException("Your account has been banned.");
+            // Mặc định là Active
+            case UserStatus.Active:
+                break;
+            default:
+                throw new BadRequestCustomException("Invalid user status.");
+        }
+
+        // Tạo claims
+        IEnumerable<Claim> claims =
+        [
+            new Claim("userId", moderator.Id),
+            new Claim(ClaimTypes.Role, moderator.Role.ToString()),
+        ];
+
+        // Tạo access token
+        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+
+        return new AuthModeratorTokenResponse()
+        {
+            AccessToken = accessToken,
+            UserId = moderator.Id,
+            Role = moderator.Role,
+        };
+    }
+
+    public async Task<AuthAdminTokenResponse> LoginAdminAsync(LoginRequest loginRequest)
+    {
+        User admin = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Email == loginRequest.Email.Trim().ToLowerInvariant()
+                && u.Role == UserRole.Admin)
+            .Project<User>(Builders<User>.Projection.Include(x => x.Id)
+                .Include(x => x.Role)
+                .Include(x => x.Status)
+                .Include(x => x.PasswordHash))
+            .FirstOrDefaultAsync() ?? throw new BadRequestCustomException("Invalid email or password.");
+
+        // Kiểm tra mật khẩu
+        if (!VerifyPassword(loginRequest.Password, admin.PasswordHash!))
+        {
+            throw new BadRequestCustomException("Invalid email or password.");
+        }
+
+        switch (admin.Status)
+        {
+            case UserStatus.Inactive:
+                throw new UnauthorizedCustomException("Your account is not active.");
+            case UserStatus.Banned:
+                throw new UnauthorizedCustomException("Your account has been banned.");
+            // Mặc định là Active
+            case UserStatus.Active:
+                break;
+            default:
+                throw new BadRequestCustomException("Invalid user status.");
+        }
+
+        // Tạo claims
+        IEnumerable<Claim> claims =
+        [
+            new Claim("userId", admin.Id),
+            new Claim(ClaimTypes.Role, admin.Role.ToString()),
+        ];
+
+        // Tạo access token
+        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+
+        return new AuthAdminTokenResponse()
+        {
+            AccessToken = accessToken,
+            UserId = admin.Id,
+            Role = admin.Role,
         };
     }
 }

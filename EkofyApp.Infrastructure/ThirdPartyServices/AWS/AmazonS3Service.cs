@@ -44,7 +44,7 @@ public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) 
         await processStream(response.ResponseStream); // Tự Dispose sau khi callback xong
     }
 
-    public async Task RemoveTagAsync(string trackId, List<KeyTag> keyTags)
+    public async Task RemoveTagAsync(string trackId, IEnumerable<KeyTag> keyTags)
     {
         string bucket = _aWSSettings.BucketName;
         string key = $"original-audio/{trackId}";

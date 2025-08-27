@@ -40,8 +40,11 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
 
         if (moodTypes.Any())
         {
+            // Convert moodTypes to string (to compare with mood.Name)
+            IEnumerable<string> moodTypeNames = moodTypes.Select(mt => mt.ToString()).ToList();
+
             return await _unitOfWork.GetCollection<Category>()
-                .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
+                .Find(mood => mood.Type == CategoryType.Mood && moodTypeNames.Contains(mood.Name))
                 .Project(mood => mood.Id)
                 .ToListAsync();
         }

@@ -15,6 +15,10 @@ public static class GraphQLServer
             {
                 o.StrictValidation = true;
             })
+            .ModifyRequestOptions(opt =>
+            {
+                opt.ExecutionTimeout = TimeSpan.FromMinutes(5); // Tăng từ 30s lên 5 phút
+            })
             .AddErrorFilter<GraphQLExceptionFilter>()
             .AddAuthorization()
 

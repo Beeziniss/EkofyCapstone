@@ -10,21 +10,12 @@ public class TrackQueryExtension : ObjectTypeExtension<TrackQuery>
             .UseSorting();
 
         descriptor.Field(x => x.GetPendingTrackUploadRequestsAsync())
-                .Authorize(roles: "Moderator")
-                .UseProjection()
-                .UseFiltering()
-                .UseSorting();
+                .Authorize(roles: "Moderator");
 
         descriptor.Field(x => x.GetMetadataTrackUploadRequestAsync(default!))
-            .Authorize(roles: "Moderator")
-            .UseProjection()
-            .UseFiltering()
-            .UseSorting();
+            .Authorize(roles: "Moderator");
 
         descriptor.Field(x => x.GetOriginalFileTrackUploadRequest(default!))
-            .Authorize(roles: "Moderator")
-            .UseProjection()
-            .UseFiltering()
-            .UseSorting();
+            .Authorize(roles: "Moderator");
     }
 }

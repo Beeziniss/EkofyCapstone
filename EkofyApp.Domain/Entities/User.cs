@@ -16,6 +16,8 @@ public sealed class User : Auditable, IEntityCustom
     public DateTimeOffset BirthDate { get; set; }
     public UserRole Role { get; set; } // "Listener","Artist","Admin","Moderator"
 
+    public string? PhoneNumber { get; set; } // Optional phone number for the user
+
     public UserStatus Status { get; set; } = UserStatus.Inactive; // Default status is Inactive
     public bool IsLinkedWithGoogle { get; set; }
 

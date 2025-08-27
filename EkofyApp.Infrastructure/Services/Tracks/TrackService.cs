@@ -1,8 +1,13 @@
 ﻿using AutoMapper;
+using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
@@ -31,41 +36,70 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return _mapper.Map<TrackResponse>(track);
     }
 
-    public async Task CreateTrackFromTrackUploadRequestAsync(TrackTempResponse trackResponse)
+    public async Task CreateTrackFromTrackUploadRequestAsync(TrackTempResponse trackResponse, WorkTempRequest workTempRequest, RecordingTempRequest recordingTempRequest)
     {
-        Track track = new()
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            Id = trackResponse.Id,
-            Name = trackResponse.Name,
-            Description = trackResponse.Description,
+            Track track = new()
+            {
+                Id = trackResponse.Id,
+                Name = trackResponse.Name,
+                Description = trackResponse.Description,
 
-            MainArtistIds = trackResponse.MainArtistIds,
-            FeaturedArtistIds = trackResponse.FeaturedArtistIds,
-            CategoryIds = trackResponse.CategoryIds,
-            Tags = trackResponse.Tags,
+                Type = trackResponse.Type,
 
-            CoverImage = trackResponse.CoverImage,
-            PreviewVideo = trackResponse.PreviewVideo,
+                MainArtistIds = trackResponse.MainArtistIds,
+                FeaturedArtistIds = trackResponse.FeaturedArtistIds,
+                CategoryIds = trackResponse.CategoryIds,
+                Tags = trackResponse.Tags,
 
-            AudioFingerprint = trackResponse.AudioFingerprint,
-            AudioFeature = trackResponse.AudioFeature,
+                CoverImage = trackResponse.CoverImage,
+                PreviewVideo = trackResponse.PreviewVideo,
 
-            IsExplicit = trackResponse.IsExplicit,
-            Lyrics = trackResponse.Lyrics,
+                AudioFingerprint = trackResponse.AudioFingerprint,
+                AudioFeature = trackResponse.AudioFeature,
 
-            ReleaseInfo = trackResponse.ReleaseInfo,
+                IsExplicit = trackResponse.IsExplicit,
+                Lyrics = trackResponse.Lyrics,
 
-            CreatedBy = trackResponse.CreatedBy,
-        };
+                ReleaseInfo = trackResponse.ReleaseInfo,
+                Restriction = new()
+                {
+                    Type = RestrictionType.None,
+                },
 
-        await _unitOfWork.GetCollection<Track>().InsertOneAsync(track);
+                CreatedBy = trackResponse.CreatedBy,
+            };
+
+            Work work = new()
+            {
+                Id = workTempRequest.Id,
+                TrackId = trackResponse.Id,
+
+                Description = workTempRequest.Description,
+                WorkSplits = _mapper.Map<List<WorkSplit>>(workTempRequest.WorkSplits),
+            };
+
+            Recording recording = new()
+            {
+                Id = recordingTempRequest.Id,
+                TrackId = trackResponse.Id,
+
+                Description = recordingTempRequest.Description,
+                RecordingSplits = _mapper.Map<List<RecordingSplit>>(recordingTempRequest.RecordingSplitRequests)
+            };
+
+            await _unitOfWork.GetCollection<Track>().InsertOneAsync(track);
+            await _unitOfWork.GetCollection<Work>().InsertOneAsync(work);
+            await _unitOfWork.GetCollection<Recording>().InsertOneAsync(recording);
+        });
     }
 
     public TrackTempRequest CreateTrackTemp(CreateTrackRequest createTrackRequest)
     {
         string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("artistId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        // Workaround for tránh trùng artistId khi tạo track
+        // Workaround for tránh trùng userId khi tạo track
         createTrackRequest.MainArtistIds.Add(artistId);
         createTrackRequest.MainArtistIds = createTrackRequest.MainArtistIds.Distinct().ToList();
 

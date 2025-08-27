@@ -25,7 +25,8 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
             .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).WithMessage("Cover image must be a valid URL.");
 
         RuleFor(x => x.PreviewVideo)
-            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).WithMessage("Preview video must be a valid URL.");
+            //.NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.PreviewVideo)).WithMessage("Preview video URL cannot be empty if provided.")
+            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).When(x => !string.IsNullOrWhiteSpace(x.PreviewVideo)).WithMessage("Preview video must be a valid URL.");
 
         RuleFor(x => x.CategoryIds)
             .NotEmpty().WithMessage("At least one category ID is required.")
@@ -49,5 +50,8 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
 
         RuleFor(x => x.ReleaseStatus)
             .IsInEnum().WithMessage("Release status must be a valid enum value.");
+
+        RuleFor(x => x.IsOriginal)
+            .NotNull().WithMessage("Original content flag is required.");
     }
 }

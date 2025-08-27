@@ -1,27 +1,26 @@
 ﻿using EkofyApp.Application.Models.AudioFingerprints;
+using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Wavs;
+using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces.Categories;
+using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
-using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using EkofyApp.Infrastructure.Services;
-using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
-using HotChocolate.Authorization;
 using MongoDB.Bson;
-using System.IO;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Tracks
 {
     [ExtendObjectType(typeof(MutationInitialization))]
     [MutationType]
-    public class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IAudioFingerprintService audioFingerprintService, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService)
+    public sealed class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IAudioFingerprintService audioFingerprintService, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService)
     {
         private readonly ITrackService _trackService = trackService;
         private readonly IRedisCacheService _redisCacheService = redisCacheService;
@@ -30,14 +29,22 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
         private readonly IFfmpegService _ffmpegService = ffmpegService;
         private readonly IAudioAnalysisService _audioAnalysisService = audioAnalysisService;
         private readonly ICategoryService _categoryService = categoryService;
+        private readonly IWorkService _workService = workService;
+        private readonly IRecordingService _recordingService = recordingService;
 
-        public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest trackRequest)
+        public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
         {
             using Stream stream = file.OpenReadStream();
-            string fileName = System.IO.Path.GetFileNameWithoutExtension(file.Name);
 
-            // Kiểm tra bản quyền
-            await CheckTrackFingerprintAsync(stream);
+            if(createTrackRequest.IsOriginal)
+            {
+                // Kiểm tra bản quyền
+                await CheckTrackFingerprintAsync(stream);
+            } else
+            {
+                // Kiểm tra giấy phép bản quyền từ chủ sở hữu bản ghi gốc
+
+            }
 
             // TODO: Kiểm tra các thông tin metadata cơ bản tự động
             // Như định dạng file, bitrate, sample rate, duration, v.v.
@@ -45,12 +52,15 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
             // Còn nếu không có thì track không được đánh dấu explicit
             // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
-
             // Tạo track temp
-            TrackTempRequest trackTemp = _trackService.CreateTrackTemp(trackRequest);
+            TrackTempRequest trackTemp = _trackService.CreateTrackTemp(createTrackRequest);
+            WorkTempRequest workTemp = _workService.CreateWorkTemp(createWorkRequest);
+            RecordingTempRequest recordingTemp = _recordingService.CreateRecordingTemp(createRecordingRequest);
 
             // Đẩy request lên redis để chờ duyệt
             await _redisCacheService.SetAsync($"track:{trackTemp.Id}:requestUpload", trackTemp, TimeSpan.FromDays(3));
+            await _redisCacheService.SetAsync($"work:{workTemp.Id}:requestUpload", workTemp, TimeSpan.FromDays(3));
+            await _redisCacheService.SetAsync($"recording:{recordingTemp.Id}:requestUpload", recordingTemp, TimeSpan.FromDays(3));
 
             // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
             await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTemp.Id);
@@ -84,26 +94,56 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
             return;
         }
 
-        public async Task<bool> RejectTrackUploadRequestAsync(string trackId)
+        public async Task<bool> RejectTrackUploadRequestAsync(string trackId, string workId, string recordingId)
         {
-            // Xóa file đã upload trên cloud storage
-            await _amazonS3Service.DeleteOriginalAudioAsync(trackId);
+            if (_redisCacheService.TryGet($"track:{trackId}:requestUpload", out TrackTempRequest? trackUploadRequest) &&
+                await _redisCacheService.ExistsAsync($"work:{workId}:requestUpload") &&
+                await _redisCacheService.ExistsAsync($"recording:{recordingId}:requestUpload"))
+            {
+                if (trackUploadRequest is null)
+                {
+                    throw new NotFoundCustomException("Track upload request not found");
+                }
 
-            // Xóa request trên redis
-            await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
-            return true;
+                // Xóa file đã upload trên cloud storage
+                await _amazonS3Service.DeleteOriginalAudioAsync(trackUploadRequest.Id);
+
+                // Xóa request trên redis
+                await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
+                await _redisCacheService.RemoveAsync($"work:{workId}:requestUpload");
+                await _redisCacheService.RemoveAsync($"recording:{recordingId}:requestUpload");
+
+                return true;
+            }
+
+            return false;
         }
 
         // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
-        public async Task<bool> ApproveTrackUploadRequestAsync(string trackId)
+        public async Task<bool> ApproveTrackUploadRequestAsync(string trackId, string workId, string recordingId)
         {
             // Lưu xuống database
-            if (_redisCacheService.TryGet($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest))
+            if (_redisCacheService.TryGet($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest) &&
+                _redisCacheService.TryGet($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
+                _redisCacheService.TryGet($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
             {
                 WavFileResponse wavFileResponse = default!;
 
+                if (trackTempRequest is null)
+                {
+                    throw new NotFoundCustomException("Track upload request not found");
+                }
+                if (workTempRequest is null)
+                {
+                    throw new NotFoundCustomException("Work upload request not found");
+                }
+                if (recordingTempRequest is null)
+                {
+                    throw new NotFoundCustomException("Recording upload request not found");
+                }
+
                 // Tài nguyên từ S3
-                await _amazonS3Service.DownloadOriginalAudioAsync(trackId, async stream =>
+                await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
                 {
                     string tempName = ObjectId.GenerateNewId().ToString();
 
@@ -115,7 +155,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                 });
 
                 // Tạo hls từ file wav
-                AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
+                AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
                 string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
 
                 AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
@@ -126,7 +166,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
 
                 TrackTempResponse trackTempResponse = new()
                 {
-                    Id = trackTempRequest!.Id,
+                    Id = trackTempRequest.Id,
                     Name = trackTempRequest.Name,
                     Description = trackTempRequest.Description,
                     MainArtistIds = trackTempRequest.MainArtistIds,
@@ -143,10 +183,10 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                     CreatedBy = trackTempRequest.CreatedBy,
                 };
 
-                await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse);
+                await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
 
                 // Đẩy hls playlist lên S3
-                await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);
+                await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
 
                 // Xóa folder, file tạm sau khi upload lên S3
                 HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
@@ -158,9 +198,18 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                 //{
                 //    File.Delete(wavFileResponse.OutputWavPath);
                 //}
+
+                // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
+                // Resolved: Đã xóa tag trên S3 và xóa request trên redis
+                await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
+                await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
+                await _redisCacheService.RemoveAsync($"work:{workId}:requestUpload");
+                await _redisCacheService.RemoveAsync($"recording:{recordingId}:requestUpload");
+
+                return true;
             }
 
-            return true;
+            return false;
         }
     }
 }

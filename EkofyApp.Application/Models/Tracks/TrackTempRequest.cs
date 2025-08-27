@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Application.Models.Tracks;
@@ -7,6 +8,8 @@ public sealed record class TrackTempRequest
     public string Id { get; init; } = null!;
     public string Name { get; init; } = null!;
     public string? Description { get; init; }
+
+    public TrackType Type { get; init; }
 
     public List<string> MainArtistIds { get; init; } = [];
     public List<string> FeaturedArtistIds { get; init; } = [];

@@ -17,6 +17,6 @@ public class UserQueryExtension : ObjectTypeExtension<UserQuery>
             .UseSorting();
 
         descriptor.Field(x => x.GetUserByIdAsync(default!))
-        .Authorize([UserRole.Admin.ToString()]);
+        .Authorize(roles: "Admin");
     }
 }

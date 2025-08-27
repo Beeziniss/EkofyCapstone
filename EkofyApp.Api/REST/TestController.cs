@@ -21,6 +21,8 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
+using Syncfusion.Pdf;
+using Syncfusion.Pdf.Graphics;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -185,7 +187,7 @@ public class TestController : ControllerBase
 
     // Upload UseCase Handler
     [HttpPost("upload-multiple")]
-    public async Task<IActionResult> uploadMultipleFilesManually(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
+    public async Task<IActionResult> UploadMultipleFilesManually(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
     {
 
         // Tài nguyên từ file vật lý
@@ -292,6 +294,27 @@ public class TestController : ControllerBase
             Message = "Original audio retrieved successfully",
             Url = amazonS3Service.GenerateOriginalSignedURL(trackId)
         });
+    }
+
+    [HttpGet("generate")]
+    public IActionResult GeneratePdf()
+    {
+        // Tạo tài liệu PDF mới
+        using (PdfDocument document = new PdfDocument())
+        {
+            PdfPage page = document.Pages.Add();
+            PdfGraphics graphics = page.Graphics;
+
+            PdfFont font = new PdfStandardFont(PdfFontFamily.Helvetica, 20);
+            graphics.DrawString("Hello from Syncfusion PDF!", font, PdfBrushes.Black, new Syncfusion.Drawing.PointF(0, 0));
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                document.Save(ms);
+                ms.Position = 0;
+                return File(ms.ToArray(), "application/pdf", "hello-syncfusion.pdf");
+            }
+        }
     }
 
     //[HttpGet("replace-content-optimized-1")]
