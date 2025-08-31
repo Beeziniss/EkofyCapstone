@@ -21,11 +21,11 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
     public async Task CreatePlaylistAsync(CreatePlaylistRequest createPlaylistRequest)
     {
-        string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("listenerId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         await _unitOfWork.GetCollection<Playlist>().InsertOneAsync(new Playlist()
         {
-            ListenerId = listenerId,
+            UserId = userId,
             Name = createPlaylistRequest.Name,
             Description = createPlaylistRequest.Description,
             CoverImage = createPlaylistRequest.CoverImage,
@@ -35,7 +35,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
     public async Task AddToPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest)
     {
-        string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("listenerId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         Playlist? playlist = await _unitOfWork.GetCollection<Playlist>()
             .Find(x => x.Id == addToPlaylistRequest.PlaylistId)
@@ -45,7 +45,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         {
             await _unitOfWork.GetCollection<Playlist>().InsertOneAsync(new Playlist()
             {
-                ListenerId = listenerId,
+                UserId = listenerId,
                 Name = addToPlaylistRequest.PlaylistName!,
                 TracksInfo =
                 [
@@ -77,17 +77,17 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
     public async Task AddToFavoriteAsync(AddToPlaylistRequest addToPlaylistRequest)
     {
-        string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("listenerId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         Playlist? favoritePlaylist = await _unitOfWork.GetCollection<Playlist>()
-            .Find(x => x.ListenerId == listenerId && x.Name == "Favorite Songs")
+            .Find(x => x.UserId == userId && x.Name == "Favorite Songs")
             .FirstOrDefaultAsync();
 
         if (favoritePlaylist == null)
         {
             await _unitOfWork.GetCollection<Playlist>().InsertOneAsync(new Playlist()
             {
-                ListenerId = listenerId,
+                UserId = userId,
                 Name = "Favorite Songs",
                 TracksInfo =
                 [
@@ -131,8 +131,6 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
     public async Task DeletePlaylistAsync(string playlistId)
     {
-        string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("listenerId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
         DeleteResult deleteResult = await _unitOfWork.GetCollection<Playlist>()
             .DeleteOneAsync(x => x.Id == playlistId);
 

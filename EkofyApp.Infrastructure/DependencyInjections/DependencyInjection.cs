@@ -20,6 +20,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
@@ -44,6 +45,7 @@ using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
+using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -62,6 +64,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Refit;
 using StackExchange.Redis;
+using Stripe;
 using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
@@ -74,6 +77,7 @@ public static class DependencyInjection
         //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
         services.AddAutoMapperExtension();
         services.AddSyncfusionExtension();
+        services.AddStripeExtension();
         services.ConfigRoute();
 
         services.AddHttpContextAccessor();
@@ -98,6 +102,18 @@ public static class DependencyInjection
         services.AddEnumMemberSerializer();
 
         //services.AddSwaggerGen();
+    }
+
+    public static void AddStripeExtension(this IServiceCollection services)
+    {
+        // Load Stripes settings from environment variables
+        string stripeApiKey = Environment.GetEnvironmentVariable("STRIPE_API_KEY") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_API_KEY is not set in the environment");
+
+        string secretKey = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_SECRET_KEY is not set in the environment");
+
+        StripeConfiguration.ApiKey = secretKey;
+
+        services.AddScoped<IStripeService, StripeService>();
     }
 
     public static void AddSyncfusionExtension(this IServiceCollection services)
@@ -296,7 +312,7 @@ public static class DependencyInjection
         services.AddScoped<IJsonWebToken, JsonWebToken>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
-        services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<ISubscriptionService, Services.Subscriptions.SubscriptionService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IWorkService, WorkService>();
         services.AddScoped<IRecordingService, RecordingService>();
@@ -580,5 +596,8 @@ public static class DependencyInjection
         // Common
         BsonSerializer.RegisterSerializer(typeof(EntitlementValueType), new EnumMemberSerializer<EntitlementValueType>());
         BsonSerializer.RegisterSerializer(typeof(RestrictionType), new EnumMemberSerializer<RestrictionType>());
+        BsonSerializer.RegisterSerializer(typeof(CurrencyType), new EnumMemberSerializer<CurrencyType>());
+        BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
+        BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
     }
 }

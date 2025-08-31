@@ -9,6 +9,7 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
@@ -315,6 +316,27 @@ public class TestController : ControllerBase
                 return File(ms.ToArray(), "application/pdf", "hello-syncfusion.pdf");
             }
         }
+    }
+
+    [HttpPost("subscription-plan")]
+    public IActionResult CreateSubscriptionPlan([FromServices] IStripeService stripeService, string lookupKey, long amount, string subscriptionPlanName)
+    {
+        var plan = stripeService.CreateSubscriptionPlan(lookupKey, subscriptionPlanName, amount);
+        return Ok(new
+        {
+            Message = "Create Subscription Plan Successfully",
+            plan
+        });
+    }
+
+    [HttpDelete("delete-account-stripe")]
+    public async Task<IActionResult> DeleteAccountStripe(string accountId, [FromServices] IStripeService stripeService)
+    {
+        await stripeService.DeleteConnectedAccount(accountId);
+        return Ok(new
+        {
+            Message = "Delete Stripes Account Successfully",
+        });
     }
 
     //[HttpGet("replace-content-optimized-1")]

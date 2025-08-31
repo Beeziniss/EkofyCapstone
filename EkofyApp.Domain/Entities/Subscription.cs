@@ -16,7 +16,7 @@ public sealed class Subscription : TimeStamped, IEntityCustom
     public int Version { get; init; } = 1; // Version of the subscription, default is 1
 
     public decimal Price { get; set; }
-    public string Currency { get; set; } = "VND"; // Default currency is USD
+    public string Currency { get; set; } = "vnd"; // Default currency is USD
 
     public SubscriptionTier Tier { get; set; } // TODO: Cân nhắc có nên embed không
     public List<Entitlement> Entitlements { get; set; } = [];

@@ -32,6 +32,10 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         return Created();
     }
 
+    // TODO: Cân nhắc cho đăng nhập chung giữa listener và artist
+    // Resolved: Không cần vì xét về UI thì sẽ có button riêng cho listener và artist
+    // Nếu là artist thì vẫn vào trang chủ của web app được và vào trang quản lý của nghệ sĩ được
+    // Nhưng nếu là listener thì không thể vào trang quản lý của nghệ sĩ được
     [AllowAnonymous, HttpPost("login/listener")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginRequest)
     {

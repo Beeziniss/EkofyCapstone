@@ -10,7 +10,7 @@ public sealed class Playlist : TimeStamped, IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!; // Unique identifier for the playlist
     [BsonRepresentation(BsonType.ObjectId)]
-    public string ListenerId { get; set; } = null!; // ID of the listener who created the playlist
+    public string UserId { get; set; } = null!; // ID of the listener who created the playlist
 
     public string Name { get; set; } = null!; // Name of the playlist, e.g., "Chill Vibes"
     public string? Description { get; set; } // Description of the playlist

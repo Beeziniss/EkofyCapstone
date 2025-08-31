@@ -21,6 +21,9 @@ public sealed class User : Auditable, IEntityCustom
     public UserStatus Status { get; set; } = UserStatus.Inactive; // Default status is Inactive
     public bool IsLinkedWithGoogle { get; set; }
 
+    public string StripeCustomerId { get; set; } = null!; // Stripe Customer ID for payment processing
+    public string? StripeAccountId { get; set; } // Stripe Account ID for artists
+
     public string? RefreshToken { get; set; }
     public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
 
