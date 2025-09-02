@@ -12,7 +12,7 @@ public sealed class Artist : TimeStamped, IEntityCustom
     public string Id { get; set; } = null!; // Unique identifier for the artist
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!; // Unique identifier for the user associated with the artist
-    public string Name { get; set; } = null!; // Name of the artist, e.g., "John Doe"
+    public string StageName { get; set; } = null!; // DisplayName of the artist, e.g., "John Doe"
     public string Email { get; set; } = null!; // Email of the artist, e.g., "
 
     public ArtistType ArtistType { get; set; } // Type of artist, e.g., Individual, Band, etc.

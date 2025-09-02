@@ -6,9 +6,9 @@ public sealed class CreatePlaylistRequestValidator : AbstractValidator<CreatePla
     public CreatePlaylistRequestValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Name is required")
-            .MinimumLength(3).WithMessage("Name must be at least 3 characters long")
-            .MaximumLength(100).WithMessage("Name must not exceed 100 characters");
+            .NotEmpty().WithMessage("DisplayName is required")
+            .MinimumLength(3).WithMessage("DisplayName must be at least 3 characters long")
+            .MaximumLength(100).WithMessage("DisplayName must not exceed 100 characters");
 
         RuleFor(x => x.Description)
             .MaximumLength(500).WithMessage("Description must not exceed 500 characters");

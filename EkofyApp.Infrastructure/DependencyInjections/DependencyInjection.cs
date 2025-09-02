@@ -220,7 +220,7 @@ public static class DependencyInjection
     {
         // Load MongoDB settings from environment variables
         string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
-        string databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME") ?? throw new UnconfiguredEnvironmentCustomException("Database Name is not set in the environment variables");
+        string databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME") ?? throw new UnconfiguredEnvironmentCustomException("Database DisplayName is not set in the environment variables");
 
         // Register the MongoDB settings as a singleton
         MongoDbSetting mongoDbSettings = new()
@@ -250,8 +250,8 @@ public static class DependencyInjection
                                 el.Name != "lsid" &&
                                 el.Name != "signature" &&
                                 el.Name != "$clusterTime")];
-                    //el.Name != "$db" &&
-                    //el.Name != "cursor")];
+                    //el.DisplayName != "$db" &&
+                    //el.DisplayName != "cursor")];
 
                     // Log JSON format sau khi đã lọc
                     string json = JsonConvert.SerializeObject(JObject.Parse(filtered.ToJson()), Formatting.Indented);

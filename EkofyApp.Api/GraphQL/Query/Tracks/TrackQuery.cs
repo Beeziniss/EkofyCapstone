@@ -74,7 +74,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     //{
     //    return context.Selection.SyntaxNode.SelectionSet?.Selections
     //        .OfType<FieldNode>()
-    //        .Select(f => f.Name.Value)
+    //        .Select(f => f.DisplayName.Value)
     //        .Distinct()
     //        .ToList()
     //        ?? [];
@@ -87,12 +87,12 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
 
     //    foreach (string field in fields)
     //    {
-    //        // Lấy thông tin property từ class T (ignore case: "name" → "Name")
+    //        // Lấy thông tin property từ class T (ignore case: "name" → "DisplayName")
     //        PropertyInfo? propInfo = typeof(T).GetProperty(field, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
     //        if (propInfo != null)
     //        {
     //            BsonElementAttribute? bsonElement = propInfo.GetCustomAttribute<BsonElementAttribute>();
-    //            string fieldName = bsonElement?.ElementName ?? propInfo.Name;
+    //            string fieldName = bsonElement?.ElementName ?? propInfo.DisplayName;
 
     //            projection = projection.Include(fieldName);
     //        }

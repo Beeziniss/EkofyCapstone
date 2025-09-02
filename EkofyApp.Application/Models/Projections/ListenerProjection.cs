@@ -10,7 +10,7 @@ public sealed class ListenerProjection
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!; // Unique identifier for the user associated with the listener
 
-    public string Name { get; set; } = null!; // Name of the listener, e.g., "John Doe"
+    public string Name { get; set; } = null!; // DisplayName of the listener, e.g., "John Doe"
     public string Email { get; set; } = null!; // Email of the listener, e.g., "
     public string? AvatarImage { get; set; } // URL to the listener's avatar image
     public string? BannerImage { get; set; } // URL to the listener's banner image

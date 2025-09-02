@@ -21,6 +21,12 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
             .NotEmpty().WithMessage("Confirm Password is required")
             .Equal(x => x.Password).WithMessage("Passwords do not match");
 
+        RuleFor(x => x.FullName)
+            .NotEmpty().WithMessage("Full DisplayName is required")
+            .MinimumLength(3).WithMessage("Full DisplayName must be at least 3 characters long")
+            .MaximumLength(50).WithMessage("Full DisplayName must not exceed 100 characters")
+            .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("Full DisplayName must contain only letters and spaces");
+
         RuleFor(x => x.BirthDate)
             .NotEmpty().WithMessage("Birth Date is required")
             .GreaterThan(DateTimeOffset.MinValue).WithMessage("Birth Date must be in the past")
@@ -37,10 +43,10 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
         RuleFor(x => x.IsLegalRepresentative)
             .NotEmpty().WithMessage("Is Legal Representative is required");
 
-        RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Name is required")
-            .MinimumLength(3).WithMessage("Name must be at least 3 characters long")
-            .MaximumLength(100).WithMessage("Name must not exceed 100 characters");
+        RuleFor(x => x.StageName)
+            .NotEmpty().WithMessage("DisplayName is required")
+            .MinimumLength(3).WithMessage("DisplayName must be at least 3 characters long")
+            .MaximumLength(100).WithMessage("DisplayName must not exceed 100 characters");
 
         RuleFor(x => x.ArtistType)
             .IsInEnum().WithMessage("Artist Type must be Individual, Band, or Other");

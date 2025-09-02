@@ -24,7 +24,7 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
             Name = createCategoryRequest.Name,
             Description = createCategoryRequest.Description,
             Type = createCategoryRequest.Type,
-            //Slug = HelperMethod.GenerateSlug(createCategoryRequest.Name),
+            //Slug = HelperMethod.GenerateSlug(createCategoryRequest.DisplayName),
             Slug = createCategoryRequest.Name?.ToLowerInvariant().Replace(" ", "-") ?? string.Empty,
             Popularity = 0,
             CreatedAt = HelperMethod.GetUtcPlus7TimeOffset(),
@@ -40,7 +40,7 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
 
         if (moodTypes.Any())
         {
-            // Convert moodTypes to string (to compare with mood.Name)
+            // Convert moodTypes to string (to compare with mood.DisplayName)
             IEnumerable<string> moodTypeNames = moodTypes.Select(mt => mt.ToString()).ToList();
 
             return await _unitOfWork.GetCollection<Category>()

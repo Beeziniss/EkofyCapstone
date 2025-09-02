@@ -93,6 +93,7 @@ public sealed class Program
                 // Inject CSS để tùy chỉnh giao diện
                 options.InjectStylesheet("/swagger-dark-theme.css");
             });
+            //app.UseSwaggerUI();
         }
 
         app.UseHttpsRedirection();

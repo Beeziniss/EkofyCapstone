@@ -61,6 +61,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 Id = userId,
                 Email = registerRequest.Email.Trim().ToLowerInvariant(),
                 PasswordHash = HashPassword(registerRequest.Password),
+                FullName = registerRequest.FullName,
                 BirthDate = registerRequest.BirthDate.Date,
                 Gender = registerRequest.Gender,
                 Role = UserRole.Listener, // Mặc định là Listener
@@ -70,7 +71,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             Listener listener = new()
             {
                 UserId = userId,
-                Name = registerRequest.Name,
+                DisplayName = registerRequest.DisplayName,
                 Email = registerRequest.Email.Trim().ToLowerInvariant(),
                 Restriction = new Restriction
                 {
@@ -159,6 +160,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
                 Id = userId,
                 Email = registerRequest.Email.Trim().ToLowerInvariant(),
                 PasswordHash = HashPassword(registerRequest.Password),
+                FullName = registerRequest.FullName,
                 BirthDate = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.BirthDate.Date),
                 Gender = registerRequest.Gender,
                 PhoneNumber = registerRequest.PhoneNumber,
@@ -182,7 +184,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             Artist artist = new()
             {
                 UserId = userId,
-                Name = registerRequest.Name,
+                StageName = registerRequest.StageName,
                 Email = registerRequest.Email.Trim().ToLowerInvariant(),
                 Restriction = new Restriction
                 {

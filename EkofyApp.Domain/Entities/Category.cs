@@ -9,7 +9,7 @@ public sealed class Category : TimeStamped, IEntityCustom
     [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
     public string Id { get; set; } = null!; // Unique identifier for the category
 
-    public string Name { get; set; } = null!; // Name of the category, e.g., "Music", "Podcast"
+    public string Name { get; set; } = null!; // DisplayName of the category, e.g., "Music", "Podcast"
     public string Slug { get; set; } = null!;
     public CategoryType Type { get; set; } // e.g., "music", "podcast", etc.
     public List<string> Aliases { get; set; } = []; // For SEO or alternative names

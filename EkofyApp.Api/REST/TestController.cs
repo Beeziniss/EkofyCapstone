@@ -50,7 +50,7 @@ public class TestController : ControllerBase
         Track track = new()
         {
             Id = trackId,
-            Name = "Name",
+            Name = "DisplayName",
             Description = "Uploaded MP3 file",
             CategoryIds = [],
             Tags = ["cho phép gắn sẵn"],
@@ -242,7 +242,7 @@ public class TestController : ControllerBase
         //if (moodTypes.Any())
         //{
         //    moodIds = await unitOfWork.GetCollection<Category>()
-        //        .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
+        //        .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.DisplayName)))
         //        .Project(mood => mood.Id)
         //        .ToListAsync();
         //}
@@ -316,17 +316,6 @@ public class TestController : ControllerBase
                 return File(ms.ToArray(), "application/pdf", "hello-syncfusion.pdf");
             }
         }
-    }
-
-    [HttpPost("subscription-plan")]
-    public IActionResult CreateSubscriptionPlan([FromServices] IStripeService stripeService, string lookupKey, long amount, string subscriptionPlanName)
-    {
-        var plan = stripeService.CreateSubscriptionPlan(lookupKey, subscriptionPlanName, amount);
-        return Ok(new
-        {
-            Message = "Create Subscription Plan Successfully",
-            plan
-        });
     }
 
     [HttpDelete("delete-account-stripe")]

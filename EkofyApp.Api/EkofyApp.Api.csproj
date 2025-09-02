@@ -35,8 +35,4 @@
 		</ProjectReference>
 	</ItemGroup>
 
-	<ItemGroup>
-		<Folder Include="GraphQL\Query\Payment\" />
-	</ItemGroup>
-
 </Project>

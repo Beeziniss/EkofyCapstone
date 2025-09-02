@@ -3,7 +3,7 @@
 namespace EkofyApp.Application.Models.Subscriptions;
 public sealed record class CreateEntitlementRequest
 {
-    public string Name { get; init; } = null!; // Name of the feature, e.g., "Advanced Analytics"
+    public string Name { get; init; } = null!; // DisplayName of the feature, e.g., "Advanced Analytics"
     public string Code { get; init; } = null!; // Unique code for the feature, e.g., "advanced_analytics"
     public string Description { get; init; } = null!; // Description of the feature, e.g., "Access to advanced analytics tools"
 

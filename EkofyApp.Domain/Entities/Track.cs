@@ -11,7 +11,7 @@ public sealed class Track : Auditable, IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!; // Unique identifier for the track
 
-    public string Name { get; set; } = null!; // Name of the track, e.g., "Song Title"
+    public string Name { get; set; } = null!; // DisplayName of the track, e.g., "Song Title"
     public string? Description { get; set; }
 
     public TrackType Type { get; set; } // Original, Cover, Remix, Live, etc.

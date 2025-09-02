@@ -6,7 +6,7 @@ public sealed class CreateArtistRequestValidator : AbstractValidator<CreateArtis
     public CreateArtistRequestValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Name is required")
+            .NotEmpty().WithMessage("DisplayName is required")
             .MaximumLength(100);
 
         RuleFor(x => x.Biography)

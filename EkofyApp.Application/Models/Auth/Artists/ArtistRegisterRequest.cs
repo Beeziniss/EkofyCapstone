@@ -8,6 +8,7 @@ public sealed record class ArtistRegisterRequest
     public string Email { get; init; } = default!; // User's email address, e.g., "
     public string Password { get; init; } = default!; // User's password, e.g., "P@ssw0rd123"
     public string ConfirmPassword { get; init; } = default!; // Confirmation of the user's password, e.g., "P@ssw0rd123"
+    public string FullName { get; init; } = default!; // User's full name, e.g., "John Doe"
     public DateTimeOffset BirthDate { get; init; } // User's birth date, e.g., "
     public UserGender Gender { get; init; }
     public string PhoneNumber { get; init; } = null!; // Optional phone number for the user
@@ -16,7 +17,7 @@ public sealed record class ArtistRegisterRequest
     public bool IsLegalRepresentative { get; init; } // Indicates if the user is the representative of the artist
 
     // For the artist profile
-    public string Name { get; init; } = default!; // Name of the artist
+    public string StageName { get; init; } = default!; // DisplayName of the artist
     public ArtistType ArtistType { get; init; } // Type of artist, e.g., Individual, Band, etc.
     public List<CreateArtistMemberRequest> Members { get; init; } = []; // List of members in the artist group, if applicable
 

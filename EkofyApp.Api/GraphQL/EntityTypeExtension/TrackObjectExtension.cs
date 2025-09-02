@@ -11,7 +11,7 @@ public class TrackObjectExtension : ObjectTypeExtension<Track>
         descriptor.Field(x => x.AudioFeature).Ignore();
         descriptor.Field(x => x.AudioFingerprint).Ignore();
 
-        //descriptor.Name("Track");
+        //descriptor.DisplayName("Track");
 
         //// Let HotChocolate auto-map properties that match
         //descriptor.BindFieldsImplicitly();

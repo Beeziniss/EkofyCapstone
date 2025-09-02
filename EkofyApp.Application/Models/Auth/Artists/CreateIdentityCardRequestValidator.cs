@@ -13,10 +13,10 @@ public sealed class CreateIdentityCardRequestValidator : AbstractValidator<Creat
             .Matches(HelperMethod.RegexPatternIdentityCardNumber()).WithMessage("Identity Card Number must contain only 9 or 12 digits");
 
         RuleFor(x => x.FullName)
-            .NotEmpty().WithMessage("Full Name is required")
-            .MinimumLength(3).WithMessage("Full Name must be at least 3 characters long")
-            .MaximumLength(50).WithMessage("Full Name must not exceed 100 characters")
-            .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("Full Name must contain only letters and spaces");
+            .NotEmpty().WithMessage("Full DisplayName is required")
+            .MinimumLength(3).WithMessage("Full DisplayName must be at least 3 characters long")
+            .MaximumLength(50).WithMessage("Full DisplayName must not exceed 100 characters")
+            .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("Full DisplayName must contain only letters and spaces");
 
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Date of Birth is required")

@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Enums.Subcriptions;
+﻿using EkofyApp.Application.Models.Stripes;
+using EkofyApp.Domain.Enums.Subcriptions;
 using Stripe;
 using Account = Stripe.Account;
 using CheckoutSession = Stripe.Checkout.Session;
@@ -11,14 +12,21 @@ using Subscription = EkofyApp.Domain.Entities.Subscription;
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 public interface IStripeService
 {
-    AccountLink CreateAccountOnboardingLink(string refreshUrl, string returnUrl);
-    Task<Customer> CreateCustomerAsync(string? name);
+    AccountLinkResponse CreateAccountOnboardingLink(string refreshUrl, string returnUrl);
+    AccountLink CreateAccountOnboardingLinkTest(string refreshUrl, string returnUrl);
+    Task<Customer> CreateCustomerAsync();
     Task<PortalSession> CreateCustomerPortalSessionAsync(string returnUrl);
-    Task<Account> CreateExpressConnectedAccount();
-    Task<CheckoutSession> CreatePaymentCheckoutSessionAsync(SubscriptionTier subscriptionTier, int subscriptionVersion, string successUrl, string cancelUrl);
-    Task<CheckoutSession> CreateSubscriptionCheckoutSession(SubscriptionTier subscriptionTier, int subscriptionVersion, string successUrl, string cancelUrl);
-    Task<Price> CreateSubscriptionPlan(string lookupKey, string subscriptionPlanName, long unitAmount, long intervalCount = 1, List<string>? images = null, Dictionary<string, string>? metadata = null);
+    Task CreateExpressConnectedAccount();
+    Task<Account> CreateExpressConnectedAccountTest();
+    Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest);
+    Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateCheckoutSessionRequest createCheckoutSessionRequest);
+    Task<PriceResponse> CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
     Task<PaymentIntent> CreateTopupAsync(long amount, string currency = "usd");
     Task DeleteConnectedAccount(string accountId);
     Balance GetBalance();
+    void HandleWebhookCustomer(string json, string stripeSignature);
+    void HandleWebhookExpressConnectedAccount(string json, string stripeSignature);
+    Task<bool> IsCustomerIdExisted();
+    void TransferGroupArtist(string[] artistAccountIds, long amount, string groupId = "default");
+    TransferResponse TransferToArtist(string artistAccountId, long amount);
 }

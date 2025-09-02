@@ -12,7 +12,7 @@ public sealed class Playlist : TimeStamped, IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!; // ID of the listener who created the playlist
 
-    public string Name { get; set; } = null!; // Name of the playlist, e.g., "Chill Vibes"
+    public string Name { get; set; } = null!; // DisplayName of the playlist, e.g., "Chill Vibes"
     public string? Description { get; set; } // Description of the playlist
     public string? CoverImage { get; set; } // URL to the cover image of the playlist
 
