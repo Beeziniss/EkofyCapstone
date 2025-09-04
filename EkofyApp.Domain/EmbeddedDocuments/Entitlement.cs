@@ -1,15 +1,9 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
-using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.EmbeddedDocuments;
-public sealed class Entitlement : TimeStamped, IEntityCustom
+public sealed class Entitlement : TimeStamped
 {
-    [BsonId]
-    [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
-    public string Id { get; set; } = null!; // Unique identifier for the feature
-
     public string Name { get; set; } = null!; // DisplayName of the feature, e.g., "Advanced Analytics"
     public string Code { get; set; } = null!; // Unique code for the feature, e.g., "advanced_analytics"
     public string Description { get; set; } = null!; // Description of the feature, e.g., "Access to advanced analytics tools"

@@ -8,7 +8,7 @@ public sealed class StripeQueryExtension : ObjectTypeExtension<StripeQuery>
         //    .Authorize(roles: "Admin");
             //.AllowAnonymous();
 
-        descriptor.Field(x => x.CreateCustomerPortalSessionAsync(default!))
-            .Authorize(roles: "Listener,Artist");
+        //descriptor.Field(x => x.CreateCustomerPortalSessionAsync(default!))
+        //    .Authorize(roles: "Listener,Artist");
     }
 }

@@ -24,8 +24,6 @@ public interface IStripeService
     Task<PaymentIntent> CreateTopupAsync(long amount, string currency = "usd");
     Task DeleteConnectedAccount(string accountId);
     Balance GetBalance();
-    void HandleWebhookCustomer(string json, string stripeSignature);
-    void HandleWebhookExpressConnectedAccount(string json, string stripeSignature);
     Task<bool> IsCustomerIdExisted();
     void TransferGroupArtist(string[] artistAccountIds, long amount, string groupId = "default");
     TransferResponse TransferToArtist(string artistAccountId, long amount);

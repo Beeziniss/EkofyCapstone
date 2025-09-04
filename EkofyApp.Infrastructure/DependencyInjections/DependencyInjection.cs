@@ -114,6 +114,7 @@ public static class DependencyInjection
         StripeConfiguration.ApiKey = secretKey;
 
         services.AddScoped<IStripeService, StripeService>();
+        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
     }
 
     public static void AddSyncfusionExtension(this IServiceCollection services)

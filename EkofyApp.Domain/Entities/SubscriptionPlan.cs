@@ -12,9 +12,8 @@ public sealed class SubscriptionPlan
     [BsonRepresentation(BsonType.ObjectId)]
     public string SubscriptionId { get; set; } = null!;
 
-    #region Stripe Subscription
-    public string StripeSubscriptionId { get; set; } = null!;
-    #endregion
+    public string Interval { get; set; } = null!; // "day", "week", "month", or "year"
+    public int IntervalCount { get; set; } // e.g., every 3 months
 
     #region Stripe Product
     public string StripeProductId { get; set; } = null!;
@@ -30,8 +29,7 @@ public sealed class SubscriptionPlan
     public bool StripePriceActive { get; set; }
     public long StripePriceUnitAmount { get; set; }
     public string StripePriceCurrency { get; set; } = null!;
-    public string StripePriceInterval { get; set; } = null!; // "day", "week", "month", or "year"
-    public int StripePriceIntervalCount { get; set; } // e.g., every 3 months
+    
     public string StripePriceLookupKey { get; set; } = null!;
     public List<Metadata>? StripePriceMetadata { get; set; } = null;
     #endregion

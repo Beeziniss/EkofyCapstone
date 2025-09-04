@@ -21,9 +21,14 @@ public sealed class CreateSubScriptionPlanRequestValidator : AbstractValidator<C
             .MaximumLength(100).WithMessage("Subscription name must not exceed 100 characters.")
             .Matches(x => HelperMethod.RegexPatternAlphaNumericWithSpace());
 
-        RuleFor(x => x.UnitAmount)
-            .NotEmpty().WithMessage("UnitAmount is required.")
-            .GreaterThan(0).WithMessage("UnitAmount must be greater than 0.");
+        //RuleFor(x => x.UnitAmount)
+        //    .NotEmpty().WithMessage("UnitAmount is required.")
+        //    .GreaterThan(0).WithMessage("UnitAmount must be greater than 0.");
+
+        RuleFor(x => x.Interval)
+            .NotEmpty().WithMessage("Interval is required.")
+            .Must(interval => new[] { "day", "week", "month", "year" }.Contains(interval))
+            .WithMessage("Interval must be one of the following values: day, week, month, or year.");
 
         RuleFor(x => x.IntervalCount)
             .NotEmpty().WithMessage("Interval count is required.")
@@ -37,5 +42,12 @@ public sealed class CreateSubScriptionPlanRequestValidator : AbstractValidator<C
             .Must(kv => !string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
             .WithMessage("Metadata keys and values must not be empty or whitespace.")
             .When(x => x.Metadata != null && x.Metadata.Count != 0);
+
+        RuleFor(x => x.SubscriptionTier)
+            .IsInEnum().WithMessage("Subscription Tier must be a valid enum value.");
+
+        RuleFor(x => x.SubscriptionVersion)
+            .NotEmpty().WithMessage("Subscription Version is required.")
+            .GreaterThan(0).WithMessage("Subscription Version must be greater than 0.");
     }
 }
