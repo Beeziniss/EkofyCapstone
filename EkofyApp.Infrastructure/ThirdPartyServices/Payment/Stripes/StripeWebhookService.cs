@@ -9,13 +9,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
-using System.Threading.Tasks;
-using CheckoutSession = Stripe.Checkout.Session;
-using PortalSession = Stripe.BillingPortal.Session;
-using PortalSessionService = Stripe.BillingPortal.SessionService;
-using StripeInvoice = Stripe.Invoice;
-using StripeSubscription = Stripe.Subscription;
-using Subscription = EkofyApp.Domain.Entities.Subscription;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeWebhookService
@@ -118,7 +111,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
             Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTest);
             if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
             {
-                CheckoutSession checkoutSession = stripeEvent.Data.Object as CheckoutSession ?? throw new ArgumentNullCustomException("NULL");
+                CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("NULL");
 
                 await _unitOfWork.ExecuteInTransactionAsync(async session =>
                 {
@@ -183,7 +176,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
                     return $"Subscription {subDeleted.Id} cancelled.";
 
                 case "checkout.checkoutSession.completed":
-                    var session = stripeEvent.Data.Object as CheckoutSession;
+                    var session = stripeEvent.Data.Object as CheckoutOption.Session;
                     // Xử lý thanh toán 1 lần hoặc sub checkout
                     return $"Checkout completed for checkoutSession {session.Id}.";
 

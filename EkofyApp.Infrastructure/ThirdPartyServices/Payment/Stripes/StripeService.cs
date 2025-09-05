@@ -1,20 +1,24 @@
 ﻿using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
+using Stripe.BillingPortal;
 using Stripe.Checkout;
-using CheckoutSession = Stripe.Checkout.Session;
-using PortalSession = Stripe.BillingPortal.Session;
-using PortalSessionService = Stripe.BillingPortal.SessionService;
-using StripeInvoice = Stripe.Invoice;
-using StripeSubscription = Stripe.Subscription;
-using Subscription = EkofyApp.Domain.Entities.Subscription;
+//using CheckoutSession = Stripe.Checkout.Session;
+//using PortalSession = Stripe.BillingPortal.Session;
+//using PortalSessionService = Stripe.BillingPortal.SessionService;
+//using StripeInvoice = Stripe.Invoice;
+//using StripeSubscription = Stripe.Subscription;
+//using Subscription = EkofyApp.Domain.Entities.Subscription;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
@@ -199,6 +203,92 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         });
     }
 
+    #region Billing Portal Configuration
+    public async Task CreateBillingPortalConfiguration(CreateBillingPortalConfigurationRequest createBillingPortalConfigurationRequest)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            ConfigurationCreateOptions options = new()
+            {
+                Features = new ConfigurationFeaturesOptions
+                {
+                    CustomerUpdate = new ConfigurationFeaturesCustomerUpdateOptions
+                    {
+                        Enabled = createBillingPortalConfigurationRequest.CustomerUpdateEnabled,
+                        AllowedUpdates = createBillingPortalConfigurationRequest.AllowedCustomerUpdates.Select(x => x.ToString().ToLowerInvariant()).ToList(),
+                    },
+                    PaymentMethodUpdate = new ConfigurationFeaturesPaymentMethodUpdateOptions
+                    {
+                        Enabled = createBillingPortalConfigurationRequest.PaymentMethodUpdateEnabled,
+                    },
+                    SubscriptionCancel = new ConfigurationFeaturesSubscriptionCancelOptions()
+                    {
+                        Enabled = createBillingPortalConfigurationRequest.SubscriptionCancelEnabled,
+                        Mode = createBillingPortalConfigurationRequest.Mode.ToString().ToLowerInvariant(),
+                    },
+                    SubscriptionUpdate = new ConfigurationFeaturesSubscriptionUpdateOptions
+                    {
+                        Enabled = createBillingPortalConfigurationRequest.SuscriptionUpdateEnabled,
+                        DefaultAllowedUpdates = createBillingPortalConfigurationRequest.AllowedSubscriptionUpdates.Select(x => x.ToString().ToLowerInvariant()).ToList(),
+                        Products = createBillingPortalConfigurationRequest.Products.Select(productRequest => new ConfigurationFeaturesSubscriptionUpdateProductOptions
+                        {
+                            Product = productRequest.Id,
+                            Prices = productRequest.StripePriceIds
+                        }).ToList()
+                    },
+                }
+            };
+            ConfigurationService configService = new();
+            Configuration configuration = configService.Create(options);
+
+            await _unitOfWork.GetCollection<BillingPortalConfiguration>().InsertOneAsync(new BillingPortalConfiguration
+            {
+                StripeBillingPortalConfigurationId = configuration.Id,
+
+                UserRole = createBillingPortalConfigurationRequest.UserRole,
+                SubscriptionTier = createBillingPortalConfigurationRequest.SubscriptionTier,
+                Version = createBillingPortalConfigurationRequest.Version,
+
+                CustomerUpdateEnabled = createBillingPortalConfigurationRequest.CustomerUpdateEnabled,
+                AllowedCustomerUpdates = createBillingPortalConfigurationRequest.AllowedCustomerUpdates,
+
+                PaymentMethodUpdateEnabled = createBillingPortalConfigurationRequest.PaymentMethodUpdateEnabled,
+
+                InvoiceHistoryEnabled = createBillingPortalConfigurationRequest.InvoiceHistoryEnabled,
+
+                SubscriptionCancelEnabled = createBillingPortalConfigurationRequest.SubscriptionCancelEnabled,
+                Mode = createBillingPortalConfigurationRequest.Mode,
+
+                SuscriptionUpdateEnabled = createBillingPortalConfigurationRequest.SuscriptionUpdateEnabled,
+                AllowedSubscriptionUpdates = createBillingPortalConfigurationRequest.AllowedSubscriptionUpdates,
+                Products = createBillingPortalConfigurationRequest.Products.Select(productRequest => new StripeProduct
+                {
+                    Id = productRequest.Id,
+                    StripePriceIds = productRequest.StripePriceIds
+                }).ToList()
+            });
+        });
+    }
+
+    public async Task UpdateBillingPortalConfiguration()
+    {
+
+    }
+
+    //public async Task DeleteBillingPortalConfiguration(string billingProtalConfigurationId)
+    //{
+    //    // Xóa trong DB
+    //    BillingPortalConfiguration billingPortalConfiguration = await _unitOfWork.GetCollection<BillingPortalConfiguration>()
+    //        .FindOneAndUpdateAsync(
+    //            Builders<BillingPortalConfiguration>.Filter.Eq(x => x.Id, billingProtalConfigurationId),
+    //            Builders<BillingPortalConfiguration>.Update.Set(x => x.DeletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+    //        );
+
+    //    // Xóa trên Stripe
+
+    //}
+    #endregion
+
     public async Task<PortalSession> CreateCustomerPortalSessionAsync(string returnUrl)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -208,48 +298,17 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .Project(x => x.StripeCustomerId)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any customer id with user id {userId}");
 
-        var options = new Stripe.BillingPortal.ConfigurationCreateOptions
-        {
-            Features = new Stripe.BillingPortal.ConfigurationFeaturesOptions
-            {
-                CustomerUpdate = new Stripe.BillingPortal.ConfigurationFeaturesCustomerUpdateOptions
-                {
-                    AllowedUpdates = ["name"],
-                    Enabled = true,
-                },
-                PaymentMethodUpdate = new Stripe.BillingPortal.ConfigurationFeaturesPaymentMethodUpdateOptions
-                {
-                    Enabled = true,
-                },
-                SubscriptionCancel = new Stripe.BillingPortal.ConfigurationFeaturesSubscriptionCancelOptions()
-                {
-                    Enabled = true,
-                    Mode = "at_period_end" // or "immediately"
-                },
-                SubscriptionUpdate = new Stripe.BillingPortal.ConfigurationFeaturesSubscriptionUpdateOptions
-                {
-                    Enabled = true,
-                    DefaultAllowedUpdates = ["price"], // or "plan"
-                    Products =
-                    [
-                        new Stripe.BillingPortal.ConfigurationFeaturesSubscriptionUpdateProductOptions
-                        {
-                            Product = "prod_SxRdFHuR3bgFHg", // ID product trong Stripe và field này bắt buộc phải có vì price phụ thuộc vào product
-                            Prices = ["price_1S1Wk32QeypMI1JB3ED4Zb63"], // Danh sách price nếu muốn giới hạn price nào được chọn
-                        },
-                    ],
-                },
-            }
-        };
-        var configService = new Stripe.BillingPortal.ConfigurationService();
-        Stripe.BillingPortal.Configuration configuration = configService.Create(options);
+        string billingPortalConfigId = await _unitOfWork.GetCollection<BillingPortalConfiguration>()
+            .Find(x => x.UserRole == UserRole.Listener)
+            .Project(x => x.StripeBillingPortalConfigurationId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any billing portal configuration id with user id {userId}");
 
-        PortalSessionService service = new();
-        return service.Create(new Stripe.BillingPortal.SessionCreateOptions
+        BillingPortalOption.SessionService service = new();
+        return service.Create(new BillingPortalOption.SessionCreateOptions
         {
             Customer = stripeCustomerId,     // Customer đã tạo/lưu trong DB
             ReturnUrl = returnUrl,      // URL quay về sau khi user xong việc
-            Configuration = configuration.Id, // Cấu hình portal session
+            Configuration = billingPortalConfigId, // Cấu hình portal session
         }); // Link redirect user sang Customer Portal
     }
 
@@ -388,7 +447,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 .Include(x => x.StripePriceId))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
-        SessionCreateOptions options = new()
+        CheckoutOption.SessionCreateOptions options = new()
         {
             PaymentMethodTypes = ["card", "link"],
             LineItems =
@@ -414,8 +473,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             //},
         };
 
-        SessionService service = new();
-        CheckoutSession checkoutSession = service.Create(options);
+        CheckoutOption.SessionService service = new();
+        CheckoutOption.Session checkoutSession = service.Create(options);
         if (string.IsNullOrEmpty(checkoutSession.Url))
         {
             throw new NotFoundCustomException("Error while generating URL for checkout session");
@@ -474,7 +533,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .Project(x => x.StripePriceId)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
-        SessionCreateOptions options = new()
+        CheckoutOption.SessionCreateOptions options = new()
         {
             PaymentMethodTypes = ["card", "link"],
             LineItems =
@@ -501,8 +560,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             //},
         };
 
-        SessionService service = new();
-        CheckoutSession checkoutSession = service.Create(options);
+        CheckoutOption.SessionService service = new();
+        CheckoutOption.Session checkoutSession = service.Create(options);
 
         return new()
         {
