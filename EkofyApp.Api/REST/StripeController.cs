@@ -43,20 +43,6 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
         return Ok("StripeController is working!");
     }
 
-    [AllowAnonymous, HttpPost("price")]
-    public async Task<IActionResult> HandleWebhookSubscriptionPlanAsync()
-    {
-        string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-        string? stripeSignature = Request.Headers["Stripe-Signature"];
-        if (string.IsNullOrEmpty(stripeSignature))
-        {
-            return BadRequest("Missing Stripe-Signature header");
-        }
-
-        await _stripeWebhookService.HandleWebhookSubscriptionPlanAsync(json, stripeSignature);
-        return Ok("StripeController is working!");
-    }
-
     [AllowAnonymous, HttpPost("checkout-session")]
     public async Task<IActionResult> HandleWebhookCheckoutSessionAsync()
     {

@@ -64,46 +64,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
         }
     }
 
-    public async Task HandleWebhookSubscriptionPlanAsync(string json, string stripeSignature)
-    {
-        try
-        {
-            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTest);
-            if (stripeEvent.Type == EventTypes.PriceCreated)
-            {
-                Price price = stripeEvent.Data.Object as Price ?? throw new ArgumentNullCustomException("NULL");
-
-                await _unitOfWork.ExecuteInTransactionAsync(async session =>
-                {
-                    await _unitOfWork.GetCollection<SubscriptionPlan>().InsertOneAsync(new SubscriptionPlan
-                    {
-                        SubscriptionId = price.Metadata["subscription_id"],
-                        Interval = price.Recurring.Interval,
-                        IntervalCount = Convert.ToInt16(price.Recurring.IntervalCount),
-
-                        StripeProductId = price.ProductId,
-                        StripeProductActive = price.Product.Active,
-                        StripeProductName = price.Product.Name,
-                        StripeProductImages = price.Product.Images,
-                        StripeProductType = price.Product.Type,
-                        StripeProductMetadata = price.Product.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
-
-                        StripePriceId = price.Id,
-                        StripePriceActive = price.Active,
-                        StripePriceUnitAmount = price.UnitAmount ?? 0,
-                        StripePriceCurrency = price.Currency,
-                        StripePriceLookupKey = price.LookupKey,
-                        StripePriceMetadata = price.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
-                    });
-                });
-            }
-        }
-        catch (StripeException e)
-        {
-            _logger.LogError($"Webhook error: {e.Message}");
-        }
-    }
-
     public async Task HandleWebhookCheckoutSessionAsync(string json, string stripeSignature)
     {
         try

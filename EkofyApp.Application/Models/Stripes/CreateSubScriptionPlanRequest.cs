@@ -3,14 +3,15 @@
 namespace EkofyApp.Application.Models.Stripes;
 public sealed class CreateSubScriptionPlanRequest
 {
-    public string LookupKey { get; init; } = null!;
-    public string Name { get; init; } = null!;
-    //public long UnitAmount { get; init; }
-    public string Interval { get; init; } = null!; // "day", "week", "month", or "year"
-    public long IntervalCount { get; init; }
+    #region Price Details
+    public List<CreatePriceRequest> Prices { get; init; } = [];
+    #endregion
 
+    #region Product Details
+    public string Name { get; init; } = null!;
     public List<string>? Images { get; set; } = null;
     public Dictionary<string, string>? Metadata { get; set; } = null;
+    #endregion
 
     #region Subscription Details
     public SubscriptionTier SubscriptionTier { get; init; }

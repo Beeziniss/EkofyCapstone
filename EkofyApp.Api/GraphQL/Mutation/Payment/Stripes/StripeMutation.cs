@@ -40,11 +40,6 @@ public sealed class StripeMutation(IStripeService stripeService)
         return await _stripeService.CreateSubscriptionCheckoutSession(createCheckoutSessionRequest);
     }
 
-    public async Task<PriceResponse> CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest)
-    {
-        return await _stripeService.CreateSubscriptionPlanAsync(createSubScriptionPlanRequest);
-    }
-
     //public bool TransferToArtist(string artistAccountId, long amount)
     //{
     //    TransferResponse transferResponse = _stripeService.TransferToArtist(artistAccountId, amount);

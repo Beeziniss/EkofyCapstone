@@ -6,5 +6,8 @@ public sealed class SubscriptionMutationExtension : ObjectTypeExtension<Subscrip
     {
         descriptor.Field(x => x.CreateSubscriptionAsync(default!))
             .Authorize(roles: "Admin");
+
+        descriptor.Field(x => x.CreateSubscriptionPlanAsync(default!))
+            .Authorize(roles: "Admin");
     }
 }

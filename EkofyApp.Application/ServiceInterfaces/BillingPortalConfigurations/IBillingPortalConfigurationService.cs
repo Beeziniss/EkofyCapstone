@@ -1,0 +1,7 @@
+﻿using EkofyApp.Application.Models.Stripes;
+
+namespace EkofyApp.Application.ServiceInterfaces.BillingPortalConfigurations;
+public interface IBillingPortalConfigurationService
+{
+    Task CreateBillingPortalConfiguration(CreateBillingPortalConfigurationRequest createBillingPortalConfigurationRequest);
+}
