@@ -1,8 +1,9 @@
 ﻿namespace EkofyApp.Application.Models.RequestHub
 {
-    public class RequestCreatingRequest
+    public sealed record RequestCreatingRequest
     {
-        public string Title { get; set; }
-        public string Description { get; set; }
+        public string Title { get; set; } = null!;
+        public string Description { get; set; } = null!;
+        public List<string>? Attachments { get; set; }
     }
 }

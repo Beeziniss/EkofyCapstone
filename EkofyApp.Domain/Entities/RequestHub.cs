@@ -12,6 +12,7 @@ namespace EkofyApp.Domain.Entities
         public string Title { get; set; }
         public string Description { get; set; }
         public List<string>? Attachments { get; set; }
+        public bool IsClosed { get; set; } = false;
         public bool IsDeleted { get; set; } = false;
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
