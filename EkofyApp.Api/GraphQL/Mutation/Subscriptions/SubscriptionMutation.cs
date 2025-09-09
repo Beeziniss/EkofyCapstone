@@ -21,4 +21,22 @@ public sealed class SubscriptionMutation(ISubscriptionService subscriptionServic
         await _subscriptionService.CreateSubscriptionPlanAsync(createSubScriptionPlanRequest);
         return true;
     }
+
+    public async Task<bool> DeprecateSubscriptionAsync(string subscriptionId)
+    {
+        await _subscriptionService.DeprecateSubscriptionAsync(subscriptionId);
+        return true;
+    }
+
+    public async Task<bool> UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
+    {
+        await _subscriptionService.UpdateEntitlementsSubscriptionAsync(updateEntitlementsSubscriptionRequest);
+        return true;
+    }
+
+    public async Task<bool> DeleteEntitlementSubsriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
+    {
+        await _subscriptionService.DeleteEntitlementSubsriptionAsync(updateEntitlementsSubscriptionRequest);
+        return true;
+    }
 }

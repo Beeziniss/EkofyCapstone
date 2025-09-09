@@ -89,9 +89,9 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 RecordingSplits = _mapper.Map<List<RecordingSplit>>(recordingTempRequest.RecordingSplitRequests)
             };
 
-            await _unitOfWork.GetCollection<Track>().InsertOneAsync(track);
-            await _unitOfWork.GetCollection<Work>().InsertOneAsync(work);
-            await _unitOfWork.GetCollection<Recording>().InsertOneAsync(recording);
+            await _unitOfWork.GetCollection<Track>().InsertOneAsync(session, track);
+            await _unitOfWork.GetCollection<Work>().InsertOneAsync(session, work);
+            await _unitOfWork.GetCollection<Recording>().InsertOneAsync(session, recording);
         });
     }
 
