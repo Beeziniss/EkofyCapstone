@@ -11,7 +11,8 @@ public sealed record CreateBillingPortalConfigurationRequest
 
     public UserRole UserRole { get; set; }
     public SubscriptionTier SubscriptionTier { get; set; }
-    public int Version { get; set; }
+    public long SubscriptionVersion { get; set; }
+    public long Version { get; set; }
 
     // Payment Method
     public bool PaymentMethodUpdateEnabled { get; set; }
@@ -27,4 +28,6 @@ public sealed record CreateBillingPortalConfigurationRequest
     public bool SuscriptionUpdateEnabled { get; set; }
     public List<StripeSubscriptionUpdate> AllowedSubscriptionUpdates { get; set; } = [];
     public List<StripeProductRequest> Products { get; set; } = [];
+
+    public BillingPortalConfigStatus Status { get; set; }
 }

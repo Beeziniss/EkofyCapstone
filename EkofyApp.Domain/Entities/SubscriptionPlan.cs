@@ -13,8 +13,6 @@ public sealed class SubscriptionPlan
     [BsonRepresentation(BsonType.ObjectId)]
     public string SubscriptionId { get; set; } = null!;
 
-    
-
     #region Stripe Product
     public string StripeProductId { get; set; } = null!;
     public bool StripeProductActive { get; set; }

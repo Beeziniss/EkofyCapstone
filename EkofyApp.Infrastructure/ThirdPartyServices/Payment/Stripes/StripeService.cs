@@ -3,6 +3,7 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
@@ -251,7 +252,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
         // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
         string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier && x.Version == createCheckoutSessionRequest.SubscriptionVersion)
+            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
+                x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
+                x.Status == SubscriptionStatus.Active)
             .Project(x => x.Id)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
@@ -339,7 +342,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
         // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
         string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier && x.Version == createCheckoutSessionRequest.SubscriptionVersion)
+            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
+                x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
+                x.Status == SubscriptionStatus.Active)
             .Project(x => x.Id)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 

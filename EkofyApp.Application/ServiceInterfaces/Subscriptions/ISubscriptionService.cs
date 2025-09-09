@@ -7,6 +7,7 @@ public interface ISubscriptionService
 {
     Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest);
     Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
+    Task DeprecateSubscriptionAsync(string subscriptionId);
 
     /// <summary>
     /// Creates a new subscription for the user.

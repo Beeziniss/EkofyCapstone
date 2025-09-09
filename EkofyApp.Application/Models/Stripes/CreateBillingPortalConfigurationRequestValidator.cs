@@ -19,6 +19,8 @@ public sealed class CreateBillingPortalConfigurationRequestValidator : AbstractV
             .Must(role => role == UserRole.Admin || role == UserRole.Moderator).WithMessage("Cannot create Billing Portal Configuration for Admin or Moderator role.");
         RuleFor(x => x.SubscriptionTier)
             .IsInEnum().WithMessage("SubscriptionTier must be a valid enum value.");
+        RuleFor(x => x.SubscriptionVersion)
+            .GreaterThan(0).WithMessage("SubscriptionVersion must be greater than 0.");
         RuleFor(x => x.Version)
             .GreaterThan(0).WithMessage("Version must be greater than 0.");
 
@@ -32,8 +34,8 @@ public sealed class CreateBillingPortalConfigurationRequestValidator : AbstractV
             .NotNull().WithMessage("SubscriptionCancelEnabled is required");
 
         RuleFor(x => x.Mode)
-            .NotEmpty().When(x => x.SubscriptionCancelEnabled).WithMessage("Mode must be provided when SubscriptionCancelEnabled is true.")
-            .Must(mode => mode == StripeSubscriptionCancelMode.Immediately || mode == StripeSubscriptionCancelMode.AtPeriodEnd).When(x => x.SubscriptionCancelEnabled).WithMessage("Mode must be either 'immediately' or 'at_period_end'.");
+            .NotEmpty().When(x => x.SubscriptionCancelEnabled).WithMessage("CancelMode must be provided when SubscriptionCancelEnabled is true.")
+            .Must(mode => mode == StripeSubscriptionCancelMode.Immediately || mode == StripeSubscriptionCancelMode.AtPeriodEnd).When(x => x.SubscriptionCancelEnabled).WithMessage("CancelMode must be either 'immediately' or 'at_period_end'.");
 
         RuleFor(x => x.SuscriptionUpdateEnabled)
             .NotNull().WithMessage("SuscriptionUpdateEnabled is required");
@@ -57,5 +59,8 @@ public sealed class CreateBillingPortalConfigurationRequestValidator : AbstractV
                     .Must(list => list != null && list.Count > 0).WithMessage("StripePriceIds must contain at least one item.");
             })
             .When(x => x.Products != null);
+
+        RuleFor(x => x.Status)
+            .IsInEnum().WithMessage("Status must be a valid enum value.");
     }
 }

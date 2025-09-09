@@ -15,8 +15,7 @@ public sealed class BillingPortalConfiguration : TimeStamped, IEntityCustom
     public string StripeBillingPortalConfigurationId { get; set; } = null!;
 
     public UserRole UserRole { get; set; }
-    public SubscriptionTier SubscriptionTier { get; set; }
-    public int Version { get; set; }
+    public long Version { get; set; }
 
     // Customer
     public bool CustomerUpdateEnabled { get; set; }
@@ -30,12 +29,12 @@ public sealed class BillingPortalConfiguration : TimeStamped, IEntityCustom
 
     // Subscription Cancel
     public bool SubscriptionCancelEnabled { get; set; }
-    public StripeSubscriptionCancelMode Mode { get; set; }
+    public StripeSubscriptionCancelMode CancelMode { get; set; }
 
     // Subscription Update
     public bool SuscriptionUpdateEnabled { get; set; }
     public List<StripeSubscriptionUpdate> AllowedSubscriptionUpdates { get; set; } = [];
     public List<StripeProduct> Products { get; set; } = [];
 
-    public DateTimeOffset? DeletedAt { get; set; }
+    public BillingPortalConfigStatus Status { get; set; }
 }
