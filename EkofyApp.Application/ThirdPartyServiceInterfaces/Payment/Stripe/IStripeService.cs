@@ -1,13 +1,7 @@
 ﻿using EkofyApp.Application.Models.Stripes;
-using EkofyApp.Domain.Enums.Subcriptions;
 using Stripe;
 using Account = Stripe.Account;
-using CheckoutSession = Stripe.Checkout.Session;
 using PortalSession = Stripe.BillingPortal.Session;
-using PortalSessionService = Stripe.BillingPortal.SessionService;
-using StripeInvoice = Stripe.Invoice;
-using StripeSubscription = Stripe.Subscription;
-using Subscription = EkofyApp.Domain.Entities.Subscription;
 
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 public interface IStripeService
@@ -20,12 +14,9 @@ public interface IStripeService
     Task<Account> CreateExpressConnectedAccountTest();
     Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest);
     Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateCheckoutSessionRequest createCheckoutSessionRequest);
-    Task<PriceResponse> CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
     Task<PaymentIntent> CreateTopupAsync(long amount, string currency = "usd");
     Task DeleteConnectedAccount(string accountId);
     Balance GetBalance();
-    void HandleWebhookCustomer(string json, string stripeSignature);
-    void HandleWebhookExpressConnectedAccount(string json, string stripeSignature);
     Task<bool> IsCustomerIdExisted();
     void TransferGroupArtist(string[] artistAccountIds, long amount, string groupId = "default");
     TransferResponse TransferToArtist(string artistAccountId, long amount);

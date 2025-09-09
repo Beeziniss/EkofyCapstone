@@ -11,23 +11,17 @@ public sealed class CreateSubScriptionPlanRequestValidator : AbstractValidator<C
 {
     public CreateSubScriptionPlanRequestValidator()
     {
-        RuleFor(x => x.LookupKey)
-            .NotEmpty().WithMessage("Lookup key is required.")
-            .MaximumLength(100).WithMessage("Lookup key must not exceed 100 characters.")
-            .Matches(x => HelperMethod.RegexPatternAlphaNumericWithSpecific());
+        RuleFor(x => x.Prices)
+            .ForEach(price => price.SetValidator(new CreatePriceRequestValidator())).WithMessage("Error while validating prices");
 
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Subscription name is required.")
             .MaximumLength(100).WithMessage("Subscription name must not exceed 100 characters.")
             .Matches(x => HelperMethod.RegexPatternAlphaNumericWithSpace());
 
-        RuleFor(x => x.UnitAmount)
-            .NotEmpty().WithMessage("UnitAmount is required.")
-            .GreaterThan(0).WithMessage("UnitAmount must be greater than 0.");
-
-        RuleFor(x => x.IntervalCount)
-            .NotEmpty().WithMessage("Interval count is required.")
-            .GreaterThan(0).WithMessage("Interval count must be greater than 0.");
+        //RuleFor(x => x.UnitAmount)
+        //    .NotEmpty().WithMessage("UnitAmount is required.")
+        //    .GreaterThan(0).WithMessage("UnitAmount must be greater than 0.");
 
         RuleForEach(x => x.Images)
             .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).WithMessage("Each image URL must be a valid absolute URL.")
@@ -37,5 +31,12 @@ public sealed class CreateSubScriptionPlanRequestValidator : AbstractValidator<C
             .Must(kv => !string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
             .WithMessage("Metadata keys and values must not be empty or whitespace.")
             .When(x => x.Metadata != null && x.Metadata.Count != 0);
+
+        RuleFor(x => x.SubscriptionTier)
+            .IsInEnum().WithMessage("Subscription Tier must be a valid enum value.");
+
+        RuleFor(x => x.SubscriptionVersion)
+            .NotEmpty().WithMessage("Subscription Version is required.")
+            .GreaterThan(0).WithMessage("Subscription Version must be greater than 0.");
     }
 }

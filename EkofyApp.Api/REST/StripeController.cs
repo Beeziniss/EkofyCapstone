@@ -7,9 +7,10 @@ namespace EkofyApp.Api.REST;
 [Route("api/webhook/stripe")]
 [ApiController]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] //"Bearer"
-public sealed class StripeController(IStripeService stripeService) : ControllerBase
+public sealed class StripeController(IStripeService stripeService, IStripeWebhookService stripeWebhookService) : ControllerBase
 {
     private readonly IStripeService _stripeService = stripeService;
+    private readonly IStripeWebhookService _stripeWebhookService = stripeWebhookService;
 
     [HttpPost("customers")]
     public async Task<IActionResult> HandleWebhookCustomerAsync()
@@ -22,7 +23,7 @@ public sealed class StripeController(IStripeService stripeService) : ControllerB
             return BadRequest("Missing Stripe-Signature header");
         }
 
-        _stripeService.HandleWebhookCustomer(json, stripeSignature);
+        _stripeWebhookService.HandleWebhookCustomer(json, stripeSignature);
 
         return Ok("StripeController is working!");
     }
@@ -38,7 +39,21 @@ public sealed class StripeController(IStripeService stripeService) : ControllerB
             return BadRequest("Missing Stripe-Signature header");
         }
 
-        _stripeService.HandleWebhookExpressConnectedAccount(json, stripeSignature);
+        _stripeWebhookService.HandleWebhookExpressConnectedAccount(json, stripeSignature);
+        return Ok("StripeController is working!");
+    }
+
+    [AllowAnonymous, HttpPost("checkout-session")]
+    public async Task<IActionResult> HandleWebhookCheckoutSessionAsync()
+    {
+        string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+        string? stripeSignature = Request.Headers["Stripe-Signature"];
+        if (string.IsNullOrEmpty(stripeSignature))
+        {
+            return BadRequest("Missing Stripe-Signature header");
+        }
+
+        await _stripeWebhookService.HandleWebhookCheckoutSessionAsync(json, stripeSignature);
         return Ok("StripeController is working!");
     }
 

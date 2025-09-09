@@ -4,6 +4,10 @@ public sealed class SubscriptionMutationExtension : ObjectTypeExtension<Subscrip
 {
     protected override void Configure(IObjectTypeDescriptor<SubscriptionMutation> descriptor)
     {
-        descriptor.Field(x => x.CreateSubscriptionAsync(default!));
+        descriptor.Field(x => x.CreateSubscriptionAsync(default!))
+            .Authorize(roles: "Admin");
+
+        descriptor.Field(x => x.CreateSubscriptionPlanAsync(default!))
+            .Authorize(roles: "Admin");
     }
 }

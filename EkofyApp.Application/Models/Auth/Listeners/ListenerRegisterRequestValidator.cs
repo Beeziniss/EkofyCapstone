@@ -13,7 +13,7 @@ public sealed class ListenerRegisterRequestValidator : AbstractValidator<Listene
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(6).WithMessage("Password must be at least 8 characters long")
+            .MinimumLength(6).WithMessage("Password must be at least 6 characters long")
             .MaximumLength(100).WithMessage("Password must not exceed 100 characters");
 
         RuleFor(x => x.ConfirmPassword)
@@ -29,7 +29,7 @@ public sealed class ListenerRegisterRequestValidator : AbstractValidator<Listene
         RuleFor(x => x.BirthDate)
             .NotEmpty().WithMessage("Birth Date is required")
             .GreaterThan(DateTimeOffset.MinValue).WithMessage("Birth Date must be in the past")
-            .LessThan(x => HelperMethod.NormalizeToUtcPlus7TimeOffset(x.BirthDate).AddYears(-1)).WithMessage("Birth Date must be in the past");
+            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Birth Date must be in the past");
 
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Gender must be Male or Female or Other");

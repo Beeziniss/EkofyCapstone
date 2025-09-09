@@ -15,7 +15,7 @@ public sealed class JsonWebToken : IJsonWebToken
         int expiresInDays = 30; //set default expire time is 7 days
 
         //get secret key from appsettings.json
-        string secretKey = Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new Exception("JWT's Secret Mode property is not set in environment or not found");
+        string secretKey = Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new Exception("JWT's Secret CancelMode property is not set in environment or not found");
 
         //convert secret key to byte array
         byte[] symmetricKey = Encoding.UTF8.GetBytes(secretKey);
@@ -54,7 +54,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
             ValidateIssuerSigningKey = true,
 
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key) ?? throw new Exception("JWT's Secret Mode property is not set in environment or not found")),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key) ?? throw new Exception("JWT's Secret CancelMode property is not set in environment or not found")),
 
             ValidateLifetime = false
         };

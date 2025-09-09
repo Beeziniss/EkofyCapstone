@@ -1,10 +1,13 @@
-﻿using EkofyApp.Application.Models.Subscriptions;
+﻿using EkofyApp.Application.Models.Stripes;
+using EkofyApp.Application.Models.Subscriptions;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.Subscriptions;
 public interface ISubscriptionService
 {
     Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest);
+    Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
+    Task DeprecateSubscriptionAsync(string subscriptionId);
 
     /// <summary>
     /// Creates a new subscription for the user.

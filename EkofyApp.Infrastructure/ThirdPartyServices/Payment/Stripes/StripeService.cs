@@ -1,5 +1,4 @@
-﻿using Amazon.Runtime.Internal.Transform;
-using EkofyApp.Application.Models.Stripes;
+﻿using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Domain.Entities;
@@ -12,13 +11,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
 using Stripe.Checkout;
-using System.Security.Claims;
-using CheckoutSession = Stripe.Checkout.Session;
-using PortalSession = Stripe.BillingPortal.Session;
-using PortalSessionService = Stripe.BillingPortal.SessionService;
-using StripeInvoice = Stripe.Invoice;
-using StripeSubscription = Stripe.Subscription;
-using Subscription = EkofyApp.Domain.Entities.Subscription;
+using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
@@ -26,7 +19,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ILogger<StripeService> _logger = logger;
-    private readonly string WebhookSecretTestCustomer = Environment.GetEnvironmentVariable("STRIPE_SIGNATURE_SECRET_TEST_CUSTOMER") ?? throw new InvalidOperationException("STRIPE_SIGNATURE_SECRET_CUSTOMER is not configured.");
 
     /// <summary>
     /// Nạp tiền test vào Available Balance (sandbox).
@@ -213,92 +205,18 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .Project(x => x.StripeCustomerId)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any customer id with user id {userId}");
 
-        PortalSessionService service = new();
-        return service.Create(new Stripe.BillingPortal.SessionCreateOptions
+        string billingPortalConfigId = await _unitOfWork.GetCollection<BillingPortalConfiguration>()
+            .Find(x => x.UserRole == UserRole.Listener)
+            .Project(x => x.StripeBillingPortalConfigurationId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any billing portal configuration id with user id {userId}");
+
+        BillingPortalOption.SessionService service = new();
+        return service.Create(new BillingPortalOption.SessionCreateOptions
         {
             Customer = stripeCustomerId,     // Customer đã tạo/lưu trong DB
-            ReturnUrl = returnUrl      // URL quay về sau khi user xong việc
+            ReturnUrl = returnUrl,      // URL quay về sau khi user xong việc
+            Configuration = billingPortalConfigId, // Cấu hình portal session
         }); // Link redirect user sang Customer Portal
-    }
-
-    // TODO: Nhớ gộp các params lại thành 1 object
-    // Hiện tại chỉ đang test nên params đơn giản vậy
-    // Và nhớ để Task void
-    public async Task<PriceResponse> CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest)
-    {
-        createSubScriptionPlanRequest.Metadata ??= [];
-        if (createSubScriptionPlanRequest.Metadata.TryGetValue("name", out _))
-        {
-            throw new BadRequestCustomException("Metadata's key input must not contain 'name' key.");
-        }
-        createSubScriptionPlanRequest.Metadata.Add("name", createSubScriptionPlanRequest.Name);
-
-        PriceService priceService = new();
-        ProductService productService = new();
-
-        StripeList<Price> existingPrices = priceService.List(new PriceListOptions
-        {
-            LookupKeys = [createSubScriptionPlanRequest.LookupKey],
-            Limit = 1
-        });
-
-        // Kiểm tra nếu đã tồn tại Price với lookup_key này
-        if (existingPrices.Data.Count > 0)
-        {
-            throw new ConflictCustomException("Price with the same lookup_key already exists.");
-        }
-
-        StripeSearchResult<Product> existingProducts = await productService.SearchAsync(new ProductSearchOptions
-        {
-            Query = $"active:'true' AND metadata['name']:'{createSubScriptionPlanRequest.Name}'",
-            Limit = 1
-        });
-        if (existingProducts.Data.Count > 0)
-        {
-            throw new ConflictCustomException("Product with the same name already exists.");
-        }
-
-        // Tạo Product mới
-        Product product = await productService.CreateAsync(new ProductCreateOptions
-        {
-            Active = true,
-            Name = createSubScriptionPlanRequest.Name,
-            // Tùy chọn thêm metadata và cách thay thế lookup_key
-            Metadata = createSubScriptionPlanRequest.Metadata,
-            Images = createSubScriptionPlanRequest.Images,
-            Type = "service",
-        });
-
-        // Tạo Price với lookup_key
-        Price price = await priceService.CreateAsync(new PriceCreateOptions
-        {
-            Active = true,
-            UnitAmount = createSubScriptionPlanRequest.UnitAmount,
-            Currency = CurrencyType.vnd.ToString(),
-            Recurring = new PriceRecurringOptions
-            {
-                Interval = PeriodTime.month.ToString(),     // chu kỳ: month
-                IntervalCount = createSubScriptionPlanRequest.IntervalCount,              // 1 tháng một lần
-            },
-            Product = product.Id,
-            LookupKey = createSubScriptionPlanRequest.LookupKey,
-            // Tùy chọn thêm metadata và cách thay thế lookup_key
-            //Metadata = new Dictionary<string, string>
-            //{
-            //    { "plan_type", "premium_monthly" }
-            //}
-        });
-
-        return new PriceResponse()
-        {
-            Id = price.Id,
-            ProductId = price.ProductId,
-            LookupKey = price.LookupKey,
-            UnitAmount = price.UnitAmount ?? 0,
-            Currency = price.Currency,
-            Interval = price.Recurring!.Interval,
-            IntervalCount = price.Recurring!.IntervalCount,
-        };
     }
 
     public async Task<bool> IsCustomerIdExisted()
@@ -323,43 +241,77 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        string customerId = _unitOfWork.GetCollection<User>()
+        User user = _unitOfWork.GetCollection<User>()
             .Find(x => x.Id == userId)
-            .Project(x => x.StripeCustomerId)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.StripeCustomerId)
+                .Include(x => x.Email))
             .FirstOrDefault() ?? throw new NotFoundCustomException("Not found your Stripe Customer ID. Please contact us for more information.");
 
         // Lấy subscriptionId từ subscriptionTier và subscriptionVersion
         // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
         // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
         string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier && x.Version == createCheckoutSessionRequest.SubscriptionVersion)
+            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
+                x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
+                x.Status == SubscriptionStatus.Active)
             .Project(x => x.Id)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
-        string stripePriceId = await _unitOfWork.GetCollection<SubscriptionPlan>()
+        SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
             .Find(x => x.SubscriptionId == subscriptionId)
-            .Project(x => x.StripePriceId)
+            .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
+                .Include(x => x.Id)
+                .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
-        SessionCreateOptions options = new()
+        CheckoutOption.SessionCreateOptions options = new()
         {
             PaymentMethodTypes = ["card", "link"],
             LineItems =
             [
                 new SessionLineItemOptions
                 {
-                    Price = stripePriceId, // ID gói đã tạo trong Stripes
+                    Price = subscriptionPlan.SubscriptionPlanPrices.First().StripePriceId, // ID gói đã tạo trong Stripes
                     Quantity = 1,
                 },
             ],
-            Customer = customerId, // có thể truyền customerId nếu đã có
+            Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
             Mode = "payment",
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createCheckoutSessionRequest.CancelUrl,
+            PaymentIntentData = new SessionPaymentIntentDataOptions
+            {
+                ReceiptEmail = createCheckoutSessionRequest.IsReceiptEmail ? user.Email : null, // Gửi biên lai về email của customer
+                SetupFutureUsage = createCheckoutSessionRequest.IsSavePaymentMethod ? "off_session" : null, // Lưu thẻ để thanh toán các lần sau
+            },
+            //InvoiceCreation = new SessionInvoiceCreationOptions
+            //{
+            //    Enabled = true // Tạo hóa đơn cho thanh toán
+            //},
         };
 
-        SessionService service = new();
-        var checkoutSession = service.Create(options);
+        CheckoutOption.SessionService service = new();
+        CheckoutOption.Session checkoutSession = service.Create(options);
+        if (string.IsNullOrEmpty(checkoutSession.Url))
+        {
+            throw new NotFoundCustomException("Error while generating URL for checkout session");
+        }
+
+        await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
+        {
+            UserId = userId,
+            SubscriptionId = subscriptionId,
+            SubscriptionPlanId = subscriptionPlan.Id,
+            StripeCheckoutSessionId = checkoutSession.Id,
+            StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
+            StripePaymentMethod = checkoutSession.PaymentMethodTypes,
+            Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
+            Currency = checkoutSession.Currency,
+
+            PaymentStatus = PaymentStatus.Pending,
+            Status = TransactionStatus.Open
+        });
 
         return new()
         {
@@ -390,23 +342,27 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
         // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
         string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier && x.Version == createCheckoutSessionRequest.SubscriptionVersion)
+            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
+                x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
+                x.Status == SubscriptionStatus.Active)
             .Project(x => x.Id)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
-        string stripePriceId = await _unitOfWork.GetCollection<SubscriptionPlan>()
+        SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
             .Find(x => x.SubscriptionId == subscriptionId)
-            .Project(x => x.StripePriceId)
+            .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
+                .Include(x => x.Id)
+                .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
-        SessionCreateOptions options = new()
+        CheckoutOption.SessionCreateOptions options = new()
         {
             PaymentMethodTypes = ["card", "link"],
             LineItems =
             [
                 new SessionLineItemOptions
                 {
-                    Price = stripePriceId, // ID gói đã tạo trong Stripes
+                    Price = subscriptionPlan.SubscriptionPlanPrices.First().StripePriceId, // ID gói đã tạo trong Stripes
                     Quantity = 1,
                 },
             ],
@@ -426,8 +382,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             //},
         };
 
-        SessionService service = new();
-        CheckoutSession checkoutSession = service.Create(options);
+        CheckoutOption.SessionService service = new();
+        CheckoutOption.Session checkoutSession = service.Create(options);
 
         return new()
         {
@@ -486,88 +442,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         }
 
         return;
-    }
-
-    // TODO: Xử lý webhook từ Stripe cho Customer (tạm thời chỉ log ra)
-    public void HandleWebhookCustomer(string json, string stripeSignature)
-    {
-        try
-        {
-            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTestCustomer);
-
-            _logger.LogInformation($"Webhook event received: {stripeEvent.Type}");
-
-            // Gọi hàm xử lý sự kiện tùy chỉnh
-            if (stripeEvent.Type == EventTypes.CustomerCreated)
-            {
-                Customer customer = stripeEvent.Data.Object as Customer ?? throw new ArgumentNullCustomException("NULL");
-                _logger.LogInformation($"Customer created: {customer.Id}, Email: {customer.Email}");
-            }
-
-            return;
-        }
-        catch (StripeException e)
-        {
-            _logger.LogError($"Webhook error: {e.Message}");
-            return;
-        }
-    }
-
-    // TODO: Xử lý webhook từ Stripe cho Express Connected Account (tạm thời chỉ log ra)
-    public void HandleWebhookExpressConnectedAccount(string json, string stripeSignature)
-    {
-        try
-        {
-            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTestCustomer);
-
-            _logger.LogInformation($"Webhook event received: {stripeEvent.Type}");
-
-            if (stripeEvent.Type == EventTypes.AccountUpdated)
-            {
-                Account account = stripeEvent.Data.Object as Account ?? throw new ArgumentNullCustomException("NULL");
-                _logger.LogInformation($"Account updated: {account.Id}, Email: {account.Email}, ChargesEnabled: {account.ChargesEnabled}");
-            }
-        }
-        catch (StripeException e)
-        {
-            _logger.LogError($"Webhook error: {e.Message}");
-        }
-    }
-
-    // Xử lý webhook từ Stripe
-    // Thường sẽ lưu xuống database
-    // TODO: Cần xử lý webhook để cập nhật subscription, thanh toán, v.v.
-    public string HandleWebhook(string json, string stripeSignature, string webhookSecret)
-    {
-        try
-        {
-            var stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, webhookSecret);
-
-            switch (stripeEvent.Type)
-            {
-                case "invoice.paid":
-                    var invoice = stripeEvent.Data.Object as StripeInvoice;
-                    // Update DB: đánh dấu subscription đã trả thành công
-                    return $"Invoice {invoice.Id} paid.";
-
-                case "customer.subscription.deleted":
-                    var subDeleted = stripeEvent.Data.Object as StripeSubscription;
-                    // Update DB: hủy premium cho listener
-                    return $"Subscription {subDeleted.Id} cancelled.";
-
-                case "checkout.session.completed":
-                    var session = stripeEvent.Data.Object as Session;
-                    // Xử lý thanh toán 1 lần hoặc sub checkout
-                    return $"Checkout completed for session {session.Id}.";
-
-                default:
-                    return $"Unhandled event type: {stripeEvent.Type}";
-            }
-        }
-        catch (StripeException e)
-        {
-            return $"Webhook error: {e.Message}";
-        }
     }
 
     /// <summary>

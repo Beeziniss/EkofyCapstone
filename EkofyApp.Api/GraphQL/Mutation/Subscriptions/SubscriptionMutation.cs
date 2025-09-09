@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Subscriptions;
+﻿using EkofyApp.Application.Models.Stripes;
+using EkofyApp.Application.Models.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Subscriptions;
@@ -12,6 +13,12 @@ public sealed class SubscriptionMutation(ISubscriptionService subscriptionServic
     public async Task<bool> CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest)
     {
         await _subscriptionService.CreateSubscriptionAsync(createSubscriptionRequest);
+        return true;
+    }
+
+    public async Task<bool> CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest)
+    {
+        await _subscriptionService.CreateSubscriptionPlanAsync(createSubScriptionPlanRequest);
         return true;
     }
 }

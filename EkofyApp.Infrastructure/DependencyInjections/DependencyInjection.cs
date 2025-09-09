@@ -114,6 +114,7 @@ public static class DependencyInjection
         StripeConfiguration.ApiKey = secretKey;
 
         services.AddScoped<IStripeService, StripeService>();
+        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
     }
 
     public static void AddSyncfusionExtension(this IServiceCollection services)
@@ -376,7 +377,7 @@ public static class DependencyInjection
 
                 //ký vào token
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new Exception("JWT's Secret Mode property is not set in environment or not found"))),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWTSettings_SecretKey") ?? throw new Exception("JWT's Secret CancelMode property is not set in environment or not found"))),
 
                 ClockSkew = TimeSpan.Zero,
 

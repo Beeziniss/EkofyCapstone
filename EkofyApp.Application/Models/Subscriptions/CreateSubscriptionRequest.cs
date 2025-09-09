@@ -8,8 +8,9 @@ public sealed record class CreateSubscriptionRequest
     public string Code { get; init; } = null!; // Unique code for the subscription plan
     public int Version { get; init; }
 
-    public decimal Price { get; init; } // Price of the subscription plan
+    public decimal Price { get; init; } // Amount of the subscription plan
 
     public SubscriptionTier Tier { get; init; } // Subscription tier (e.g., Free, Premium, etc.)
-    public List<CreateEntitlementRequest> Features { get; init; } = []; // List of features included in the subscription plan
+    public SubscriptionStatus Status { get; init; } // Status of the subscription
+    public List<CreateEntitlementRequest> Entitlements { get; init; } = []; // List of features included in the subscription plan
 }

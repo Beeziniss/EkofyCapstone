@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Domain.Base;
 using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -15,9 +16,10 @@ public sealed class Subscription : TimeStamped, IEntityCustom
     public string Code { get; set; } = null!; // Unique code for the subscription
     public int Version { get; init; } = 1; // Version of the subscription, default is 1
 
-    public decimal Price { get; set; }
-    public string Currency { get; set; } = "vnd"; // Default currency is USD
+    public decimal Amount { get; set; }
+    public CurrencyType Currency { get; set; } = CurrencyType.vnd; // Default currency is vnd
 
     public SubscriptionTier Tier { get; set; } // TODO: Cân nhắc có nên embed không
+    public SubscriptionStatus Status { get; set; }
     public List<Entitlement> Entitlements { get; set; } = [];
 }

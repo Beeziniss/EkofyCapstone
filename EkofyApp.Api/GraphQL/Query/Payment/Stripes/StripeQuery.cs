@@ -21,8 +21,8 @@ public sealed class StripeQuery(IStripeService stripeService)
     //    return _stripeService.GetBalance();
     //}
 
-    public async Task<PortalSession> CreateCustomerPortalSessionAsync(string returnUrl)
-    {
-        return await _stripeService.CreateCustomerPortalSessionAsync(returnUrl);
-    }
+    //public async Task<PortalSession> CreateCustomerPortalSessionAsync(string returnUrl)
+    //{
+    //    return await _stripeService.CreateCustomerPortalSessionAsync(returnUrl);
+    //}
 }
