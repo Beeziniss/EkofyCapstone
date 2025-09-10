@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using EkofyApp.Domain.Enums;
+using FluentValidation;
 
 namespace EkofyApp.Application.Models.Stripes;
 public sealed class CreateCheckoutSessionRequestValidator : AbstractValidator<CreateCheckoutSessionRequest>
@@ -22,5 +23,13 @@ public sealed class CreateCheckoutSessionRequestValidator : AbstractValidator<Cr
         RuleFor(x => x.CancelUrl)
             .NotEmpty().WithMessage("Cancel URL is required.")
             .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).WithMessage("Cancel URL must be a valid absolute URL.");
+
+        RuleFor(x => x.CouponCodes)
+            .ForEach(code =>
+            {
+                code.MaximumLength(50).WithMessage("Coupon code must not exceed 50 characters.");
+                code.NotEmpty().WithMessage("Coupon code must not be empty.");
+            })
+            .NotEmpty().When(x => x.Period == PeriodTime.year).WithMessage("Coupon Code is required for yearly");
     }
 }

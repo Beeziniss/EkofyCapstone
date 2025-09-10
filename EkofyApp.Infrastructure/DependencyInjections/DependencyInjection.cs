@@ -11,6 +11,7 @@ using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
+using EkofyApp.Application.ServiceInterfaces.Coupons;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
@@ -25,9 +26,11 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
+using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
@@ -37,6 +40,7 @@ using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
+using EkofyApp.Infrastructure.Services.Coupons;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Subscriptions;
@@ -115,6 +119,15 @@ public static class DependencyInjection
 
         StripeConfiguration.ApiKey = secretKey;
 
+        StripeSetting stripeSetting = new()
+        {
+            AccountSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT is not set in the environment"),
+            AccountV2SigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2 is not set in the environment"),
+            CustomerSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CUSTOMER") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CUSTOMER is not set in the environment"),
+            SubscriptionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION is not set in the environment"),
+        };
+
+        services.AddSingleton(stripeSetting);
         services.AddScoped<IStripeService, StripeService>();
         services.AddScoped<IStripeWebhookService, StripeWebhookService>();
     }
@@ -320,6 +333,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkService, WorkService>();
         services.AddScoped<IRecordingService, RecordingService>();
         services.AddScoped<IRequestHubService, RequestHubService>();
+        services.AddScoped<ICouponCustomService, CouponCustomService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -596,6 +610,10 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(SubscriptionTier), new EnumMemberSerializer<SubscriptionTier>());
         BsonSerializer.RegisterSerializer(typeof(SubscriptionStatus), new EnumMemberSerializer<SubscriptionStatus>());
         BsonSerializer.RegisterSerializer(typeof(SubscriptionCycle), new EnumMemberSerializer<SubscriptionCycle>());
+
+        // Coupon
+        BsonSerializer.RegisterSerializer(typeof(CouponDurationType), new EnumMemberSerializer<CouponDurationType>());
+        BsonSerializer.RegisterSerializer(typeof(CouponStatus), new EnumMemberSerializer<CouponStatus>());
 
         // Common
         BsonSerializer.RegisterSerializer(typeof(EntitlementValueType), new EnumMemberSerializer<EntitlementValueType>());

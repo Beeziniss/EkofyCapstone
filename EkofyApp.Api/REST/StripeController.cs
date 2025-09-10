@@ -23,7 +23,7 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
             return BadRequest("Missing Stripe-Signature header");
         }
 
-        _stripeWebhookService.HandleWebhookCustomer(json, stripeSignature);
+        await _stripeWebhookService.HandleWebhookCustomerAsync(json, stripeSignature);
 
         return Ok("StripeController is working!");
     }

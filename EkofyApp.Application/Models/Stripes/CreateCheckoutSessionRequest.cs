@@ -14,4 +14,6 @@ public sealed record class CreateCheckoutSessionRequest
 
     public bool IsReceiptEmail { get; init; } = false;
     public bool IsSavePaymentMethod { get; init; } = false;
+
+    public List<string> CouponCodes { get; init; } = [];
 }
