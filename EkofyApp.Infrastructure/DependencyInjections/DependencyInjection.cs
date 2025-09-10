@@ -12,6 +12,7 @@ using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
+using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Users;
@@ -37,6 +38,7 @@ using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Recordings;
+using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Users;
@@ -317,6 +319,7 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IWorkService, WorkService>();
         services.AddScoped<IRecordingService, RecordingService>();
+        services.AddScoped<IRequestHubService, RequestHubService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services

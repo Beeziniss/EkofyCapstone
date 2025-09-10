@@ -8,7 +8,7 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.RequestHubs
 {
-    public sealed class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IRequestHubService
+    public class RequestHubService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IRequestHubService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
@@ -34,12 +34,15 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             return true;
         }
 
-        public async Task<bool> UpdateRequestAsync(string id, RequestUpdatingRequest request)
+        public async Task<bool> UpdateRequestAsync(RequestUpdatingRequest request)
         {
             string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             RequestHub requestHub = await _unitOfWork.GetCollection<RequestHub>()
-                                                     .Find(rh => rh.Id == id)
+                                                     .Find(rh => rh.Id == request.Id)
+                                                     .Project<RequestHub>(Builders<RequestHub>.Projection
+                                                        .Include(isClose => isClose.IsClosed)
+                                                        .Include(isDelete => isDelete.IsDeleted))
                                                      .FirstOrDefaultAsync();
 
             //kiểm tra request có hợp lệ hay không
@@ -48,26 +51,37 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                 throw new BadRequestCustomException("The request has been closed or deleted, cannot update anymoore!");
             }
 
-            //nếu input chưa có giá trị thì lấy giá trị cũ
-            request.Title ??= requestHub.Title;
-            request.Description ??= requestHub.Description;
-            request.Attachments ??= requestHub.Attachments;
-            request.IsDeleted ??= requestHub.IsDeleted;
-            request.IsClosed ??= requestHub.IsClosed;
+            List<UpdateDefinition<RequestHub>> updatedFields = new();
 
-            requestHub.Title = request.Title;
-            requestHub.Description = request.Description;
-            requestHub.Attachments = request.Attachments;
-            requestHub.IsClosed = (bool) request.IsClosed;
-            requestHub.IsDeleted = (bool) request.IsDeleted;
+            UpdateDefinitionBuilder<RequestHub> updateBuilder = Builders<RequestHub>.Update;
 
-            //update request
-            await _unitOfWork.GetCollection<RequestHub>()
-                             .ReplaceOneAsync(rh => rh.Id == id, requestHub);
+            if(request.Title != null)
+            {
+                updatedFields.Add(updateBuilder.Set(rh => rh.Title, request.Title));
+            }
+            if(request.Description != null)
+            {
+                updatedFields.Add(updateBuilder.Set(rh => rh.Description, request.Description));
+            }
+            if(request.Attachments != null)
+            {
+                updatedFields.Add(updateBuilder.Set(rh => rh.Attachments, request.Attachments));
+            }
+            if(request.IsClosed != null)
+            {
+                updatedFields.Add(updateBuilder.Set(rh => rh.IsClosed, request.IsClosed));
+            }
+            if(request.IsDeleted != null)
+            {
+                updatedFields.Add(updateBuilder.Set(rh => rh.IsDeleted, request.IsDeleted));
+            }
 
-            await _unitOfWork.CommitAsync();
+            var updateBuilderCombine  = updateBuilder.Combine(updatedFields);
+            
+            var a = await _unitOfWork.GetCollection<RequestHub>()
+                             .UpdateOneAsync(rh => rh.Id == request.Id, updateBuilderCombine);
 
-            return true;
+            return a.ModifiedCount > 0;
         }
 
         // NOT DO YET

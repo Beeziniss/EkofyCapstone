@@ -6,8 +6,15 @@ namespace EkofyApp.Api
     {
         public static void LoadEnvironmentVariable()
         {
-            // Xây dựng đường dẫn đầy đủ tới file .env nằm trong thư mục "4. Application"
-            string envFilePath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), ".env");
+            string envFilePath = "";
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+            {
+                envFilePath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), ".env");
+            }
+            else if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                envFilePath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), ".env.development");
+            }
 
             // Tải file .env từ đường dẫn cụ thể bằng DotEnvOptions
             DotEnvOptions options = new(

@@ -8,6 +8,6 @@ namespace EkofyApp.Application.ServiceInterfaces.RequestHubs
         Task<bool> CreateRequestAsync(RequestCreatingRequest request);
         IQueryable<RequestHub> GetRequestsQueryable();
         Task SendRequestCommentAsync(CreateRequestCommentRequest commentRequest);
-        Task<bool> UpdateRequestAsync(string id, RequestUpdatingRequest request);
+        Task<bool> UpdateRequestAsync(RequestUpdatingRequest request);
     }
 }

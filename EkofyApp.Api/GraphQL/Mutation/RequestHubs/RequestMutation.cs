@@ -13,5 +13,10 @@ namespace EkofyApp.Api.GraphQL.Mutation.RequestHubs
         {
             return await _requestHubService.CreateRequestAsync(request);
         }
+
+        public async Task<bool> UpdateRequestAsync(RequestUpdatingRequest request)
+        {
+            return await _requestHubService.UpdateRequestAsync(request);
+        }
     }
 }

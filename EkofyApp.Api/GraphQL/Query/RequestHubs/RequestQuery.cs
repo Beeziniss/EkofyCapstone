@@ -7,7 +7,7 @@ namespace EkofyApp.Api.GraphQL.Query.RequestHubs
     [QueryType]
     public class RequestQuery(IRequestHubService requestHubService)
     {
-        private readonly IRequestHubService _requestHubService;
+        private readonly IRequestHubService _requestHubService = requestHubService;
 
         public IQueryable<RequestHub> GetRequests()
         {
