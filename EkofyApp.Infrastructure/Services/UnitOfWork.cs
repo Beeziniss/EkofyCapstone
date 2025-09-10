@@ -86,6 +86,44 @@ public class UnitOfWork(EkofyDbContext dbContext) : IUnitOfWork
         }
     }
 
+    public async Task<BulkWriteResult<TDocument>> BulkWriteAsync<TDocument>(IClientSessionHandle? session, IEnumerable<WriteModel<TDocument>> operations, bool isOrdered = true, CancellationToken cancellationToken = default) where TDocument : class
+    {
+        IMongoCollection<TDocument> collection = GetCollection<TDocument>();
+
+        BulkWriteOptions options = new()
+        {
+            IsOrdered = isOrdered
+        };
+
+        if (session != null && session.IsInTransaction)
+        {
+            return await collection.BulkWriteAsync(session, operations, options, cancellationToken);
+        }
+
+        return await collection.BulkWriteAsync(operations, options, cancellationToken);
+    }
+
+    public async Task<BulkWriteResult<TDocument>> BulkWriteAsync<TDocument>(IEnumerable<WriteModel<TDocument>> operations, bool isOrdered = true, CancellationToken cancellationToken = default) where TDocument : class
+    {
+        IMongoCollection<TDocument> collection = GetCollection<TDocument>();
+
+        BulkWriteOptions options = new()
+        {
+            IsOrdered = isOrdered
+        };
+
+        if (_session != null && _session.IsInTransaction)
+        {
+            // Đang trong transaction → dùng session
+            return await collection.BulkWriteAsync(_session, operations, options, cancellationToken);
+        }
+        else
+        {
+            // Không có transaction → không dùng session
+            return await collection.BulkWriteAsync(operations, options, cancellationToken);
+        }
+    }
+
     protected virtual void Dispose(bool disposing)
     {
         if (!disposedValue)

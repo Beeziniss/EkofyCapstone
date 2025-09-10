@@ -8,10 +8,8 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe;
-using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.Services.Subscriptions;
 public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<SubscriptionService> logger) : ISubscriptionService
@@ -94,9 +92,9 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             // Thêm hoặc cập nhật entitlements nếu có
-            if (updateEntitlementsSubscriptionRequest.EntitlementsToAddOrUpdate?.Any() == true)
+            if (updateEntitlementsSubscriptionRequest.Entitlements?.Any() == true)
             {
-                foreach (UpdateEntitlementRequest entitlementRequest in updateEntitlementsSubscriptionRequest.EntitlementsToAddOrUpdate)
+                foreach (UpdateEntitlementRequest entitlementRequest in updateEntitlementsSubscriptionRequest.Entitlements)
                 {
                     FilterDefinition<Subscription> filter = Builders<Subscription>.Filter.And(
                         Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
@@ -167,19 +165,19 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
         });
     }
 
-    public async Task DeleteEntitlementSubsriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
+    public async Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             // Xóa entitlements nếu có
-            if (updateEntitlementsSubscriptionRequest.EntitlementCodesToRemove?.Any() == true)
+            if (deleteEntitlementsSubscriptionRequest.Codes?.Any() == true)
             {
                 UpdateResult pullResult = await _unitOfWork.GetCollection<Subscription>()
                     .UpdateOneAsync(session,
-                        x => x.Id == updateEntitlementsSubscriptionRequest.SubscriptionId,
+                        x => x.Id == deleteEntitlementsSubscriptionRequest.SubscriptionId,
                         Builders<Subscription>.Update.PullFilter(
                             x => x.Entitlements,
-                            e => updateEntitlementsSubscriptionRequest.EntitlementCodesToRemove.Contains(e.Code)
+                            e => deleteEntitlementsSubscriptionRequest.Codes.Contains(e.Code)
                         )
                     );
 
@@ -244,7 +242,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
                 StripeList<Price> existingPrices = priceService.List(new PriceListOptions
                 {
                     LookupKeys = createSubScriptionPlanRequest.Prices.Select(x => x.LookupKey).ToList(),
-                    Limit = 10
+                    Limit = 50
                 });
 
                 // Kiểm tra nếu đã tồn tại Amount với lookup_key này
@@ -282,7 +280,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
                         PeriodTime.day => (subscription.Amount * 12) / 365,
                         PeriodTime.month => subscription.Amount,             // Giá gốc là tháng
                         PeriodTime.week => (subscription.Amount * 12) / 52,
-                        PeriodTime.year => subscription.Amount * 12,
+                        PeriodTime.year => subscription.Amount * 12,        // Giữ nguyên giá năm
                         _ => throw new BadRequestCustomException("Invalid interval. Supported values are 'day', 'week', 'month' and 'year'.")
                     };
 

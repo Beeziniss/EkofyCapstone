@@ -3,6 +3,7 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
@@ -265,6 +266,16 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
+        // Lấy coupon giảm giá nếu có
+        List<string> couponIds = [];
+        if (createCheckoutSessionRequest.Period == PeriodTime.year)
+        {
+            couponIds = await _unitOfWork.GetCollection<EntityCoupon>()
+                .Find(x => createCheckoutSessionRequest.CouponCodes.Contains(x.Code) && x.Status == CouponStatus.Active)
+                .Project(x => x.StripeCouponId)
+                .ToListAsync();
+        }
+
         CheckoutOption.SessionCreateOptions options = new()
         {
             PaymentMethodTypes = ["card", "link"],
@@ -289,6 +300,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             //{
             //    Enabled = true // Tạo hóa đơn cho thanh toán
             //},
+            Discounts = couponIds.Select(x => new SessionDiscountOptions
+            {
+                Coupon = x
+            }).ToList(),
         };
 
         CheckoutOption.SessionService service = new();

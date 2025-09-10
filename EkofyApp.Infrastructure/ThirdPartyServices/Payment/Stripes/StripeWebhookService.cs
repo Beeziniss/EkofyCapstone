@@ -1,6 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
-using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -19,27 +18,29 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
     private readonly string WebhookSecretTest = Environment.GetEnvironmentVariable("STRIPE_SIGNATURE_SECRET_TEST") ?? throw new InvalidOperationException("STRIPE_SIGNATURE_SECRET_TEST is not configured.");
 
     // TODO: Xử lý webhook từ Stripe cho Customer (tạm thời chỉ log ra)
-    public void HandleWebhookCustomer(string json, string stripeSignature)
+    public async Task HandleWebhookCustomerAsync(string json, string stripeSignature)
     {
         try
         {
             Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTest);
 
-            _logger.LogInformation($"Webhook event received: {stripeEvent.Type}");
-
             // Gọi hàm xử lý sự kiện tùy chỉnh
             if (stripeEvent.Type == EventTypes.CustomerCreated)
             {
-                Customer customer = stripeEvent.Data.Object as Customer ?? throw new ArgumentNullCustomException("NULL");
-                _logger.LogInformation($"Customer created: {customer.Id}, Email: {customer.Email}");
+                Customer customer = stripeEvent.Data.Object as Customer ?? throw new ArgumentNullCustomException("Customer is NULL");
+
+                await _unitOfWork.GetCollection<User>().UpdateOneAsync(x => x.Email == customer.Email,
+                    Builders<User>.Update
+                    .Set(x => x.StripeCustomerId, customer.Id)
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                );
             }
 
             return;
         }
         catch (StripeException e)
         {
-            _logger.LogError($"Webhook error: {e.Message}");
-            return;
+            throw new ExternalServiceCustomException($"Stripe webhook error: {e}");
         }
     }
 
@@ -66,15 +67,15 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
 
     public async Task HandleWebhookCheckoutSessionAsync(string json, string stripeSignature)
     {
-        try
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTest);
-            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
+            try
             {
-                CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("NULL");
-
-                await _unitOfWork.ExecuteInTransactionAsync(async session =>
+                Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, WebhookSecretTest);
+                if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
                 {
+                    CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
+
                     UpdateDefinition<Transaction> update = Builders<Transaction>.Update
                     .Set(t => t.StripePaymentId, checkoutSession.PaymentIntentId)
                     .Set(t => t.StripePaymentMethod, checkoutSession.PaymentMethodTypes)
@@ -82,9 +83,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
                     .Set(t => t.Status, TransactionStatus.Completed)
                     .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-                    Transaction transaction = await _unitOfWork.GetCollection<Transaction>().FindOneAndUpdateAsync(Builders<Transaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
+                    Transaction transaction = await _unitOfWork.GetCollection<Transaction>().FindOneAndUpdateAsync(session, Builders<Transaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
 
-                    await _unitOfWork.GetCollection<Receipt>().InsertOneAsync(new Receipt
+                    await _unitOfWork.GetCollection<Receipt>().InsertOneAsync(session, new Receipt
                     {
                         UserId = transaction.UserId,
                         SubscriptionId = transaction.SubscriptionId,
@@ -98,20 +99,20 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, IHttpContextAcc
 
                         FullName = checkoutSession.Customer.Name,
                         Email = checkoutSession.Customer.Email,
-                        Country = "VN",
+                        Country = "VN", // Tạm thời
                         Amount = transaction.Amount,
                         Currency = transaction.Currency,
-                        
+
                         From = checkoutSession.Customer.Email,
                         To = "Ekofy" // Tạm thời
                     });
-                });
+                }
             }
-        }
-        catch (StripeException e)
-        {
-            _logger.LogError($"Webhook error: {e.Message}");
-        }
+            catch (StripeException e)
+            {
+                throw new ExternalServiceCustomException($"Stripe webhook error: {e}");
+            }
+        });
     }
 
     // Xử lý webhook từ Stripe
