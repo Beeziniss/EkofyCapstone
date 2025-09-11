@@ -12,6 +12,7 @@ using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Coupons;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
@@ -41,6 +42,7 @@ using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Coupons;
+using EkofyApp.Infrastructure.Services.Jobs;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Subscriptions;
@@ -54,8 +56,13 @@ using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 using FluentValidation;
+using Hangfire;
+using Hangfire.Mongo;
+using Hangfire.Mongo.Migration.Strategies;
+using Hangfire.Mongo.Migration.Strategies.Backup;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
@@ -80,6 +87,8 @@ public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
     {
+        services.AddHangfire();
+
         //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
         services.AddAutoMapperExtension();
         services.AddSyncfusionExtension();
@@ -621,5 +630,43 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CurrencyType), new EnumMemberSerializer<CurrencyType>());
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
+    }
+
+    public static void AddHangfire(this IServiceCollection service)
+    {
+        //lấy đường dẫn Mongo làm storage cho hangfire
+        var mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
+
+        var DatabaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE");
+
+        //đăng ký Hangfire với MongoDB
+        service.AddHangfire(configuration => configuration
+            //mức tương thích dữ liệu của Hangfire 
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            //cấu hình Storage
+            .UseMongoStorage(mongoConnectionString.ToString(), DatabaseName, new MongoStorageOptions
+            {
+                MigrationOptions = new MongoMigrationOptions
+                {
+                    //tự động xử lý khi có sự thay đổi cấu trúc dữ liệu
+                    MigrationStrategy = new MigrateMongoMigrationStrategy(),
+                    //sao lưu dữ liệu cũ trước khi thay đổi cấu trúc
+                    BackupStrategy = new CollectionMongoBackupStrategy()
+                },
+                Prefix = "backgroundjobs.hangfire",
+                CheckConnection = false,
+                //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
+            }));
+
+        //đăng ký Hangfire server
+        service.AddHangfireServer(ServerOptions =>
+        {
+            ServerOptions.ServerName = "BackgroundJobs.Hangfire";
+        });
+
+        // Background Jobs Services
+        service.AddTransient<IBackgoundService, BackgoundService>();
     }
 }
