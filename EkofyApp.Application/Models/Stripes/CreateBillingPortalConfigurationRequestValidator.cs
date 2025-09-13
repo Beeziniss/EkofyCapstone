@@ -16,7 +16,7 @@ public sealed class CreateBillingPortalConfigurationRequestValidator : AbstractV
 
         RuleFor(x => x.UserRole)
             .IsInEnum().WithMessage("UserRole must be a valid enum value.")
-            .Must(role => role == UserRole.Admin || role == UserRole.Moderator).WithMessage("Cannot create Billing Portal Configuration for Admin or Moderator role.");
+            .Must(role => role == UserRole.Listener || role == UserRole.Artist).WithMessage("Cannot create Billing Portal Configuration for Admin or Moderator role.");
         RuleFor(x => x.SubscriptionTier)
             .IsInEnum().WithMessage("SubscriptionTier must be a valid enum value.");
         RuleFor(x => x.SubscriptionVersion)
@@ -35,7 +35,7 @@ public sealed class CreateBillingPortalConfigurationRequestValidator : AbstractV
 
         RuleFor(x => x.Mode)
             .NotEmpty().When(x => x.SubscriptionCancelEnabled).WithMessage("CancelMode must be provided when SubscriptionCancelEnabled is true.")
-            .Must(mode => mode == StripeSubscriptionCancelMode.Immediately || mode == StripeSubscriptionCancelMode.AtPeriodEnd).When(x => x.SubscriptionCancelEnabled).WithMessage("CancelMode must be either 'immediately' or 'at_period_end'.");
+            .Must(mode => mode == StripeSubscriptionCancelMode.immediately || mode == StripeSubscriptionCancelMode.at_period_end).When(x => x.SubscriptionCancelEnabled).WithMessage("CancelMode must be either 'immediately' or 'at_period_end'.");
 
         RuleFor(x => x.SuscriptionUpdateEnabled)
             .NotNull().WithMessage("SuscriptionUpdateEnabled is required");

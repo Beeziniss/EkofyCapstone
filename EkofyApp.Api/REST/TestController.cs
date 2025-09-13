@@ -328,17 +328,6 @@ public class TestController : ControllerBase
         });
     }
 
-    [HttpPost("create-portal-session")]
-    public async Task<IActionResult> PortalSession([FromServices] IStripeService stripeService)
-    {
-        var result = await stripeService.CreateCustomerPortalSessionAsync("https://localhost:8888/test");
-        return Ok(new
-        {
-            Message = "Create Portal Session Successfully",
-            Result = result
-        });
-    }
-
     //[HttpGet("replace-content-optimized-1")]
     //public IActionResult ReplaceContentOptimized1([FromServices] IFfmpegService ffmpegService)
     //{

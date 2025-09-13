@@ -210,6 +210,26 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
         }
     }
 
+    private static void ValidateKeyMetadata(params string[] keys)
+    {
+        if(keys.Contains("name"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'name' key.");
+        }
+        if (keys.Contains("subscription_id"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'subscription_id' key.");
+        }
+        if (keys.Contains("subscription_tier"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'subscription_tier' key.");
+        }
+        if (keys.Contains("subscription_version"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'subscription_version' key.");
+        }
+    }
+
     public async Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
@@ -218,23 +238,20 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
             {
                 // Kiểm tra có subscription trươcc khi tạo
                 Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
-                    .Find(x => x.Tier == createSubScriptionPlanRequest.SubscriptionTier &&
-                        x.Version == createSubScriptionPlanRequest.SubscriptionVersion &&
-                        x.Status == SubscriptionStatus.Active)
+                    .Find(x => x.Code == createSubScriptionPlanRequest.SubscriptionCode && x.Status == SubscriptionStatus.Active)
                     .Project<Subscription>(Builders<Subscription>.Projection
                         .Include(x => x.Id)
-                        .Include(x => x.Amount))
+                        .Include(x => x.Amount)
+                        .Include(x => x.Tier)
+                        .Include(x => x.Version))
                     .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription. Please create subscription first.");
 
+                ValidateKeyMetadata(createSubScriptionPlanRequest.Metadata?.Keys.ToArray() ?? []);
                 createSubScriptionPlanRequest.Metadata ??= [];
-                if (createSubScriptionPlanRequest.Metadata.TryGetValue("name", out _))
-                {
-                    throw new BadRequestCustomException("Metadata's key input must not contain 'name' key.");
-                }
                 createSubScriptionPlanRequest.Metadata.Add("name", createSubScriptionPlanRequest.Name);
                 createSubScriptionPlanRequest.Metadata.Add("subscription_id", subscription.Id);
-                createSubScriptionPlanRequest.Metadata.Add("subscription_tier", createSubScriptionPlanRequest.SubscriptionTier.ToString());
-                createSubScriptionPlanRequest.Metadata.Add("subscription_version", createSubScriptionPlanRequest.SubscriptionVersion.ToString());
+                createSubScriptionPlanRequest.Metadata.Add("subscription_tier", subscription.Tier.ToString());
+                createSubScriptionPlanRequest.Metadata.Add("subscription_version", subscription.Version.ToString());
 
                 PriceService priceService = new();
                 ProductService productService = new();

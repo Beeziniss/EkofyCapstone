@@ -5,14 +5,12 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
-using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
 using Stripe.Checkout;
-using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
@@ -197,29 +195,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         });
     }
 
-    public async Task<PortalSession> CreateCustomerPortalSessionAsync(string returnUrl)
-    {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
-        string stripeCustomerId = await _unitOfWork.GetCollection<User>()
-            .Find(x => x.Id == userId)
-            .Project(x => x.StripeCustomerId)
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any customer id with user id {userId}");
-
-        string billingPortalConfigId = await _unitOfWork.GetCollection<BillingPortalConfiguration>()
-            .Find(x => x.UserRole == UserRole.Listener)
-            .Project(x => x.StripeBillingPortalConfigurationId)
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any billing portal configuration id with user id {userId}");
-
-        BillingPortalOption.SessionService service = new();
-        return service.Create(new BillingPortalOption.SessionCreateOptions
-        {
-            Customer = stripeCustomerId,     // Customer đã tạo/lưu trong DB
-            ReturnUrl = returnUrl,      // URL quay về sau khi user xong việc
-            Configuration = billingPortalConfigId, // Cấu hình portal session
-        }); // Link redirect user sang Customer Portal
-    }
-
     public async Task<bool> IsCustomerIdExisted()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -238,110 +213,115 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     }
 
     // Tạo Checkout Session (link) cho thanh toán 1 lần
-    public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
-    {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+    // Dùng subscription checkout session thay thế
+    //public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
+    //{
+    //    string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        User user = _unitOfWork.GetCollection<User>()
-            .Find(x => x.Id == userId)
-            .Project<User>(Builders<User>.Projection
-                .Include(x => x.StripeCustomerId)
-                .Include(x => x.Email))
-            .FirstOrDefault() ?? throw new NotFoundCustomException("Not found your Stripe Customer ID. Please contact us for more information.");
+    //    User user = _unitOfWork.GetCollection<User>()
+    //        .Find(x => x.Id == userId)
+    //        .Project<User>(Builders<User>.Projection
+    //            .Include(x => x.StripeCustomerId)
+    //            .Include(x => x.Email))
+    //        .FirstOrDefault() ?? throw new NotFoundCustomException("Not found your Stripe Customer ID. Please contact us for more information.");
 
-        // Lấy subscriptionId từ subscriptionTier và subscriptionVersion
-        // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
-        // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
-        string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
-                x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
-                x.Status == SubscriptionStatus.Active)
-            .Project(x => x.Id)
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
+    //    // Lấy subscriptionId từ subscriptionTier và subscriptionVersion
+    //    // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
+    //    // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
+    //    string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
+    //        .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
+    //            x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
+    //            x.Status == SubscriptionStatus.Active)
+    //        .Project(x => x.Id)
+    //        .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
-        SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
-            .Find(x => x.SubscriptionId == subscriptionId)
-            .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
-                .Include(x => x.Id)
-                .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
+    //    SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
+    //        .Find(x => x.SubscriptionId == subscriptionId)
+    //        .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
+    //            .Include(x => x.Id)
+    //            .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
+    //        .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
-        // Lấy coupon giảm giá nếu có
-        List<string> couponIds = [];
-        if (createCheckoutSessionRequest.Period == PeriodTime.year)
-        {
-            couponIds = await _unitOfWork.GetCollection<EntityCoupon>()
-                .Find(x => createCheckoutSessionRequest.CouponCodes.Contains(x.Code) && x.Status == CouponStatus.Active)
-                .Project(x => x.StripeCouponId)
-                .ToListAsync();
-        }
+    //    // Lấy coupon giảm giá nếu có
+    //    // TODO: Cần sửa lại nếu không phải yearly thì không lấy coupon
+    //    List<string> couponIds = [];
+    //    if (createCheckoutSessionRequest.Period == PeriodTime.year)
+    //    {
+    //        //couponIds = await _unitOfWork.GetCollection<EntityCoupon>()
+    //        //    .Find(x => createCheckoutSessionRequest.CouponCodes.Contains(x.Code) && x.Status == CouponStatus.Active)
+    //        //    .Project(x => x.StripeCouponId)
+    //        //    .ToListAsync();
 
-        CheckoutOption.SessionCreateOptions options = new()
-        {
-            PaymentMethodTypes = ["card", "link"],
-            LineItems =
-            [
-                new SessionLineItemOptions
-                {
-                    Price = subscriptionPlan.SubscriptionPlanPrices.First().StripePriceId, // ID gói đã tạo trong Stripes
-                    Quantity = 1,
-                },
-            ],
-            Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
-            Mode = "payment",
-            SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
-            CancelUrl = createCheckoutSessionRequest.CancelUrl,
-            PaymentIntentData = new SessionPaymentIntentDataOptions
-            {
-                ReceiptEmail = createCheckoutSessionRequest.IsReceiptEmail ? user.Email : null, // Gửi biên lai về email của customer
-                SetupFutureUsage = createCheckoutSessionRequest.IsSavePaymentMethod ? "off_session" : null, // Lưu thẻ để thanh toán các lần sau
-            },
-            //InvoiceCreation = new SessionInvoiceCreationOptions
-            //{
-            //    Enabled = true // Tạo hóa đơn cho thanh toán
-            //},
-            Discounts = couponIds.Select(x => new SessionDiscountOptions
-            {
-                Coupon = x
-            }).ToList(),
-        };
+    //        couponIds = ["npw1701t"];
+    //    }
 
-        CheckoutOption.SessionService service = new();
-        CheckoutOption.Session checkoutSession = service.Create(options);
-        if (string.IsNullOrEmpty(checkoutSession.Url))
-        {
-            throw new NotFoundCustomException("Error while generating URL for checkout session");
-        }
+    //    CheckoutOption.SessionCreateOptions options = new()
+    //    {
+    //        PaymentMethodTypes = ["card", "link"],
+    //        LineItems =
+    //        [
+    //            new SessionLineItemOptions
+    //            {
+    //                Price = subscriptionPlan.SubscriptionPlanPrices.First().StripePriceId, // ID gói đã tạo trong Stripes
+    //                Quantity = 1,
+    //            },
+    //        ],
+    //        Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
+    //        Mode = "payment",
+    //        SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
+    //        CancelUrl = createCheckoutSessionRequest.CancelUrl,
+    //        PaymentIntentData = new SessionPaymentIntentDataOptions
+    //        {
+    //            ReceiptEmail = createCheckoutSessionRequest.IsReceiptEmail ? user.Email : null, // Gửi biên lai về email của customer
+    //            SetupFutureUsage = createCheckoutSessionRequest.IsSavePaymentMethod ? "off_session" : null, // Lưu thẻ để thanh toán các lần sau
+    //        },
+    //        //InvoiceCreation = new SessionInvoiceCreationOptions
+    //        //{
+    //        //    Enabled = true // Tạo hóa đơn cho thanh toán
+    //        //},
+    //        Discounts = couponIds.Select(x => new SessionDiscountOptions
+    //        {
+    //            Coupon = x
+    //        }).ToList(),
+    //    };
 
-        await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
-        {
-            UserId = userId,
-            SubscriptionId = subscriptionId,
-            SubscriptionPlanId = subscriptionPlan.Id,
-            StripeCheckoutSessionId = checkoutSession.Id,
-            StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
-            StripePaymentMethod = checkoutSession.PaymentMethodTypes,
-            Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
-            Currency = checkoutSession.Currency,
+    //    CheckoutOption.SessionService service = new();
+    //    CheckoutOption.Session checkoutSession = service.Create(options);
+    //    if (string.IsNullOrEmpty(checkoutSession.Url))
+    //    {
+    //        throw new NotFoundCustomException("Error while generating URL for checkout session");
+    //    }
 
-            PaymentStatus = PaymentStatus.Pending,
-            Status = TransactionStatus.Open
-        });
+    //    await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
+    //    {
+    //        UserId = userId,
+    //        SubscriptionId = subscriptionId,
+    //        SubscriptionPlanId = subscriptionPlan.Id,
+    //        StripeCheckoutSessionId = checkoutSession.Id,
+    //        StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
+    //        StripePaymentMethod = checkoutSession.PaymentMethodTypes,
+    //        Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
+    //        Currency = checkoutSession.Currency,
 
-        return new()
-        {
-            Id = checkoutSession.Id,
-            Url = checkoutSession.Url,
-            SuccessUrl = checkoutSession.SuccessUrl,
-            CancelUrl = checkoutSession.CancelUrl,
-            Status = checkoutSession.Status,
-            Mode = checkoutSession.Mode,
-            Created = checkoutSession.Created,
-            Expired = checkoutSession.ExpiresAt,
-        };
-    }
+    //        PaymentStatus = PaymentStatus.Pending,
+    //        Status = TransactionStatus.Open
+    //    });
+
+    //    return new()
+    //    {
+    //        Id = checkoutSession.Id,
+    //        Url = checkoutSession.Url,
+    //        SuccessUrl = checkoutSession.SuccessUrl,
+    //        CancelUrl = checkoutSession.CancelUrl,
+    //        Status = checkoutSession.Status,
+    //        Mode = checkoutSession.Mode,
+    //        Created = checkoutSession.Created,
+    //        Expired = checkoutSession.ExpiresAt,
+    //    };
+    //}
 
     // Tạo Checkout Session (link) cho đăng ký gói (subscription)
+
     public async Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateCheckoutSessionRequest createCheckoutSessionRequest)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -349,26 +329,42 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         User user = _unitOfWork.GetCollection<User>()
             .Find(x => x.Id == userId)
             .Project<User>(Builders<User>.Projection
+                .Include(x => x.Role)
                 .Include(x => x.StripeCustomerId)
                 .Include(x => x.Email))
-            .FirstOrDefault() ?? throw new NotFoundCustomException("Not found your Stripe Customer ID. Please contact us for more information.");
+            .FirstOrDefault() ?? throw new NotFoundCustomException("Session is limit. Please login again.");
 
         // Lấy subscriptionId từ subscriptionTier và subscriptionVersion
         // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
         // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
-        string subscriptionId = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
-                x.Version == createCheckoutSessionRequest.SubscriptionVersion &&
+        Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
+            .Find(x => x.Code == createCheckoutSessionRequest.SubscriptionCode &&
                 x.Status == SubscriptionStatus.Active)
-            .Project(x => x.Id)
+            .Project<Subscription>(Builders<Subscription>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Entitlements))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
-            .Find(x => x.SubscriptionId == subscriptionId)
+            .Find(x => x.SubscriptionId == subscription.Id)
             .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
                 .Include(x => x.Id)
                 .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
+
+        // Lấy coupon giảm giá nếu có
+        List<string>? couponIds = [];
+        if (createCheckoutSessionRequest.Period == PeriodTime.year)
+        {
+            couponIds = await _unitOfWork.GetCollection<EntityCoupon>()
+                .Find(x => x.Purpose == CouponPurposeType.AnnualPlanDiscount && x.Status == CouponStatus.Active)
+                .Project(x => x.StripeCouponId)
+                .ToListAsync();
+        }
+        else
+        {
+            couponIds = null;
+        }
 
         CheckoutOption.SessionCreateOptions options = new()
         {
@@ -386,19 +382,57 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             //OriginContext = "web",
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createCheckoutSessionRequest.CancelUrl,
-            PaymentIntentData = new SessionPaymentIntentDataOptions
+            InvoiceCreation = new SessionInvoiceCreationOptions
             {
-                ReceiptEmail = createCheckoutSessionRequest.IsReceiptEmail ? user.Email : null, // Gửi biên lai về email của customer
-                SetupFutureUsage = createCheckoutSessionRequest.IsSavePaymentMethod ? "off_session" : null, // Lưu thẻ để thanh toán các lần sau
+                Enabled = true, // Tạo hóa đơn
+                //InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
+                //{
+                //    Description = $"Invoice for {subscriptionPlan.Name} plan",
+                //}
             },
-            //InvoiceCreation = new SessionInvoiceCreationOptions
+            Discounts = couponIds != null ? couponIds?.Select(x => new SessionDiscountOptions
+            {
+                Coupon = x
+            }).ToList() : null,
+            //Metadata = new Dictionary<string, string>
             //{
-            //    Enabled = true // Tạo hóa đơn cho lần thanh toán đầu tiên
+            //    { "interval", createCheckoutSessionRequest.Period.ToString() },
+            //    { "intervalCount",  subscriptionPlan.SubscriptionPlanPrices.First().IntervalCount.ToString()}
             //},
+            SubscriptionData = new SessionSubscriptionDataOptions
+            {
+                Metadata = new Dictionary<string, string>
+                {
+                    { "user_id", userId },
+                    { "user_role", user.Role.ToString() },
+                    { "subscription_id", subscription.Id },
+                    { "interval", createCheckoutSessionRequest.Period.ToString() },
+                    { "intervalCount",  subscriptionPlan.SubscriptionPlanPrices.First().IntervalCount.ToString()}
+                }
+            },
         };
 
         CheckoutOption.SessionService service = new();
         CheckoutOption.Session checkoutSession = service.Create(options);
+        if (string.IsNullOrEmpty(checkoutSession.Url))
+        {
+            throw new NotFoundCustomException("Error while generating URL for checkout session");
+        }
+
+        await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
+        {
+            UserId = userId,
+            SubscriptionId = subscription.Id,
+            SubscriptionPlanId = subscriptionPlan.Id,
+            StripeCheckoutSessionId = checkoutSession.Id,
+            StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
+            StripePaymentMethod = checkoutSession.PaymentMethodTypes,
+            Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
+            Currency = checkoutSession.Currency,
+
+            PaymentStatus = PaymentStatus.Pending,
+            Status = TransactionStatus.Open
+        });
 
         return new()
         {

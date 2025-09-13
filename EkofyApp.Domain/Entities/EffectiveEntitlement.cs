@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums.Users;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -19,10 +20,10 @@ public sealed class EffectiveEntitlement : TimeStamped, IEntityCustom
 
     public UserRole Role { get; set; }
 
-    // Embedded subscription information
-    public string? SubscriptionCode { get; set; }
-    public int SubscriptionVersion { get; set; }
+    //// Embedded subscription information
+    //public string? SubscriptionCode { get; set; }
+    //public int SubscriptionVersion { get; set; }
 
-    public List<string> EntitlementCodes { get; set; } = [];
-    public DateTimeOffset ValidUntil { get; set; }
+    public List<Entitlement> Entitlements { get; set; } = [];
+    public DateTimeOffset? ValidUntil { get; set; }
 }

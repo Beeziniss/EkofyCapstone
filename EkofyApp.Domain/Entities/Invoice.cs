@@ -3,7 +3,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Receipt : IEntityCustom
+public sealed class Invoice : IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -39,5 +39,5 @@ public sealed class Receipt : IEntityCustom
 
     public string? OriginContext { get; set; } // e.g., "web", "mobile"
 
-    public DateTimeOffset CreatedAt { get; set; } = HelperMethod.GetUtcPlus7TimeOffset();
+    public DateTimeOffset PaidAt { get; set; } = HelperMethod.GetUtcPlus7TimeOffset();
 }

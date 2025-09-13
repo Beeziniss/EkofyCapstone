@@ -7,6 +7,8 @@ using EkofyApp.Application.Models.Auth.Moderators;
 using EkofyApp.Application.Models.Projections;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
+using EkofyApp.Application.ServiceInterfaces.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -19,9 +21,11 @@ using System.Security.Claims;
 using LoginRequest = EkofyApp.Application.Models.Auth.LoginRequest;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken jsonWebToken, IMapper mapper) : IAuthenticationService
+public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IJsonWebToken jsonWebToken, IMapper mapper) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
+    private readonly IEffectiveEntitlementService _effectiveEntitlementService = effectiveEntitlementService;
     private readonly IJsonWebToken _jsonWebToken = jsonWebToken;
     private readonly IMapper _mapper = mapper;
 
@@ -80,8 +84,14 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             };
 
             // Lưu người dùng và artist vào cơ sở dữ liệu
-            await _unitOfWork.GetCollection<User>().InsertOneAsync(user);
-            await _unitOfWork.GetCollection<Listener>().InsertOneAsync(listener);
+            await _unitOfWork.GetCollection<User>().InsertOneAsync(session, user);
+            await _unitOfWork.GetCollection<Listener>().InsertOneAsync(session, listener);
+
+            // Tạo mới UserSubscription với gói Free
+            await _userSubscriptionService.CreateUserSubscriptionAsync(session, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+
+            // Xây dựng quyền lợi mặc định cho Listener (gói Free)
+            await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Listener);
         });
     }
 
@@ -214,6 +224,12 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IJsonWebToken 
             // Lưu người dùng và artist vào cơ sở dữ liệu
             await _unitOfWork.GetCollection<User>().InsertOneAsync(user);
             await _unitOfWork.GetCollection<Artist>().InsertOneAsync(artist);
+
+            // Tạo mới UserSubscription với gói Free
+            await _userSubscriptionService.CreateUserSubscriptionAsync(session, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+
+            // Xây dựng quyền lợi mặc định cho Artist (gói Free)
+            await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Artist);
         });
     }
 
