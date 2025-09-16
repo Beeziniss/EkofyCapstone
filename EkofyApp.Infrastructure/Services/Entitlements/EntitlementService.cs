@@ -1,8 +1,11 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.Entitlements;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Entitlements;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
+using EkofyApp.Domain.Exceptions;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Entitlements;
@@ -13,6 +16,61 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
     public IQueryable<Entitlement> GetEntitlements()
     {
         return _unitOfWork.GetCollection<Entitlement>().AsQueryable();
+    }
+
+    public async Task CreateEntitlementAsync(CreateEntitlementRequest createEntitlementRequest)
+    {
+        await _unitOfWork.GetCollection<Entitlement>().InsertOneAsync(new Entitlement
+        {
+            Code = createEntitlementRequest.Code,
+            Name = createEntitlementRequest.Name,
+            Description = createEntitlementRequest.Description,
+            ValueType = createEntitlementRequest.ValueType,
+            DefaultValues = createEntitlementRequest.DefaultValues
+                .Select(x => new EntitlementRoleDefault { Role = x.Role, Value = x.Value })
+                .ToList(),
+            SubscriptionOverrides = createEntitlementRequest.SubscriptionOverrides
+                .Select(x => new EntitlementSubscriptionOverride { SubscriptionCode = x.SubscriptionCode, Value = x.Value })
+                .ToList(),
+            IsActive = createEntitlementRequest.IsActive
+        });
+    }
+
+    public async Task<long> GetEntitlementUserCount(string code)
+    {
+        return await _unitOfWork.GetCollection<EffectiveEntitlement>()
+            .Find(ef => ef.Entitlements.Any(e => e.Code == code))
+            .CountDocumentsAsync();
+    }
+
+    public async Task DeactiveEntitlementAsync(string code)
+    {
+        // Kiểm tra xem có người dùng nào đang sử dụng entitlement này không
+        bool hasUsers = await _unitOfWork.GetCollection<EffectiveEntitlement>()
+            .Find(ef => ef.Entitlements.Any(e => e.Code == code))
+            .AnyAsync();
+
+        if (hasUsers)
+        {
+            throw new ConflictCustomException($"Cannot deactivate entitlement '{code}' because users are currently using it or does not exist.");
+        }
+
+        await _unitOfWork.GetCollection<Entitlement>().UpdateOneAsync(e => e.Code == code, Builders<Entitlement>.Update.Set(x => x.IsActive, false));
+    }
+
+    public async Task ReactiveEntitlementAsync(string code)
+    {
+        // Chỉ những entitlement đã bị deactivate mới có thể kích hoạt lại
+        bool isInactive = await _unitOfWork.GetCollection<Entitlement>()
+            .Find(e => e.Code == code && e.IsActive == false)
+            .AnyAsync();
+
+        if (!isInactive)
+        {
+            throw new ConflictCustomException($"Entitlement '{code}' is already active or does not exist.");
+        }
+
+        await _unitOfWork.GetCollection<Entitlement>().UpdateOneAsync(e => e.Code == code, Builders<Entitlement>.Update.Set(x => x.IsActive, true));
     }
 
     public async Task SeedDataAsync()

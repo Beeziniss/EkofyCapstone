@@ -1,4 +1,4 @@
-﻿using Amazon;
+using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Audio;
@@ -13,6 +13,7 @@ using EkofyApp.Application.ServiceInterfaces.BillingPortalConfigurations;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Coupons;
+using EkofyApp.Application.ServiceInterfaces.Entitlements;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
@@ -46,6 +47,7 @@ using EkofyApp.Infrastructure.Services.BillingPortalConfigurations;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Coupons;
+using EkofyApp.Infrastructure.Services.Entitlements;
 using EkofyApp.Infrastructure.Services.Jobs;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
@@ -352,6 +354,7 @@ public static class DependencyInjection
         services.AddScoped<IBillingPortalConfigurationService, BillingPortalConfigurationService>();
         services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
         services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
+        services.AddScoped<IEntitlementService, EntitlementService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services

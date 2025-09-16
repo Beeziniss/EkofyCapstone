@@ -5,6 +5,6 @@ namespace EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 public interface IUserSubscriptionService
 {
     IQueryable<UserSubscription> GetUserSubscriptions();
-    Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string subscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null);
-    Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status);
+    Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string userId, string subscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null);
+    Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, string userId, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status);
 }

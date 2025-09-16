@@ -88,7 +88,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             await _unitOfWork.GetCollection<Listener>().InsertOneAsync(session, listener);
 
             // Tạo mới UserSubscription với gói Free
-            await _userSubscriptionService.CreateUserSubscriptionAsync(session, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
 
             // Xây dựng quyền lợi mặc định cho Listener (gói Free)
             await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Listener);
@@ -222,11 +222,11 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             };
 
             // Lưu người dùng và artist vào cơ sở dữ liệu
-            await _unitOfWork.GetCollection<User>().InsertOneAsync(user);
-            await _unitOfWork.GetCollection<Artist>().InsertOneAsync(artist);
+            await _unitOfWork.GetCollection<User>().InsertOneAsync(session, user);
+            await _unitOfWork.GetCollection<Artist>().InsertOneAsync(session, artist);
 
             // Tạo mới UserSubscription với gói Free
-            await _userSubscriptionService.CreateUserSubscriptionAsync(session, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
 
             // Xây dựng quyền lợi mặc định cho Artist (gói Free)
             await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Artist);

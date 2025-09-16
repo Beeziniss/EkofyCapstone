@@ -18,10 +18,8 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
         return _unitOfWork.GetCollection<UserSubscription>().AsQueryable();
     }
 
-    public async Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string subscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null)
+    public async Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string userId, string subscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null)
     {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
         // Mặc định nếu không có subscriptionId thì sẽ lấy gói Free
         if (string.IsNullOrEmpty(subscriptionId))
         {
@@ -32,7 +30,7 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
                 .FirstOrDefaultAsync(); 
         }
 
-        await _unitOfWork.GetCollection<UserSubscription>().InsertOneAsync(new UserSubscription()
+        await _unitOfWork.GetCollection<UserSubscription>().InsertOneAsync(session, new UserSubscription()
         {
             UserId = userId,
             SubscriptionId = subscriptionId,
@@ -41,15 +39,13 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
         });
     }
 
-    public async Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status)
+    public async Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, string userId, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status)
     {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
         // TODO: Làm sao để biết là document nào mới đúng là đang cần tìm
         // Vì có thể có nhiều UserSubscription với cùng UserId và SubscriptionId
         // Nên cần có thêm một trường nào đó để phân biệt
         // Resolved: Lấy cái đang có trạng thái là Active
-        await _unitOfWork.GetCollection<UserSubscription>().UpdateOneAsync(x => x.IsActive == status && x.UserId == userId, Builders<UserSubscription>.Update
+        await _unitOfWork.GetCollection<UserSubscription>().UpdateOneAsync(session, x => x.IsActive == status && x.UserId == userId, Builders<UserSubscription>.Update
             .Set(x => x.CancelAtEndOfPeriod, cancelAtEndOfPeriod)
             .Set(x => x.CanceledAt, canceledAt)
             .Set(x => x.IsActive, status)
