@@ -341,12 +341,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .Find(x => x.Code == createCheckoutSessionRequest.SubscriptionCode &&
                 x.Status == SubscriptionStatus.Active)
             .Project<Subscription>(Builders<Subscription>.Projection
-                .Include(x => x.Id)
-                .Include(x => x.Entitlements))
+                .Include(x => x.Id))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
-            .Find(x => x.SubscriptionId == subscription.Id)
+            .Find(x => x.SubscriptionId == subscription.Id && x.StripeProductActive == true)
             .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
                 .Include(x => x.Id)
                 .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))

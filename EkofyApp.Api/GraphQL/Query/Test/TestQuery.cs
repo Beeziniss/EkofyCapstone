@@ -1,5 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
-using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Entities;
 using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Query.Test;

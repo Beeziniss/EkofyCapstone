@@ -1,5 +1,5 @@
 ﻿using EkofyApp.Api.GraphQL.Scalars;
-using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Api.GraphQL.Query.Test;
 public sealed class TestEType : ObjectTypeExtension<Entitlement>

@@ -36,7 +36,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     // Endpoint để lấy key cho HLS, sẽ trả về file binary
     // Bên trong content của HLS.m3u8 sẽ tự động gọi đến hàm này
     [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpGet("keys")]
+    [AllowAnonymous, HttpGet("keys")]
     public IActionResult DecryptionKey([FromQuery] string trackId, [FromQuery] string token)
     {
         _amazonCloudFrontService.ValidateHlsToken(trackId, token);
@@ -59,7 +59,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
 
     // Hàm xử lý proxy cho file bitrate.m3u8, replace và ký toàn bộ .ts và EXT-X-KEY bên trong
     [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpGet("{trackId}/{bitrate}/playlist.m3u8")]
+    [AllowAnonymous, HttpGet("{trackId}/{bitrate}/playlist.m3u8")]
     public async Task<IActionResult> GetBitratePlaylist(string trackId, string bitrate, [FromQuery] string token)
     {
         _amazonCloudFrontService.ValidateHlsToken(trackId, token);
@@ -70,7 +70,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     }
 
     [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpGet("{trackId}/{bitrate}/{segment}")]
+    [AllowAnonymous, HttpGet("{trackId}/{bitrate}/{segment}")]
     public IActionResult ProxySegment(string trackId, string bitrate, string segment, [FromQuery] string token)
     {
         _amazonCloudFrontService.ValidateHlsToken(trackId, token);

@@ -28,15 +28,15 @@ public sealed class SubscriptionMutation(ISubscriptionService subscriptionServic
         return true;
     }
 
-    public async Task<bool> UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
-    {
-        await _subscriptionService.UpdateEntitlementsSubscriptionAsync(updateEntitlementsSubscriptionRequest);
-        return true;
-    }
+    //public async Task<bool> UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
+    //{
+    //    await _subscriptionService.UpdateEntitlementsSubscriptionAsync(updateEntitlementsSubscriptionRequest);
+    //    return true;
+    //}
 
-    public async Task<bool> DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest)
-    {
-        await _subscriptionService.DeleteEntitlementSubsriptionAsync(deleteEntitlementsSubscriptionRequest);
-        return true;
-    }
+    //public async Task<bool> DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest)
+    //{
+    //    await _subscriptionService.DeleteEntitlementSubsriptionAsync(deleteEntitlementsSubscriptionRequest);
+    //    return true;
+    //}
 }

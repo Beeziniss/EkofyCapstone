@@ -24,6 +24,6 @@ public sealed class EffectiveEntitlement : TimeStamped, IEntityCustom
     //public string? SubscriptionCode { get; set; }
     //public int SubscriptionVersion { get; set; }
 
-    public List<Entitlement> Entitlements { get; set; } = [];
+    public List<AppliedEntitlement> Entitlements { get; set; } = [];
     public DateTimeOffset? ValidUntil { get; set; }
 }

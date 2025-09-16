@@ -17,6 +17,7 @@ using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
@@ -47,6 +48,7 @@ using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Users;
+using EkofyApp.Infrastructure.Services.UserSubscriptions;
 using EkofyApp.Infrastructure.Services.Works;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
@@ -336,6 +338,8 @@ public static class DependencyInjection
         services.AddScoped<IRecordingService, RecordingService>();
         services.AddScoped<ICouponCustomService, CouponCustomService>();
         services.AddScoped<IBillingPortalConfigurationService, BillingPortalConfigurationService>();
+        services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
+        services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services

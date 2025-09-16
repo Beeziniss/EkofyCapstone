@@ -1,5 +1,5 @@
 ﻿using EkofyApp.Api.GraphQL.Scalars;
-using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Api.GraphQL.EntityTypeExtension;
 public sealed class EntitlementObjectExtension : ObjectTypeExtension<Entitlement>
