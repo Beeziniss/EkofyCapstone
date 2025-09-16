@@ -9,5 +9,18 @@ public sealed class EntitlementMutationExtension : ObjectTypeExtension<Entitleme
 
         descriptor.Field(x => x.SeedEntitlementsAsync())
             .Authorize(roles: "Admin");
+            //.AllowAnonymous();
+
+        descriptor.Field(x => x.CreateEntitlementAsync(default!))
+            .Authorize(roles: "Admin");
+
+        descriptor.Field(x => x.GetEntitlementUserCountAsync(default!))
+            .Authorize(roles: "Admin");
+
+        descriptor.Field(x => x.DeactiveEntitlementAsync(default!))
+            .Authorize(roles: "Admin");
+
+        descriptor.Field(x => x.ReactiveEntitlementAsync(default!))
+            .Authorize(roles: "Admin");
     }
 }

@@ -19,7 +19,8 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Tier == SubscriptionTier.Free && x.Status == SubscriptionStatus.Active)
             .Project<Subscription>(Builders<Subscription>.Projection
-                .Include(x => x.Id))
+                .Include(x => x.Id)
+                .Include(x => x.Code))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription");
 
         List<AppliedEntitlement> entitlements = await BuildEntitlementsForUserAsync(userRole, subscription.Code);
@@ -46,7 +47,8 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Id == subscriptionId && x.Status == SubscriptionStatus.Active)
             .Project<Subscription>(Builders<Subscription>.Projection
-                .Include(x => x.Id))
+                .Include(x => x.Id)
+                .Include(x => x.Code))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription");
 
         List<AppliedEntitlement> entitlements = await BuildEntitlementsForUserAsync(userRole, subscription.Code);
@@ -74,7 +76,8 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Tier == SubscriptionTier.Free && x.Status == SubscriptionStatus.Active)
             .Project<Subscription>(Builders<Subscription>.Projection
-                .Include(x => x.Id))
+                .Include(x => x.Id)
+                .Include(x => x.Code))
             .FirstOrDefaultAsync();
 
         List<AppliedEntitlement> entitlements = await BuildEntitlementsForUserAsync(userRole, subscription.Code);
@@ -104,7 +107,8 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Id == subscriptionId && x.Status == SubscriptionStatus.Active)
             .Project<Subscription>(Builders<Subscription>.Projection
-                .Include(x => x.Id))
+                .Include(x => x.Id)
+                .Include(x => x.Code))
             .FirstOrDefaultAsync();
 
         List<AppliedEntitlement> entitlements = await BuildEntitlementsForUserAsync(userRole, subscription.Code);
@@ -155,7 +159,9 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
             #endregion
 
             #region Dùng Dictionary để tăng tốc độ tìm kiếm
-            Dictionary<string, object> subOverrides = entitlement.SubscriptionOverrides?.ToDictionary(x => x.SubscriptionCode, x => x.Value) ?? [];
+            //Dictionary<string, object> subOverrides = entitlement.SubscriptionOverrides?.ToDictionary(x => x.SubscriptionCode, x => x.Value) ?? [];
+            Dictionary<string, object> subOverrides = entitlement.SubscriptionOverrides?.Where(x => !string.IsNullOrWhiteSpace(x.SubscriptionCode))
+                .ToDictionary(x => x.SubscriptionCode!, x => x.Value) ?? [];
             Dictionary<UserRole, object> roleDefaults = entitlement.DefaultValues?.ToDictionary(x => x.Role, x => x.Value) ?? [];
 
             if (subOverrides.TryGetValue(subscriptionCode, out object? overrideValue))

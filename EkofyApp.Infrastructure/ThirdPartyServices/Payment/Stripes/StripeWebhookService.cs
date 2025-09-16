@@ -136,10 +136,10 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             if (status == "canceled")
                             {
                                 // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                 // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                await _userSubscriptionService.CreateUserSubscriptionAsync(session, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+                                await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
 
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
@@ -291,10 +291,10 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                             });
 
                                             // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                             // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                            await _userSubscriptionService.CreateUserSubscriptionAsync(session, latestSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
+                                            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, latestSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
 
                                             // Cấp quyền entitlements về currentSubscription tương ứng
                                             await _effectiveEntitlementService.RebuildTierAsync(session, userId, UserRole.Listener, latestSubscriptionId);
@@ -303,10 +303,10 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         }
 
                                         // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                         // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                        await _userSubscriptionService.CreateUserSubscriptionAsync(session, currentSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
+                                        await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, currentSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
 
                                         // Cấp quyền entitlements về currentSubscription tương ứng
                                         await _effectiveEntitlementService.RebuildTierAsync(session, userId, UserRole.Listener, currentSubscriptionId);

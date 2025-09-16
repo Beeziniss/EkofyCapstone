@@ -4,7 +4,6 @@ public sealed class StripeMutationExtension : ObjectTypeExtension<StripeMutation
 {
     protected override void Configure(IObjectTypeDescriptor<StripeMutation> descriptor)
     {
-        // Configure the StripeMutation type here if needed
         descriptor.Field(x => x.CreateExpressConnectedAccountAsync())
             .Authorize(roles: "Artist");
 
@@ -12,6 +11,6 @@ public sealed class StripeMutationExtension : ObjectTypeExtension<StripeMutation
         //    .Authorize(roles: "Listener"); // TODO: Sửa lại thêm role artist vì Listener,Artist lại bị lỗi
 
         descriptor.Field(x => x.CreateSubscriotionCheckoutSessionAsync(default!))
-            .Authorize(roles: "Listener");
+            .Authorize(roles: ["Listener", "Artist"]);
     }
 }
