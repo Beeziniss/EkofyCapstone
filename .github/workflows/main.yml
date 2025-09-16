@@ -6,7 +6,7 @@ on:
    - main
 
 jobs:
- setup-ssh:
+ deployment:
   runs-on: ubuntu-latest
   steps:
   - name: Install ssh keys
@@ -17,19 +17,13 @@ jobs:
   - name: Connect & change directory 
     run: ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}
     
- sync-env:
-  needs: setup-ssh
-  runs-on: ubuntu-latest
-  steps:
+  # sync env file from Infisical
   - name: Sync env from Infisical
     run: |
      cd ${{ secrets.ENV_FOLDER }} 
      infisical export --silent --token=${{ secrets.INFISICAL_TOKEN }} > .env
 
- docker-job:
-  needs: sync-env
-  runs-on: ubuntu-latest
-  steps:
+  # pull image from hub and run command
   - name: Login Docker hub
     run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
   - name: Pull image from docker hub
@@ -39,9 +33,6 @@ jobs:
      cd ..
      docker-compose up -d
 
- clean-up-ssh:
-  needs: docker-job
-  runs-on: ubuntu-latest
-  steps:
+  #clean ssh session 
   - name: Clean up
     run: rm -rf ~/.ssh
