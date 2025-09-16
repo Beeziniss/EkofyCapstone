@@ -26,6 +26,7 @@ using Newtonsoft.Json.Linq;
 using Syncfusion.Pdf;
 using Syncfusion.Pdf.Graphics;
 using System.Net;
+using System.Net.Mail;
 using System.Text.RegularExpressions;
 
 namespace EkofyApp.Api.REST;

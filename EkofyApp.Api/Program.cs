@@ -1,7 +1,9 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL;
+using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
+using Hangfire;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text.Json.Serialization;
@@ -95,6 +97,9 @@ public sealed class Program
             });
             //app.UseSwaggerUI();
         }
+        
+        app.UseHangfireDashboard("/hangfire");
+        app.ConfigureJobs();
 
         app.UseHttpsRedirection();
 
