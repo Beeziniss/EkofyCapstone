@@ -19,7 +19,7 @@ jobs:
   - name: Sync env from Infisical
     run: |
      ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
-      cd ${{ secrets.ENV_FOLDER }} 
+      cd ${{ secrets.WORKDIR }} 
       infisical export --silent --token=${{ secrets.INFISICAL_TOKEN }} > .env
      "
 
@@ -27,7 +27,7 @@ jobs:
   - name: Docker jobs [Login - Pull - Run - Logout]
     run: |
      ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
-      cd ..
+      cd ${{ secrets.WORKDIR }} 
       echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
       docker pull ${{ secrets.DOCKER_IMAGE }}
       docker-compose up -d
