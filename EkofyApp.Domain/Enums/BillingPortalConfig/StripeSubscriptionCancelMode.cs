@@ -4,7 +4,7 @@ namespace EkofyApp.Domain.Enums.BillingPortalConfig;
 public enum StripeSubscriptionCancelMode
 {
     [EnumMember(Value = "immediately")]
-    Immediately,
+    immediately,
     [EnumMember(Value = "at_period_end")]
-    AtPeriodEnd,
+    at_period_end,
 }

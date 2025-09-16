@@ -10,6 +10,7 @@ public sealed record class CreateCouponRequest
     public decimal PercentOff { get; init; }
 
     public CouponDurationType Duration { get; init; }
+    public CouponPurposeType Purpose { get; init; }
 
     public CouponStatus Status { get; set; }
 }

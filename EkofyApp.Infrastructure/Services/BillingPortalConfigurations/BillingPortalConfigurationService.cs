@@ -3,17 +3,20 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.BillingPortalConfigurations;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
 using Stripe.BillingPortal;
 
 namespace EkofyApp.Infrastructure.Services.BillingPortalConfigurations;
-public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, ILogger<BillingPortalConfiguration> logger) : IBillingPortalConfigurationService
+public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, ILogger<BillingPortalConfiguration> logger, IHttpContextAccessor httpContextAccessor) : IBillingPortalConfigurationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<BillingPortalConfiguration> _logger = logger;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     // Cần cải thiện thêm cho FE có thể lấy được product ids để cấu hình billing portal
     public async Task CreateBillingPortalConfiguration(CreateBillingPortalConfigurationRequest createBillingPortalConfigurationRequest)
@@ -118,8 +121,7 @@ public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, IL
             }
             catch (StripeException ex)
             {
-                _logger.LogError(ex, "Stripe API error while creating billing portal configuration.");
-                throw new UnprocessableEntityCustomException("Cannot create BillingPortalConfiguration");
+                throw new UnprocessableEntityCustomException($"Cannot create BillingPortalConfiguration {ex}");
             }
         });
     }
@@ -132,5 +134,28 @@ public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, IL
     public async Task DeleteBillingPortalConfiguration()
     {
 
+    }
+
+    public async Task<string> CreateCustomerPortalSessionAsync(string returnUrl, long version)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string stripeCustomerId = await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Id == userId)
+            .Project(x => x.StripeCustomerId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any customer id with user id {userId}");
+
+        string billingPortalConfigId = await _unitOfWork.GetCollection<BillingPortalConfiguration>()
+            .Find(x => x.UserRole == UserRole.Listener && x.Version == version)
+            .Project(x => x.StripeBillingPortalConfigurationId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any billing portal configuration id with user id {userId}");
+
+        BillingPortalOption.SessionService service = new();
+        return service.Create(new BillingPortalOption.SessionCreateOptions
+        {
+            Customer = stripeCustomerId,     // Customer đã tạo/lưu trong DB
+            ReturnUrl = returnUrl,      // URL quay về sau khi user xong việc
+            Configuration = billingPortalConfigId, // Cấu hình portal session
+        }).Url; // Link redirect user sang Customer Portal
     }
 }

@@ -1,9 +1,9 @@
-﻿using EkofyApp.Application.Models.UserSubscriptions;
-using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
@@ -18,39 +18,41 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
         return _unitOfWork.GetCollection<UserSubscription>().AsQueryable();
     }
 
-    public async Task CreateUserSubscriptionAsync(CreateUserSubscriptionRequest createUserSubscriptionRequest)
+    public async Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string subscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        // Mặc định nếu không có subscriptionId thì sẽ lấy gói Free
+        if (string.IsNullOrEmpty(subscriptionId))
+        {
+            // Hiện tại gói Free là duy nhất, không cần xet version
+            subscriptionId = await _unitOfWork.GetCollection<Subscription>()
+                .Find(x => x.Tier == SubscriptionTier.Free && x.Status == SubscriptionStatus.Active)
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync(); 
+        }
 
         await _unitOfWork.GetCollection<UserSubscription>().InsertOneAsync(new UserSubscription()
         {
             UserId = userId,
-            SubscriptionId = createUserSubscriptionRequest.SubscriptionId,
-            PeriodStart = createUserSubscriptionRequest.PeriodStart,
-            PeriodEnd = createUserSubscriptionRequest.PeriodEnd,
-            AutoRenew = createUserSubscriptionRequest.AutoRenew,
+            SubscriptionId = subscriptionId,
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
         });
     }
 
-    public async Task UpdateStatusUserSubscriptionAsync(UpdateUserSubscriptionRequest updateUserSubscriptionRequest)
+    public async Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         // TODO: Làm sao để biết là document nào mới đúng là đang cần tìm
         // Vì có thể có nhiều UserSubscription với cùng UserId và SubscriptionId
         // Nên cần có thêm một trường nào đó để phân biệt
-        FilterDefinitionBuilder<UserSubscription> filterDefinitionBuilder = Builders<UserSubscription>.Filter;
-
-        FilterDefinition<UserSubscription> filter = filterDefinitionBuilder.And(
-            filterDefinitionBuilder.Eq(us => us.UserId, userId),
-            filterDefinitionBuilder.Eq(us => us.SubscriptionId, updateUserSubscriptionRequest.SubscriptionId),
-            filterDefinitionBuilder.Eq(us => us.Status, SubscriptionStatus.Active));
-
-        UpdateDefinition<UserSubscription> update = Builders<UserSubscription>.Update
-            .Set(us => us.CancelAtEndOfPeriod, updateUserSubscriptionRequest.CancelAtEndOfPeriod)
-            .Set(us => us.CanceledAt, updateUserSubscriptionRequest.CanceledAt)
-            .Set(us => us.Status, SubscriptionStatus.Deprecated);
-
-        await _unitOfWork.GetCollection<UserSubscription>().UpdateOneAsync(filter, update);
+        // Resolved: Lấy cái đang có trạng thái là Active
+        await _unitOfWork.GetCollection<UserSubscription>().UpdateOneAsync(x => x.IsActive == status && x.UserId == userId, Builders<UserSubscription>.Update
+            .Set(x => x.CancelAtEndOfPeriod, cancelAtEndOfPeriod)
+            .Set(x => x.CanceledAt, canceledAt)
+            .Set(x => x.IsActive, status)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
     }
 }

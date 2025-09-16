@@ -32,11 +32,15 @@ public sealed class CreateSubScriptionPlanRequestValidator : AbstractValidator<C
             .WithMessage("Metadata keys and values must not be empty or whitespace.")
             .When(x => x.Metadata != null && x.Metadata.Count != 0);
 
-        RuleFor(x => x.SubscriptionTier)
-            .IsInEnum().WithMessage("Subscription Tier must be a valid enum value.");
+        RuleFor(x => x.SubscriptionCode)
+            .NotEmpty().WithMessage("Subscription Code is required.")
+            .MaximumLength(50).WithMessage("Subscription Code must not exceed 50 characters.");
 
-        RuleFor(x => x.SubscriptionVersion)
-            .NotEmpty().WithMessage("Subscription Version is required.")
-            .GreaterThan(0).WithMessage("Subscription Version must be greater than 0.");
+        //RuleFor(x => x.SubscriptionTier)
+        //    .IsInEnum().WithMessage("Subscription Tier must be a valid enum value.");
+
+        //RuleFor(x => x.SubscriptionVersion)
+        //    .NotEmpty().WithMessage("Subscription Version is required.")
+        //    .GreaterThan(0).WithMessage("Subscription Version must be greater than 0.");
     }
 }

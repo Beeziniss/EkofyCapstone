@@ -2,7 +2,7 @@
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
-using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 

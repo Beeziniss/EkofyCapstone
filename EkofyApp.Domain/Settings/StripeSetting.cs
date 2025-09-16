@@ -5,4 +5,5 @@ public sealed record class StripeSetting
     public required string SubscriptionSigningSecret { get; init; }
     public required string AccountV2SigningSecret { get; init; }
     public required string AccountSigningSecret { get; init; }
+    public required string CheckoutSessionSigningSecret { get; init; }
 }

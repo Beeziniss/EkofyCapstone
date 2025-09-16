@@ -24,6 +24,9 @@ public sealed class CreateCouponRequestValidator : AbstractValidator<CreateCoupo
         RuleFor(x => x.Duration)
             .IsInEnum().WithMessage("Invalid duration type.");
 
+        RuleFor(x => x.Purpose)
+            .IsInEnum().WithMessage("Invalid purpose type");
+
         RuleFor(x => x.Status)
             .IsInEnum().WithMessage("Invalid status type.");
     }

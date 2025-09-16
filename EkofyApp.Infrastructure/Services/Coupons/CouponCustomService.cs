@@ -50,6 +50,7 @@ public sealed class CouponCustomService(IUnitOfWork unitOfWork) : ICouponCustomS
             Code = createCouponRequest.Code,
             PercentOff = createCouponRequest.PercentOff,
             Duration = createCouponRequest.Duration,
+            Purpose = createCouponRequest.Purpose,
             Status = createCouponRequest.Status,
         });
     }

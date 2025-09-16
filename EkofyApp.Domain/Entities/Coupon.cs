@@ -18,6 +18,7 @@ public sealed class Coupon : TimeStamped, IEntityCustom
     public decimal PercentOff { get; set; }
 
     public CouponDurationType Duration { get; set; } // "once", "forever", "repeating (deprecated)"
+    public CouponPurposeType Purpose { get; set; }
 
     public CouponStatus Status { get; set; }
 }

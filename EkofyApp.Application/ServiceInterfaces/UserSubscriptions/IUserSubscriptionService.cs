@@ -1,10 +1,10 @@
-﻿using EkofyApp.Application.Models.UserSubscriptions;
-using EkofyApp.Domain.Entities;
+﻿using EkofyApp.Domain.Entities;
+using MongoDB.Driver;
 
 namespace EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 public interface IUserSubscriptionService
 {
-    Task CreateUserSubscriptionAsync(CreateUserSubscriptionRequest createUserSubscriptionRequest);
     IQueryable<UserSubscription> GetUserSubscriptions();
-    Task UpdateStatusUserSubscriptionAsync(UpdateUserSubscriptionRequest updateUserSubscriptionRequest);
+    Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string subscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null);
+    Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status);
 }

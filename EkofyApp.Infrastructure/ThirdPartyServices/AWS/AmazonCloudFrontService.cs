@@ -1,7 +1,6 @@
 ﻿using Amazon.CloudFront;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon.Util;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -9,7 +8,6 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -31,8 +29,9 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //if (cached == "1") return true;
         //if (cached == "0") return false;
 
-        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
-            ?? throw new UnauthorizedCustomException("Your session is limit");
+        //string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
+        //    ?? throw new UnauthorizedCustomException("Your session is limit | userId");
+        //string? expectedUserRole = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role) ?? _httpContextAccessor.HttpContext?.User.FindFirstValue("role") ?? throw new UnauthorizedCustomException("Your session is limit | userRole");
 
         string key = Environment.GetEnvironmentVariable("HLS_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY is not set in the environment");
 
@@ -56,8 +55,13 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             JwtSecurityToken jwtToken = (JwtSecurityToken)validatedToken;
             string? tokenTrackId = jwtToken.Claims.FirstOrDefault(c => c.Type == "trackId")?.Value;
             string? tokenUserId = jwtToken.Claims.FirstOrDefault(c => c.Type == "expectedUserId")?.Value;
+            string? tokenUserRole = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role || c.Type == "role")?.Value;
 
-            bool isValid = tokenTrackId == expectedTrackId && tokenUserId == expectedUserId;
+            bool isUserId = !string.IsNullOrEmpty(tokenUserId) && tokenUserId.Length == 24 && Regex.IsMatch(tokenUserId, "^[a-fA-F0-9]{24}$");
+            bool isUserRole = !string.IsNullOrEmpty(tokenUserRole) && (tokenUserRole == "Listener" || tokenUserRole == "Artist" || tokenUserRole == "Moderator" || tokenUserRole == "Admin");
+
+            //bool isValid = tokenTrackId == expectedTrackId && tokenUserId == expectedUserId && tokenUserRole == expectedUserRole;
+            bool isValid = tokenTrackId == expectedTrackId && isUserId && isUserRole;
 
             //TimeSpan expiresIn = jwtToken.ValidTo - TimeControl.GetUtcPlus7Time() - TimeSpan.FromSeconds(2);
             //if (expiresIn < TimeSpan.FromSeconds(1))
@@ -98,6 +102,8 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
             ?? throw new UnauthorizedCustomException("Your session is limit");
+        string expectedUserRole = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role)
+            ?? throw new UnauthorizedCustomException("Your session is limit");
 
         string? hlsKey = Environment.GetEnvironmentVariable("HLS_KEY");
 
@@ -114,7 +120,8 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             Subject = new ClaimsIdentity(
             [
                 new Claim("trackId", trackId),
-                new Claim("expectedUserId", expectedUserId)
+                new Claim("expectedUserId", expectedUserId),
+                new Claim(ClaimTypes.Role, expectedUserRole)
             ]),
             Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
             SigningCredentials = new SigningCredentials(
