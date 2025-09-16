@@ -2,7 +2,8 @@ name: CI/CD Pipeline
 
 on:
  push: 
-  branches: ["test-prod"]
+  branches:
+   - prod-test
 
 jobs:
  deploy-env:
