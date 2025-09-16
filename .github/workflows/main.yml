@@ -1,0 +1,23 @@
+name: CI/CD Pipeline
+
+on:
+ push: 
+  branches: ["test-prod"]
+
+jobs:
+ deploy-env:
+  runs-on: ubuntu-latest
+
+  steps:
+  - name: Install ssh keys
+    run: |
+     install -m 600 -D /dev/null ~/.ssh/is_rsa
+     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~./.ssh/id_rsa
+     ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+
+  - name: Connect & Pull env
+    run: ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.ENV_FOLDER }} && infisical export --silent --token=${{ secrets.INFISICAL_TOKEN }} > .env"
+
+  - name: Clean up
+    run: rm -rf ~/.ssh
+    
