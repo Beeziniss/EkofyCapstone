@@ -16,15 +16,16 @@ public sealed class UserSubscription : TimeStamped, IEntityCustom
     public string SubscriptionId { get; set; } = null!; // Unique identifier for the subscription plan
 
     public DateTimeOffset PeriodStart { get; set; } // Start date of the subscription period
-    public DateTimeOffset PeriodEnd { get; set; } // End date of the subscription period
+    public DateTimeOffset? PeriodEnd { get; set; } // End date of the subscription period
 
-    // Nếu muốn gia hạn tự động thêm thì phải thực hiện ơ lần thanh toán tiếp theo (UserSubscription mới)
-    public bool AutoRenew { get; set; } = false; // Indicates if the subscription auto-renews
+    // Nếu muốn gia hạn tự động thêm thì phải thực hiện ở lần thanh toán tiếp theo (UserSubscription mới)
+    public bool AutoRenew { get; set; } = true; // Indicates if the subscription auto-renews
     public bool CancelAtEndOfPeriod { get; set; } = false;
     public DateTimeOffset? CanceledAt { get; set; }
 
     // Optional: Additional fields for tracking subscription status
-     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active; // Default status is Active
+     //public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active; // Default status is Active
+    public bool IsActive { get; set; } = true;
 
     // Provider linkage
     //public string? PaymentProvider { get; set; } // "Stripe", "Momo", ...

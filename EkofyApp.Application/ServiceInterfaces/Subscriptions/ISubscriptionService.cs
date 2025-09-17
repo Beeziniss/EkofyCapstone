@@ -7,7 +7,7 @@ public interface ISubscriptionService
 {
     Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest);
     Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
-    Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest);
+    //Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest);
     Task DeprecateSubscriptionAsync(string subscriptionId);
 
     /// <summary>
@@ -24,5 +24,5 @@ public interface ISubscriptionService
     /// <returns>A task that represents the asynchronous operation, containing a boolean indicating success.</returns>
     //Task<bool> CancelSubscriptionAsync(string userId);
     IQueryable<Subscription> GetSubscriptions();
-    Task UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest);
+    //Task UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest);
 }

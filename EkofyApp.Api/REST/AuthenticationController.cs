@@ -3,6 +3,8 @@ using EkofyApp.Application.Models.Auth;
 using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
+using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,9 +13,10 @@ namespace EkofyApp.Api.REST;
 [Route("api/authentication")]
 [ApiController]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] //"Bearer"
-public class AuthenticationController(IAuthenticationService authenticationService) : ControllerBase
+public class AuthenticationController(IAuthenticationService authenticationService, IUserSubscriptionService userSubscriptionService) : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService = authenticationService;
+    private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
 
     #region Listeners
     [AllowAnonymous, HttpPost("register/listener")]
@@ -29,6 +32,7 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         }
 
         await _authenticationService.RegisterListenerAsync(registerRequest);
+
         return Created();
     }
 
@@ -65,6 +69,7 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         }
 
         await _authenticationService.RegisterArtistAsync(registerRequest);
+
         return Created();
     }
 

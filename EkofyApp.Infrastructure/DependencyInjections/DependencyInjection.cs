@@ -1,4 +1,4 @@
-﻿using Amazon;
+using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Audio;
@@ -9,14 +9,18 @@ using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
+using EkofyApp.Application.ServiceInterfaces.BillingPortalConfigurations;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Coupons;
+using EkofyApp.Application.ServiceInterfaces.Entitlements;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
@@ -26,6 +30,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
+using EkofyApp.Domain.Enums.BillingPortalConfig;
 using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
@@ -38,14 +43,18 @@ using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
+using EkofyApp.Infrastructure.Services.BillingPortalConfigurations;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Coupons;
+using EkofyApp.Infrastructure.Services.Entitlements;
+using EkofyApp.Infrastructure.Services.Jobs;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Users;
+using EkofyApp.Infrastructure.Services.UserSubscriptions;
 using EkofyApp.Infrastructure.Services.Works;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
@@ -54,8 +63,13 @@ using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 using FluentValidation;
+using Hangfire;
+using Hangfire.Mongo;
+using Hangfire.Mongo.Migration.Strategies;
+using Hangfire.Mongo.Migration.Strategies.Backup;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
@@ -80,6 +94,8 @@ public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
     {
+        services.AddHangfire();
+
         //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
         services.AddAutoMapperExtension();
         services.AddSyncfusionExtension();
@@ -125,6 +141,7 @@ public static class DependencyInjection
             AccountV2SigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2 is not set in the environment"),
             CustomerSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CUSTOMER") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CUSTOMER is not set in the environment"),
             SubscriptionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION is not set in the environment"),
+            CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment")
         };
 
         services.AddSingleton(stripeSetting);
@@ -334,6 +351,10 @@ public static class DependencyInjection
         services.AddScoped<IRecordingService, RecordingService>();
         services.AddScoped<IRequestHubService, RequestHubService>();
         services.AddScoped<ICouponCustomService, CouponCustomService>();
+        services.AddScoped<IBillingPortalConfigurationService, BillingPortalConfigurationService>();
+        services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
+        services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
+        services.AddScoped<IEntitlementService, EntitlementService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -615,11 +636,56 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CouponDurationType), new EnumMemberSerializer<CouponDurationType>());
         BsonSerializer.RegisterSerializer(typeof(CouponStatus), new EnumMemberSerializer<CouponStatus>());
 
+        // BillingPortalConfiguration
+        BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
+
+        // Transaction
+        BsonSerializer.RegisterSerializer(typeof(PaymentStatus), new EnumMemberSerializer<PaymentStatus>());
+        BsonSerializer.RegisterSerializer(typeof(TransactionStatus), new EnumMemberSerializer<TransactionStatus>());
+
         // Common
         BsonSerializer.RegisterSerializer(typeof(EntitlementValueType), new EnumMemberSerializer<EntitlementValueType>());
         BsonSerializer.RegisterSerializer(typeof(RestrictionType), new EnumMemberSerializer<RestrictionType>());
         BsonSerializer.RegisterSerializer(typeof(CurrencyType), new EnumMemberSerializer<CurrencyType>());
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
+    }
+
+    public static void AddHangfire(this IServiceCollection service)
+    {
+        //lấy đường dẫn Mongo làm storage cho hangfire
+        string mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
+
+        string DatabaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE") ?? throw new UnconfiguredEnvironmentCustomException("MONGODB_HANGFIRE_STORAGE is not set in the environment variables");
+
+        //đăng ký Hangfire với MongoDB
+        service.AddHangfire(configuration => configuration
+            //mức tương thích dữ liệu của Hangfire 
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            //cấu hình Storage
+            .UseMongoStorage(mongoConnectionString.ToString(), DatabaseName, new MongoStorageOptions
+            {
+                MigrationOptions = new MongoMigrationOptions
+                {
+                    //tự động xử lý khi có sự thay đổi cấu trúc dữ liệu
+                    MigrationStrategy = new MigrateMongoMigrationStrategy(),
+                    //sao lưu dữ liệu cũ trước khi thay đổi cấu trúc
+                    BackupStrategy = new CollectionMongoBackupStrategy()
+                },
+                Prefix = "backgroundjobs.hangfire",
+                CheckConnection = false,
+                //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
+            }));
+
+        //đăng ký Hangfire server
+        service.AddHangfireServer(ServerOptions =>
+        {
+            ServerOptions.ServerName = "BackgroundJobs.Hangfire";
+        });
+
+        // Background Jobs Services
+        service.AddTransient<IBackgoundService, BackgoundService>();
     }
 }

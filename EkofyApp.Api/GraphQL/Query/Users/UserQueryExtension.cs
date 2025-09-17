@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Enums.Users;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Api.GraphQL.Query.Users;
 

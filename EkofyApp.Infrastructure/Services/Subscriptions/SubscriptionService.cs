@@ -7,7 +7,9 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Exceptions;
+using HotChocolate.Execution.Processing;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe;
 
@@ -33,15 +35,6 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
             Amount = createSubscriptionRequest.Price,
             Tier = createSubscriptionRequest.Tier,
             Status = createSubscriptionRequest.Status,
-            Entitlements = createSubscriptionRequest.Entitlements.Select(f => new Entitlement
-            {
-                Name = f.Name,
-                Code = f.Code,
-                Description = f.Description,
-                ValueType = f.ValueType,
-                Value = f.Value,
-                ExpiredAt = f.ExpiredAt
-            }).ToList()
         });
     }
 
@@ -87,112 +80,112 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
 
     // TODO: Cần kiểm tra thêm giữa list delete và add/update có trùng nhau không
     // Resolved: Tách ra làm 2 hàm riêng biệt
-    public async Task UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
-    {
-        await _unitOfWork.ExecuteInTransactionAsync(async session =>
-        {
-            // Thêm hoặc cập nhật entitlements nếu có
-            if (updateEntitlementsSubscriptionRequest.Entitlements?.Any() == true)
-            {
-                foreach (UpdateEntitlementRequest entitlementRequest in updateEntitlementsSubscriptionRequest.Entitlements)
-                {
-                    FilterDefinition<Subscription> filter = Builders<Subscription>.Filter.And(
-                        Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
-                        Builders<Subscription>.Filter.ElemMatch(x => x.Entitlements, e => e.Code == entitlementRequest.Code)
-                    );
+    //public async Task UpdateEntitlementsSubscriptionAsync(UpdateEntitlementsSubscriptionRequest updateEntitlementsSubscriptionRequest)
+    //{
+    //    await _unitOfWork.ExecuteInTransactionAsync(async session =>
+    //    {
+    //        // Thêm hoặc cập nhật entitlements nếu có
+    //        if (updateEntitlementsSubscriptionRequest.Entitlements?.Any() == true)
+    //        {
+    //            foreach (UpdateEntitlementRequest entitlementRequest in updateEntitlementsSubscriptionRequest.Entitlements)
+    //            {
+    //                FilterDefinition<Subscription> filter = Builders<Subscription>.Filter.And(
+    //                    Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
+    //                    Builders<Subscription>.Filter.ElemMatch(x => x.Entitlements, e => e.Code == entitlementRequest.Code)
+    //                );
 
-                    List<UpdateDefinition<Subscription>> updates = [];
-                    if (entitlementRequest.Name != null)
-                    {
-                        updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Name)}", entitlementRequest.Name));
-                    }
-                    if (entitlementRequest.Description != null)
-                    {
-                        updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Description)}", entitlementRequest.Description));
-                    }
-                    if (entitlementRequest.ValueType != default)
-                    {
-                        updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.ValueType)}", entitlementRequest.ValueType));
-                    }
-                    if (entitlementRequest.Value != null)
-                    {
-                        updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Value)}", entitlementRequest.Value));
-                    }
-                    if (entitlementRequest.ExpiredAt != null)
-                    {
-                        updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.ExpiredAt)}", entitlementRequest.ExpiredAt));
-                    }
+    //                List<UpdateDefinition<Subscription>> updates = [];
+    //                if (entitlementRequest.Name != null)
+    //                {
+    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Name)}", entitlementRequest.Name));
+    //                }
+    //                if (entitlementRequest.Description != null)
+    //                {
+    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Description)}", entitlementRequest.Description));
+    //                }
+    //                if (entitlementRequest.ValueType != default)
+    //                {
+    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.ValueType)}", entitlementRequest.ValueType));
+    //                }
+    //                if (entitlementRequest.Value != null)
+    //                {
+    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Value)}", entitlementRequest.Value));
+    //                }
+    //                if (entitlementRequest.ExpiredAt != null)
+    //                {
+    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.ExpiredAt)}", entitlementRequest.ExpiredAt));
+    //                }
 
-                    UpdateDefinition<Subscription> combinedUpdate = Builders<Subscription>.Update.Combine(updates);
-                    UpdateResult updateResult = await _unitOfWork.GetCollection<Subscription>().UpdateOneAsync(session, filter, combinedUpdate);
+    //                UpdateDefinition<Subscription> combinedUpdate = Builders<Subscription>.Update.Combine(updates);
+    //                UpdateResult updateResult = await _unitOfWork.GetCollection<Subscription>().UpdateOneAsync(session, filter, combinedUpdate);
 
-                    bool isAddToSetResult = false;
-                    if (updateResult.MatchedCount == 0)
-                    {
-                        Entitlement newEntitlement = new()
-                        {
-                            Name = entitlementRequest.Name ?? throw new BadRequestCustomException("Entitlement Name is required"),
-                            Code = entitlementRequest.Code,
-                            Description = entitlementRequest.Description ?? throw new BadRequestCustomException("Entitlement Description is required"),
-                            ValueType = entitlementRequest.ValueType ?? throw new BadRequestCustomException("Entitlement Value Type is required"),
-                            Value = entitlementRequest.Value,
-                            ExpiredAt = entitlementRequest.ExpiredAt
-                        };
+    //                bool isAddToSetResult = false;
+    //                if (updateResult.MatchedCount == 0)
+    //                {
+    //                    Entitlement newEntitlement = new()
+    //                    {
+    //                        Name = entitlementRequest.Name ?? throw new BadRequestCustomException("Entitlement Name is required"),
+    //                        Code = entitlementRequest.Code,
+    //                        Description = entitlementRequest.Description ?? throw new BadRequestCustomException("Entitlement Description is required"),
+    //                        ValueType = entitlementRequest.ValueType ?? throw new BadRequestCustomException("Entitlement Value Type is required"),
+    //                        Value = entitlementRequest.Value,
+    //                        ExpiredAt = entitlementRequest.ExpiredAt
+    //                    };
 
-                        UpdateDefinition<Subscription> addToSetUpdate = Builders<Subscription>.Update.AddToSet(x => x.Entitlements, newEntitlement);
-                        UpdateResult addToSetResult = await _unitOfWork.GetCollection<Subscription>().UpdateOneAsync(
-                            session,
-                            Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
-                            addToSetUpdate
-                        );
+    //                    UpdateDefinition<Subscription> addToSetUpdate = Builders<Subscription>.Update.AddToSet(x => x.Entitlements, newEntitlement);
+    //                    UpdateResult addToSetResult = await _unitOfWork.GetCollection<Subscription>().UpdateOneAsync(
+    //                        session,
+    //                        Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
+    //                        addToSetUpdate
+    //                    );
 
-                        isAddToSetResult = true;
-                        //if (addToSetResult.MatchedCount == 0)
-                        //{
-                        //    throw new NotFoundCustomException("Subscription not found when adding entitlement.");
-                        //}
-                        if (addToSetResult.ModifiedCount == 0)
-                        {
-                            throw new UnprocessableEntityCustomException("Cannot add entitlement to this subscription.");
-                        }
-                    }
-                    if (updateResult.ModifiedCount == 0 && !isAddToSetResult)
-                    {
-                        throw new UnprocessableEntityCustomException("Cannot update entitlement in this subscription.");
-                    }
-                }
-            }
-        });
-    }
+    //                    isAddToSetResult = true;
+    //                    //if (addToSetResult.MatchedCount == 0)
+    //                    //{
+    //                    //    throw new NotFoundCustomException("Subscription not found when adding entitlement.");
+    //                    //}
+    //                    if (addToSetResult.ModifiedCount == 0)
+    //                    {
+    //                        throw new UnprocessableEntityCustomException("Cannot add entitlement to this subscription.");
+    //                    }
+    //                }
+    //                if (updateResult.ModifiedCount == 0 && !isAddToSetResult)
+    //                {
+    //                    throw new UnprocessableEntityCustomException("Cannot update entitlement in this subscription.");
+    //                }
+    //            }
+    //        }
+    //    });
+    //}
 
-    public async Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest)
-    {
-        await _unitOfWork.ExecuteInTransactionAsync(async session =>
-        {
-            // Xóa entitlements nếu có
-            if (deleteEntitlementsSubscriptionRequest.Codes?.Any() == true)
-            {
-                UpdateResult pullResult = await _unitOfWork.GetCollection<Subscription>()
-                    .UpdateOneAsync(session,
-                        x => x.Id == deleteEntitlementsSubscriptionRequest.SubscriptionId,
-                        Builders<Subscription>.Update.PullFilter(
-                            x => x.Entitlements,
-                            e => deleteEntitlementsSubscriptionRequest.Codes.Contains(e.Code)
-                        )
-                    );
+    //public async Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest)
+    //{
+    //    await _unitOfWork.ExecuteInTransactionAsync(async session =>
+    //    {
+    //        // Xóa entitlements nếu có
+    //        if (deleteEntitlementsSubscriptionRequest.Codes?.Any() == true)
+    //        {
+    //            UpdateResult pullResult = await _unitOfWork.GetCollection<Subscription>()
+    //                .UpdateOneAsync(session,
+    //                    x => x.Id == deleteEntitlementsSubscriptionRequest.SubscriptionId,
+    //                    Builders<Subscription>.Update.PullFilter(
+    //                        x => x.Entitlements,
+    //                        e => deleteEntitlementsSubscriptionRequest.Codes.Contains(e.Code)
+    //                    )
+    //                );
 
-                if (pullResult.MatchedCount == 0)
-                {
-                    throw new NotFoundCustomException("Subscription not found when removing entitlements.");
-                }
+    //            if (pullResult.MatchedCount == 0)
+    //            {
+    //                throw new NotFoundCustomException("Subscription not found when removing entitlements.");
+    //            }
 
-                if (pullResult.ModifiedCount == 0)
-                {
-                    throw new UnprocessableEntityCustomException("Cannot remove entitlements from this subscription.");
-                }
-            }
-        });
-    }
+    //            if (pullResult.ModifiedCount == 0)
+    //            {
+    //                throw new UnprocessableEntityCustomException("Cannot remove entitlements from this subscription.");
+    //            }
+    //        }
+    //    });
+    //}
 
     public async Task DeprecateSubscriptionAsync(string subscriptionId)
     {
@@ -210,31 +203,51 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
         }
     }
 
+    private static void ValidateKeyMetadata(params string[] keys)
+    {
+        if (keys.Contains("name"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'name' key.");
+        }
+        if (keys.Contains("subscription_id"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'subscription_id' key.");
+        }
+        if (keys.Contains("subscription_tier"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'subscription_tier' key.");
+        }
+        if (keys.Contains("subscription_version"))
+        {
+            throw new BadRequestCustomException("Metadata's key input must not contain 'subscription_version' key.");
+        }
+    }
+
     public async Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             try
             {
+                // Tạo subscription plan Id
+                string subscriptionPlanId = ObjectId.GenerateNewId().ToString();
+
                 // Kiểm tra có subscription trươcc khi tạo
                 Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
-                    .Find(x => x.Tier == createSubScriptionPlanRequest.SubscriptionTier &&
-                        x.Version == createSubScriptionPlanRequest.SubscriptionVersion &&
-                        x.Status == SubscriptionStatus.Active)
+                    .Find(x => x.Code == createSubScriptionPlanRequest.SubscriptionCode && x.Status == SubscriptionStatus.Active)
                     .Project<Subscription>(Builders<Subscription>.Projection
                         .Include(x => x.Id)
-                        .Include(x => x.Amount))
+                        .Include(x => x.Amount)
+                        .Include(x => x.Tier)
+                        .Include(x => x.Version))
                     .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription. Please create subscription first.");
 
+                ValidateKeyMetadata(createSubScriptionPlanRequest.Metadata?.Keys.ToArray() ?? []);
                 createSubScriptionPlanRequest.Metadata ??= [];
-                if (createSubScriptionPlanRequest.Metadata.TryGetValue("name", out _))
-                {
-                    throw new BadRequestCustomException("Metadata's key input must not contain 'name' key.");
-                }
                 createSubScriptionPlanRequest.Metadata.Add("name", createSubScriptionPlanRequest.Name);
                 createSubScriptionPlanRequest.Metadata.Add("subscription_id", subscription.Id);
-                createSubScriptionPlanRequest.Metadata.Add("subscription_tier", createSubScriptionPlanRequest.SubscriptionTier.ToString());
-                createSubScriptionPlanRequest.Metadata.Add("subscription_version", createSubScriptionPlanRequest.SubscriptionVersion.ToString());
+                createSubScriptionPlanRequest.Metadata.Add("subscription_tier", subscription.Tier.ToString());
+                createSubScriptionPlanRequest.Metadata.Add("subscription_version", subscription.Version.ToString());
 
                 PriceService priceService = new();
                 ProductService productService = new();
@@ -284,7 +297,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
                         _ => throw new BadRequestCustomException("Invalid interval. Supported values are 'day', 'week', 'month' and 'year'.")
                     };
 
-                    Price price = await priceService.CreateAsync(new PriceCreateOptions
+                    await priceService.CreateAsync(new PriceCreateOptions
                     {
                         Active = true,
                         UnitAmountDecimal = actualPrice,
@@ -297,10 +310,11 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
                         Product = product.Id,
                         LookupKey = createPriceRequest.LookupKey,
                         // Tùy chọn thêm metadata và cách thay thế lookup_key
-                        //Metadata = new Dictionary<string, string>
-                        //{
-                        //    { "plan_type", "premium_monthly" }
-                        //}
+                        Metadata = new Dictionary<string, string>
+                        {
+                            { "subscription_version", subscription.Version.ToString() },
+                            { "subscription_plan_id", subscriptionPlanId }
+                        }
                     });
                 }
 
@@ -319,6 +333,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
 
                 await _unitOfWork.GetCollection<SubscriptionPlan>().InsertOneAsync(new SubscriptionPlan
                 {
+                    Id = subscriptionPlanId,
                     SubscriptionId = subscription.Id,
                     StripeProductId = product.Id,
                     StripeProductActive = product.Active,

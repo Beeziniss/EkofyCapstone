@@ -7,7 +7,8 @@ public class TrackQueryExtension : ObjectTypeExtension<TrackQuery>
         descriptor.Field(x => x.GetTracks())
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting()
+            .Authorize(roles: ["Listener", "Artist"]);
 
         descriptor.Field(x => x.GetPendingTrackUploadRequestsAsync())
                 .Authorize(roles: "Moderator");

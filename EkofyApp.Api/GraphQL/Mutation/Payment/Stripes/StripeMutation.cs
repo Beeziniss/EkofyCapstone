@@ -20,15 +20,15 @@ public sealed class StripeMutation(IStripeService stripeService)
         return accountLink;
     }
 
-    public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
-    {
-        if(!await _stripeService.IsCustomerIdExisted())
-        {
-            await _stripeService.CreateCustomerAsync();
-        }
+    //public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
+    //{
+    //    if(!await _stripeService.IsCustomerIdExisted())
+    //    {
+    //        await _stripeService.CreateCustomerAsync();
+    //    }
 
-        return await _stripeService.CreatePaymentCheckoutSessionAsync(createCheckoutSessionRequest);
-    }
+    //    return await _stripeService.CreatePaymentCheckoutSessionAsync(createCheckoutSessionRequest);
+    //}
 
     public async Task<CheckoutSessionResponse> CreateSubscriotionCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
     {

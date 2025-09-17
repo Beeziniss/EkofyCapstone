@@ -274,6 +274,79 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         return CacheResult<Dictionary<string, string?>>.Fail();
     }
 
+    public async Task<bool> SetHashAsync(string key, string field, string? value, TimeSpan? expiry = null)
+    {
+        try
+        {
+            await _redisDb.HashSetAsync(key, field, value ?? string.Empty);
+            // Nếu có TTL thì set luôn
+            if (expiry.HasValue)
+            {
+                await _redisDb.KeyExpireAsync(key, expiry);
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when setting hash value to Redis for key {Key}, field {Field}", key, field);
+        }
+        return false;
+    }
+
+    public async Task<string?> GetHashAsync(string key, string field)
+    {
+        try
+        {
+            RedisValue value = await _redisDb.HashGetAsync(key, field);
+            return value.HasValue ? value.ToString() : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when getting hash value from Redis for key {Key}, field {Field}", key, field);
+            return null;
+        }
+    }
+
+    public async Task<long> HashIncrementAsync(string key, string field, long incrementBy = 1)
+    {
+        try
+        {
+            // Redis sẽ tạo field nếu chưa tồn tại
+            long newValue = await _redisDb.HashIncrementAsync(key, field, incrementBy);
+            RedisValue[] fieldValues = [field];
+
+            //await _redisDb.HashFieldExpireAsync(key, fieldValues, TimeSpan.FromMinutes(6));
+            //await _redisDb.KeyExpireAsync(key, TimeSpan.FromMinutes(30));
+
+            return newValue;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when incrementing hash value in Redis for key {Key}, field {Field}", key, field);
+            return -1; // hoặc throw
+        }
+    }
+
+    public async Task<bool> HashFieldExpireAsync(string key, string field, TimeSpan? expiry)
+    {
+        try
+        {
+            if (expiry.HasValue)
+            {
+                RedisValue[] fieldValues = [field];
+                await _redisDb.HashFieldExpireAsync(key, fieldValues, expiry.Value);
+
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when setting hash field expiration in Redis for key {Key}, field {Field}", key, field);
+            return false;
+        }
+    }
+
     [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
     public async Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null)
     {

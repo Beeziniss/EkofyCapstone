@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
 using MongoDB.Bson;
@@ -21,5 +20,4 @@ public sealed class Subscription : TimeStamped, IEntityCustom
 
     public SubscriptionTier Tier { get; set; } // TODO: Cân nhắc có nên embed không
     public SubscriptionStatus Status { get; set; }
-    public List<Entitlement> Entitlements { get; set; } = [];
 }

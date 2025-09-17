@@ -1,7 +1,6 @@
 ﻿using Amazon.CloudFront;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon.Util;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -9,7 +8,6 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -31,8 +29,9 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //if (cached == "1") return true;
         //if (cached == "0") return false;
 
-        string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
-            ?? throw new UnauthorizedCustomException("Your session is limit");
+        //string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
+        //    ?? throw new UnauthorizedCustomException("Your session is limit | userId");
+        //string? expectedUserRole = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role) ?? _httpContextAccessor.HttpContext?.User.FindFirstValue("role") ?? throw new UnauthorizedCustomException("Your session is limit | userRole");
 
         string key = Environment.GetEnvironmentVariable("HLS_KEY") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY is not set in the environment");
 
@@ -56,8 +55,13 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             JwtSecurityToken jwtToken = (JwtSecurityToken)validatedToken;
             string? tokenTrackId = jwtToken.Claims.FirstOrDefault(c => c.Type == "trackId")?.Value;
             string? tokenUserId = jwtToken.Claims.FirstOrDefault(c => c.Type == "expectedUserId")?.Value;
+            string? tokenUserRole = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role || c.Type == "role")?.Value;
 
-            bool isValid = tokenTrackId == expectedTrackId && tokenUserId == expectedUserId;
+            bool isUserId = !string.IsNullOrEmpty(tokenUserId) && tokenUserId.Length == 24 && Regex.IsMatch(tokenUserId, "^[a-fA-F0-9]{24}$");
+            bool isUserRole = !string.IsNullOrEmpty(tokenUserRole) && (tokenUserRole == "Listener" || tokenUserRole == "Artist" || tokenUserRole == "Moderator" || tokenUserRole == "Admin");
+
+            //bool isValid = tokenTrackId == expectedTrackId && tokenUserId == expectedUserId && tokenUserRole == expectedUserRole;
+            bool isValid = tokenTrackId == expectedTrackId && isUserId && isUserRole;
 
             //TimeSpan expiresIn = jwtToken.ValidTo - TimeControl.GetUtcPlus7Time() - TimeSpan.FromSeconds(2);
             //if (expiresIn < TimeSpan.FromSeconds(1))
@@ -98,6 +102,8 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         string expectedUserId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId")
             ?? throw new UnauthorizedCustomException("Your session is limit");
+        string expectedUserRole = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role)
+            ?? throw new UnauthorizedCustomException("Your session is limit");
 
         string? hlsKey = Environment.GetEnvironmentVariable("HLS_KEY");
 
@@ -114,7 +120,8 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             Subject = new ClaimsIdentity(
             [
                 new Claim("trackId", trackId),
-                new Claim("expectedUserId", expectedUserId)
+                new Claim("expectedUserId", expectedUserId),
+                new Claim(ClaimTypes.Role, expectedUserRole)
             ]),
             Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
             SigningCredentials = new SigningCredentials(
@@ -166,7 +173,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
     public async Task<string> GetMasterPlaylistAsync(string trackId, string token)
     {
         // Nhớ thay thành production URL
-        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+        string hostingUrl = Environment.GetEnvironmentVariable("HOSTING_URL") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
         string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
 
@@ -190,7 +197,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 content = Regex.Replace(
                     content,
                     $@"{bitrate}/[^\s]+\.m3u8",
-                    $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}");
+                    $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}");
             }
 
             return content;
@@ -210,9 +217,9 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
-        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+        string hostingUrl = Environment.GetEnvironmentVariable("HOSTING_URL") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
-        string keyUri = $"{localHostUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
+        string keyUri = $"{hostingUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
 
         #region Stream line by line
         //try
@@ -284,7 +291,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //    //    if (trimmed.EndsWith(".ts"))
         //    //    {
         //    //        // Chuyển hướng thành URL gọi tới API proxy .ts
-        //    //        string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+        //    //        string proxyUrl = $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
         //    //        signedLines.AppendLine(proxyUrl);
         //    //    }
         //    //    else
@@ -320,7 +327,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //        }
         //        else if (trimmed.EndsWith(".ts"))
         //        {
-        //            string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+        //            string proxyUrl = $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
         //            stringBuilder.AppendLine(proxyUrl);
         //        }
         //        else
@@ -371,7 +378,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 match =>
                 {
                     string segment = match.Value.Trim(); // ví dụ: 68610f394a7678a2c097b289_hls0.ts
-                    return $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{segment}?token={token}";
+                    return $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/{segment}?token={token}";
                 },
                 RegexOptions.Multiline
             );

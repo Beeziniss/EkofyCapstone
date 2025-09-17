@@ -14,8 +14,9 @@ public sealed class CreateSubScriptionPlanRequest
     #endregion
 
     #region Subscription Details
-    public SubscriptionTier SubscriptionTier { get; init; }
-    public int SubscriptionVersion { get; init; }
+    public string SubscriptionCode { get; init; } = null!;
+    //public SubscriptionTier SubscriptionTier { get; init; }
+    //public int SubscriptionVersion { get; init; }
     #endregion
 
     //public long TrialPeriodDays { get; init; }
