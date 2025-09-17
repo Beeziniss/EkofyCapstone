@@ -654,9 +654,9 @@ public static class DependencyInjection
     public static void AddHangfire(this IServiceCollection service)
     {
         //lấy đường dẫn Mongo làm storage cho hangfire
-        var mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
+        string mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
 
-        var DatabaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE");
+        string DatabaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE") ?? throw new UnconfiguredEnvironmentCustomException("MONGODB_HANGFIRE_STORAGE is not set in the environment variables");
 
         //đăng ký Hangfire với MongoDB
         service.AddHangfire(configuration => configuration

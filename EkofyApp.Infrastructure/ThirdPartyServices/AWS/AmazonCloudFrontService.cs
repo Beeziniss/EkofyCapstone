@@ -173,7 +173,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
     public async Task<string> GetMasterPlaylistAsync(string trackId, string token)
     {
         // Nhớ thay thành production URL
-        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+        string hostingUrl = Environment.GetEnvironmentVariable("HOSTING_URL") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
         string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
 
@@ -197,7 +197,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 content = Regex.Replace(
                     content,
                     $@"{bitrate}/[^\s]+\.m3u8",
-                    $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}");
+                    $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/playlist.m3u8?token={token}");
             }
 
             return content;
@@ -217,9 +217,9 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
-        string localHostUrl = Environment.GetEnvironmentVariable("LOCALHOST_URL_HTTPS") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+        string hostingUrl = Environment.GetEnvironmentVariable("HOSTING_URL") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
 
-        string keyUri = $"{localHostUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
+        string keyUri = $"{hostingUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
 
         #region Stream line by line
         //try
@@ -291,7 +291,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //    //    if (trimmed.EndsWith(".ts"))
         //    //    {
         //    //        // Chuyển hướng thành URL gọi tới API proxy .ts
-        //    //        string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+        //    //        string proxyUrl = $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
         //    //        signedLines.AppendLine(proxyUrl);
         //    //    }
         //    //    else
@@ -327,7 +327,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         //        }
         //        else if (trimmed.EndsWith(".ts"))
         //        {
-        //            string proxyUrl = $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
+        //            string proxyUrl = $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/{trimmed}?token={token}";
         //            stringBuilder.AppendLine(proxyUrl);
         //        }
         //        else
@@ -378,7 +378,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 match =>
                 {
                     string segment = match.Value.Trim(); // ví dụ: 68610f394a7678a2c097b289_hls0.ts
-                    return $"{localHostUrl}/api/media-streaming/{trackId}/{bitrate}/{segment}?token={token}";
+                    return $"{hostingUrl}/api/media-streaming/{trackId}/{bitrate}/{segment}?token={token}";
                 },
                 RegexOptions.Multiline
             );

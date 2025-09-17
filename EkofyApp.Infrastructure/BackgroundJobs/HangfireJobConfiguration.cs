@@ -14,7 +14,7 @@ namespace EkofyApp.Infrastructure.BackgroundJobs
 
             //RecurringJob.AddOrUpdate("email_sending_once",() => app.Services.GetService<IBackgoundService>().SendEmail("satori562003@gmail.com"), "33 * * * *");
 
-            BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendEmail("satori562003@gmail.com"));
+            //BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendEmail("satori562003@gmail.com"));
 
             
         }
