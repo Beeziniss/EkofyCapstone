@@ -15,8 +15,10 @@ using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Coupons;
 using EkofyApp.Application.ServiceInterfaces.Entitlements;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Users;
@@ -49,8 +51,10 @@ using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Coupons;
 using EkofyApp.Infrastructure.Services.Entitlements;
 using EkofyApp.Infrastructure.Services.Jobs;
+using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
+using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Users;
@@ -187,7 +191,7 @@ public static class DependencyInjection
         };
 
         ConfigurationOptions options;
-        if (HelperMethod.IsWindows())
+        if(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {
             options = new()
             {
@@ -198,7 +202,7 @@ public static class DependencyInjection
                 AbortOnConnectFail = false
             };
         }
-        else if (HelperMethod.IsLinux())
+        else if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
         {
             options = new()
             {
@@ -355,6 +359,9 @@ public static class DependencyInjection
         services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
         services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
+        services.AddScoped<IRoyaltyReportService, RoyaltyReportService>();
+        services.AddScoped<IRoyaltyPolicyService, RoyaltyPolicyService>();
+        services.AddScoped<ILegalPolicyService, LegalPolicyService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -649,6 +656,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CurrencyType), new EnumMemberSerializer<CurrencyType>());
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
+        BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
     }
 
     public static void AddHangfire(this IServiceCollection service)

@@ -23,7 +23,7 @@ public sealed class WorkQuery(IWorkService workService, IRedisCacheService redis
         ICacheResult<WorkTempRequest> cacheResult = await _redisCacheService.TryGetAsync<WorkTempRequest>($"work:{workId}:requestUpload");
         if (!cacheResult.Success)
         {
-            throw new NotFoundCustomException("Work upload request not found or expired.");
+            throw new NotFoundCustomException("WorkProjection upload request not found or expired.");
         }
 
         return cacheResult.Value!;

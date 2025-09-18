@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL;
+using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
@@ -81,9 +82,20 @@ public sealed class Program
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
+        // Initialize policies or any other startup logic
+        // TODO: Nhớ bỏ comment khi chạy thực tế
+        using (IServiceScope scope = app.Services.CreateScope())
+        {
+            // Initialize Royalty Policy
+            //IRoyaltyPolicyService royaltyPolicyService = scope.ServiceProvider.GetRequiredService<IRoyaltyPolicyService>();
+            //royaltyPolicyService.InitializePolicyAsync().GetAwaiter().GetResult();
 
-        // Empty
+            // Initialize Legal Policy
+            //ILegalPolicyService legalPolicyService = scope.ServiceProvider.GetRequiredService<ILegalPolicyService>();
+            //legalPolicyService.InitializePolicyAsync().GetAwaiter().GetResult();
+        }
+
+        // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
