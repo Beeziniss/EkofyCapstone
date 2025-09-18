@@ -135,11 +135,11 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                 }
                 if (workTempRequest is null)
                 {
-                    throw new NotFoundCustomException("Work upload request not found");
+                    throw new NotFoundCustomException("WorkProjection upload request not found");
                 }
                 if (recordingTempRequest is null)
                 {
-                    throw new NotFoundCustomException("Recording upload request not found");
+                    throw new NotFoundCustomException("RecordingProjection upload request not found");
                 }
 
                 // Tài nguyên từ S3

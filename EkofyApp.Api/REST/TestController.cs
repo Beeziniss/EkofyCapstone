@@ -298,7 +298,7 @@ public class TestController : ControllerBase
             await unitOfWork.GetCollection<Work>().InsertOneAsync(new Work
             {
                 TrackId = trackId,
-                Description = "Work description",
+                Description = "WorkProjection description",
                 WorkSplits = [
                     new WorkSplit
                     {
@@ -313,7 +313,7 @@ public class TestController : ControllerBase
             await unitOfWork.GetCollection<Recording>().InsertOneAsync(new Recording
             {
                 TrackId = trackId,
-                Description = "Recording description",
+                Description = "RecordingProjection description",
                 RecordingSplits = [
                     new RecordingSplit
                     {

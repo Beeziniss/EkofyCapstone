@@ -23,7 +23,7 @@ public sealed class RecordingQuery(IRecordingService recordingService, IRedisCac
         ICacheResult<RecordingTempRequest> cacheResult = await _redisCacheService.TryGetAsync<RecordingTempRequest>($"recording:{recordingId}:requestUpload");
         if (!cacheResult.Success)
         {
-            throw new NotFoundCustomException("Recording upload request not found or expired.");
+            throw new NotFoundCustomException("RecordingProjection upload request not found or expired.");
         }
 
         return cacheResult.Value!;

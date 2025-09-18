@@ -15,10 +15,16 @@ public sealed class EntitlementMutation(IEntitlementService entitlementService)
         return _entitlementService.GetEntitlements();
     }
 
-    public async Task<bool> SeedEntitlementsAsync()
+    public async Task<bool> SeedEntitlementsAsync(string password)
     {
-        await _entitlementService.SeedDataAsync();
-        return true;
+        if(password == "Tú đẹp trai")
+        {
+            await _entitlementService.SeedDataAsync();
+
+            return true;
+        }
+
+        return false;
     }
 
     public async Task<bool> CreateEntitlementAsync(CreateEntitlementRequest createEntitlementRequest)

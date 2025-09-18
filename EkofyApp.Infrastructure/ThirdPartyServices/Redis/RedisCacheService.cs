@@ -274,26 +274,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         return CacheResult<Dictionary<string, string?>>.Fail();
     }
 
-    public async Task<bool> SetHashAsync(string key, string field, string? value, TimeSpan? expiry = null)
-    {
-        try
-        {
-            await _redisDb.HashSetAsync(key, field, value ?? string.Empty);
-            // Nếu có TTL thì set luôn
-            if (expiry.HasValue)
-            {
-                await _redisDb.KeyExpireAsync(key, expiry);
-            }
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error when setting hash value to Redis for key {Key}, field {Field}", key, field);
-        }
-        return false;
-    }
-
-    public async Task<string?> GetHashAsync(string key, string field)
+    public async Task<string?> HashGetAsync(string key, string field)
     {
         try
         {
@@ -304,6 +285,66 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "Error when getting hash value from Redis for key {Key}, field {Field}", key, field);
             return null;
+        }
+    }
+
+    public async Task HashSetAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null)
+    {
+        try
+        {
+            // Convert Dictionary to HashEntry array
+            HashEntry[] hashEntries = fields.Select(kvp => new HashEntry(kvp.Key, kvp.Value is null ? RedisValue.Null : kvp.Value)).ToArray();
+
+            // Set multiple hash fields at once
+            await _redisDb.HashSetAsync(key, hashEntries);
+
+            // Set expiration if provided
+            if (expiry.HasValue)
+            {
+                await _redisDb.KeyExpireAsync(key, expiry.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when setting hash fields to Redis for key {Key}", key);
+        }
+    }
+
+    public async Task HashDeleteAsync(string key)
+    {
+        try
+        {
+            await _redisDb.KeyDeleteAsync(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when deleting hash in Redis for key {Key}", key);
+        }
+    }
+
+    public async Task<bool> HashFieldExistsAsync(string key, string field)
+    {
+        try
+        {
+            return await _redisDb.HashExistsAsync(key, field);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when checking hash field existence in Redis for key {Key}, field {Field}", key, field);
+            return false;
+        }
+    }
+
+    public async Task<bool> HashFieldDeleteAsync(string key, string field)
+    {
+        try
+        {
+            return await _redisDb.HashDeleteAsync(key, field);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when deleting hash field in Redis for key {Key}, field {Field}", key, field);
+            return false;
         }
     }
 

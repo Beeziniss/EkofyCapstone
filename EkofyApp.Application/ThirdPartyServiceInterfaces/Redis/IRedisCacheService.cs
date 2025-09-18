@@ -25,7 +25,11 @@ public interface IRedisCacheService
     [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
     Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
     Task<ICacheResult<IEnumerable<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20);
-    Task<string?> GetHashAsync(string key, string field);
+    Task<string?> HashGetAsync(string key, string field);
     Task<long> HashIncrementAsync(string key, string field, long incrementBy = 1);
     Task<bool> HashFieldExpireAsync(string key, string field, TimeSpan? expiry);
+    Task HashSetAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
+    Task HashDeleteAsync(string key);
+    Task<bool> HashFieldExistsAsync(string key, string field);
+    Task<bool> HashFieldDeleteAsync(string key, string field);
 }
