@@ -10,13 +10,10 @@ namespace EkofyApp.Infrastructure.BackgroundJobs
         public static void ConfigureJobs(this WebApplication app)
         {
             app.Services.CreateScope();
-            //RecurringJob.AddOrUpdate("test", () => app.Services.GetService<IBackgoundService>().DisplayLogTest(null), "* * * * *");
-
-            //RecurringJob.AddOrUpdate("email_sending_once",() => app.Services.GetService<IBackgoundService>().SendEmail("satori562003@gmail.com"), "33 * * * *");
 
             //BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendEmail("satori562003@gmail.com"));
 
-            
+            //RecurringJob.AddOrUpdate("add-count-stream", () => app.Services.GetService<IBackgoundService>()!.UpdateStreamCountJob(), "*/5 * * * *");
         }
     }
 }

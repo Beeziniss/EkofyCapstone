@@ -1,0 +1,40 @@
+name: CI/CD Pipeline
+
+on:
+ pull_request: 
+  branches:
+   - main
+
+jobs:
+ setup-ssh:
+  runs-on: ubuntu-latest
+  steps:
+  - name: Install ssh keys
+    run: |
+     install -m 600 -D /dev/null ~/.ssh/id_rsa
+     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+     ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+    
+  # sync env file from Infisical
+  - name: Sync env from Infisical
+    run: |
+     ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
+      cd ${{ secrets.WORKDIR }} 
+      infisical export --silent --token=${{ secrets.INFISICAL_TOKEN }} > .env
+     "
+
+  # pull image from hub and run command
+  - name: Docker jobs [Login - Pull - Run - Logout]
+    run: |
+     ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
+      cd ${{ secrets.WORKDIR }} 
+      echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      docker pull ${{ secrets.DOCKER_IMAGE }}
+      docker-compose down
+      docker-compose up -d
+      docker logout
+     "
+
+  #clean ssh session 
+  - name: Clean up ssh session
+    run: rm -rf ~/.ssh
