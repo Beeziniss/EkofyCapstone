@@ -76,8 +76,6 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
                 .Project<Track>(projection)
                 .ToListAsync();
 
-            InMemoryModelService tempModelService = new();
-
             foreach (Track trackAudioFingerprint in trackAudioFingerprints)
             {
                 TrackInfo track = new(trackAudioFingerprint.Id, trackAudioFingerprint.Name, trackAudioFingerprint.CreatedBy);
@@ -96,6 +94,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
 
                 AVHashes avHashes = new(audioHashes, null);
 
+                InMemoryModelService tempModelService = new();
                 tempModelService.Insert(track, avHashes);
 
                 AVQueryResult queryResult = await QueryCommandBuilder.Instance
