@@ -1,6 +1,7 @@
 ﻿
 
 using EkofyApp.Application.Models.Tracks;
+using StackExchange.Redis;
 
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 public interface IRedisCacheService
@@ -28,4 +29,7 @@ public interface IRedisCacheService
     Task<string?> GetHashAsync(string key, string field);
     Task<long> HashIncrementAsync(string key, string field, long incrementBy = 1);
     Task<bool> HashFieldExpireAsync(string key, string field, TimeSpan? expiry);
+    string[] GetAllKeysByPattern(string pattern);
+    Task<HashEntry[]?> HashGetAllAsync(string key);
+    Task HashDecrementAsync(string key, string field, long decrementBy = 1);
 }

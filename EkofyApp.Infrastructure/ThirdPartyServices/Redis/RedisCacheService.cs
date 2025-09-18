@@ -4,6 +4,7 @@ using EkofyApp.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
+using static HotChocolate.ErrorCodes;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
@@ -77,6 +78,24 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
 
         return CacheResult<string>.Fail();
+    }
+
+    public string[] GetAllKeysByPattern(string pattern)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: pattern).ToArray();
+
+            //chuyển RedisKey[] sang string[]
+            return keys.Select(key => key.ToString()).ToArray();
+        }
+        catch(Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] GetAllKeysByPattern failed. Pattern: {pattern}");
+            return Array.Empty<string>();
+        }
     }
 
     public async Task<bool> ExistsAsync(string key)
@@ -307,6 +326,19 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
     }
 
+    public async Task<HashEntry[]?> HashGetAllAsync(string key) {        
+        try
+        {
+            HashEntry[] entries = await _redisDb.HashGetAllAsync(key);
+            return entries;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when getting all hash values from Redis for key {Key}", key);
+            return null;
+        }
+    }
+
     public async Task<long> HashIncrementAsync(string key, string field, long incrementBy = 1)
     {
         try
@@ -324,6 +356,19 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "Error when incrementing hash value in Redis for key {Key}, field {Field}", key, field);
             return -1; // hoặc throw
+        }
+    }
+
+    public async Task HashDecrementAsync(string key, string field, long decrementBy = 1)
+    {
+        try
+        {
+            // Redis sẽ tạo field nếu chưa tồn tại
+            long newValue = await _redisDb.HashDecrementAsync(key, field, decrementBy);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when incrementing hash value in Redis for key {Key}, field {Field}", key, field);
         }
     }
 

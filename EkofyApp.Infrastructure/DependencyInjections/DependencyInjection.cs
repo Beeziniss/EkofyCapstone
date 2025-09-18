@@ -686,6 +686,6 @@ public static class DependencyInjection
         });
 
         // Background Jobs Services
-        service.AddTransient<IBackgoundService, BackgoundService>();
+        service.AddSingleton<IBackgoundService, BackgoundService>();
     }
 }

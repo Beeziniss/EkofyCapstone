@@ -421,4 +421,14 @@ public class TestController : ControllerBase
     //    string result = ffmpegService.Testing2();
     //    return Ok(result);
     //}
+
+    [HttpPost("add-count-to-cache")]
+    public async Task<IActionResult> AddCountToCache(string trackId, [FromServices] ITrackService trackService)
+    {
+        await trackService.UpdateStreamCount(trackId);
+        return Ok(new
+        {
+            Message = "Add count to cache successfully",
+        });
+    }
 }

@@ -99,6 +99,7 @@ public sealed class Program
         }
         
         app.UseHangfireDashboard("/hangfire");
+        app.UseHangfireServer();
         app.ConfigureJobs();
 
         app.UseHttpsRedirection();

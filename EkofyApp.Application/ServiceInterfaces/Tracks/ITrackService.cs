@@ -12,5 +12,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         TrackTempRequest CreateTrackTemp(CreateTrackRequest createTrackRequest);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracksQueryable();
+        Task UpdateStreamCount(string trackId);
     }
 }
