@@ -15,6 +15,11 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
+    public IQueryable<RoyaltyReport> GetRoyaltyReports()
+    {
+        return _unitOfWork.GetCollection<RoyaltyReport>().AsQueryable();
+    }
+
     private async Task<Dictionary<string, string?>> GetRoyaltyPolicyValuesAsync(string key, params string[] fields)
     {
         var tasks = fields.Select(field =>

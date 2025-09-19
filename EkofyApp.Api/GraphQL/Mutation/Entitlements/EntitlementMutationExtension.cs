@@ -4,9 +4,6 @@ public sealed class EntitlementMutationExtension : ObjectTypeExtension<Entitleme
 {
     protected override void Configure(IObjectTypeDescriptor<EntitlementMutation> descriptor)
     {
-        descriptor.Field(x => x.GetEntitlements())
-            .Authorize(roles: "Admin");
-
         descriptor.Field(x => x.SeedEntitlementsAsync(default!))
             .Authorize(roles: "Admin");
             //.AllowAnonymous();

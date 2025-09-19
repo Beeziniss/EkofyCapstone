@@ -12,7 +12,7 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public IQueryable<Category> GetCategoriesQueryable()
+    public IQueryable<Category> GetCategories()
     {
         return _unitOfWork.GetCollection<Category>().AsQueryable();
     }
