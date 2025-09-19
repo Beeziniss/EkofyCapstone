@@ -8,6 +8,6 @@ public interface IPlaylistService
     Task AddToPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest);
     Task CreatePlaylistAsync(CreatePlaylistRequest createPlaylistRequest);
     Task DeletePlaylistAsync(string playlistId);
-    IQueryable<Playlist> GetPlaylistsQueryable();
+    IQueryable<Playlist> GetPlaylists();
     Task RemoveFromPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest);
 }

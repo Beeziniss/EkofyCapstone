@@ -14,7 +14,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public IQueryable<Playlist> GetPlaylistsQueryable()
+    public IQueryable<Playlist> GetPlaylists()
     {
         return _unitOfWork.GetCollection<Playlist>().AsQueryable();
     }

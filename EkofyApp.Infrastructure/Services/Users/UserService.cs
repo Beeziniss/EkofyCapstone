@@ -12,7 +12,7 @@ public sealed class UserService(IUnitOfWork unitOfWork) : IUserService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public IQueryable<User> GetUsersQueryable()
+    public IQueryable<User> GetUsers()
     {
         return _unitOfWork.GetCollection<User>().AsQueryable();
     }

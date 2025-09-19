@@ -12,7 +12,7 @@ public sealed class UserQuery(IUserService userService)
 
     public IQueryable<User> GetUsers()
     {
-        return _userService.GetUsersQueryable();
+        return _userService.GetUsers();
     }
 
     // TODO: Query Object thì dùng Generic T ()
