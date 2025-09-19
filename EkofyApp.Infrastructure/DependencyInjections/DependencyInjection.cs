@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.BillingPortalConfigurations;
@@ -43,6 +44,7 @@ using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.ArtistPackages;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.BillingPortalConfigurations;
@@ -362,6 +364,7 @@ public static class DependencyInjection
         services.AddScoped<IRoyaltyReportService, RoyaltyReportService>();
         services.AddScoped<IRoyaltyPolicyService, RoyaltyPolicyService>();
         services.AddScoped<ILegalPolicyService, LegalPolicyService>();
+        services.AddScoped<IArtistPackageService, ArtistPackageService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
