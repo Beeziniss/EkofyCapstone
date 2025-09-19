@@ -3,17 +3,14 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Invoice : IEntityCustom
+public sealed class Invoice : IEntityCustom // Snapshot
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!;
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!;
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string SubscriptionId { get; set; } = null!;
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string SubscriptionPlanId { get; set; } = null!;
+
     [BsonRepresentation(BsonType.ObjectId)]
     public string TransactionId { get; set; } = null!;
 

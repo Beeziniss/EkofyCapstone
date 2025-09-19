@@ -119,6 +119,13 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         return Ok(new { Message = "Login Successfully", result });
     }
 
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("users/me")]
+    public async Task<IActionResult> GetCurrentUserProfileAsync()
+    {
+        var result = await _authenticationService.GetCurrentUserProfileAsync();
+        return Ok(new { Message = "Retrieved current user profile successfully", result });
+    }
+
     // [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
 
     // [AllowAnonymous, HttpPost("forgot-password")]

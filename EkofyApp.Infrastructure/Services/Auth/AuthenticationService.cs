@@ -5,6 +5,7 @@ using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.Models.Auth.Moderators;
 using EkofyApp.Application.Models.Projections;
+using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
@@ -15,19 +16,70 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Claims;
 using LoginRequest = EkofyApp.Application.Models.Auth.LoginRequest;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IJsonWebToken jsonWebToken, IMapper mapper) : IAuthenticationService
+public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IJsonWebToken jsonWebToken, IMapper mapper, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
     private readonly IEffectiveEntitlementService _effectiveEntitlementService = effectiveEntitlementService;
     private readonly IJsonWebToken _jsonWebToken = jsonWebToken;
     private readonly IMapper _mapper = mapper;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+
+    public async Task<CurrentUserProfile> GetCurrentUserProfileAsync()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
+            ?? throw new UnauthorizedCustomException("User is not authenticated.");
+
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Id == userId && x.Status == UserStatus.Active)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Role))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found user Id");
+
+        if (user.Role == UserRole.Artist)
+        {
+            string artistId = await _unitOfWork.GetCollection<Artist>()
+                .Find(x => x.UserId == userId)
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
+            return new CurrentUserProfile
+            {
+                UserId = user.Id,
+                Role = user.Role,
+                ArtistId = artistId,
+            };
+        }
+        else if (user.Role == UserRole.Listener)
+        {
+            string listenerId = await _unitOfWork.GetCollection<Listener>()
+                .Find(x => x.UserId == userId)
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            return new CurrentUserProfile
+            {
+                UserId = user.Id,
+                Role = user.Role,
+                ListenerId = listenerId,
+            };
+        }
+        else
+        {
+            return new CurrentUserProfile
+            {
+                UserId = user.Id,
+                Role = user.Role,
+            };
+        }
+    }
 
     private static string HashPassword(string password)
     {
@@ -109,7 +161,8 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             .Include(lp => lp.Id)
             .Include(lp => lp.ListenerProjection!.Id)
             .Include(lp => lp.Role)
-            .Include(lp => lp.PasswordHash);
+            .Include(lp => lp.PasswordHash)
+            .Include(lp => lp.ListenerProjection!.AvatarImage);
 
         UserProjection userListener = await _unitOfWork.GetCollection<User>().Aggregate()
             .Match(userFilter)
@@ -138,6 +191,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             new Claim("userId", userListener.Id),
             new Claim("listenerId",userListener.ListenerProjection!.Id),
             new Claim(ClaimTypes.Role, userListener.Role.ToString()),
+            new Claim("avatarImage", userListener.ListenerProjection!.AvatarImage ?? string.Empty),
         ];
 
         // Tạo access token
@@ -149,6 +203,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             UserId = userListener.Id,
             ListenerId = userListener.ListenerProjection.Id,
             Role = userListener.Role,
+            AvatarImage = userListener.ListenerProjection!.AvatarImage ?? string.Empty,
         };
     }
 
@@ -249,7 +304,8 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             .Include(ap => ap.ArtistProjection!.Id)
             .Include(ap => ap.Role)
             .Include(ap => ap.Status)
-            .Include(ap => ap.PasswordHash);
+            .Include(ap => ap.PasswordHash)
+            .Include(ap => ap.ArtistProjection!.AvatarImage);
 
         UserProjection userArtist = await _unitOfWork.GetCollection<User>().Aggregate()
             .Match(userFilter)
@@ -291,6 +347,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             new Claim("userId", userArtist.Id),
             new Claim("artistId",userArtist.ArtistProjection!.Id),
             new Claim(ClaimTypes.Role, userArtist.Role.ToString()),
+            new Claim("avatarImage", userArtist.ArtistProjection!.AvatarImage ?? string.Empty),
         ];
 
         // Tạo access token
@@ -302,6 +359,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             UserId = userArtist.Id,
             ArtistId = userArtist.ArtistProjection.Id,
             Role = userArtist.Role,
+            AvatarImage = userArtist.ArtistProjection.AvatarImage ?? string.Empty,
         };
     }
 

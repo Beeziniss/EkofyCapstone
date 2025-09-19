@@ -15,5 +15,7 @@ public sealed class RoyaltyPolicy : TimeStamped, IEntityCustom
     public decimal WorkPercentage { get; set; }
 
     public long Version { get; set; }
-    public bool IsActive { get; set; }
+    public PolicyStatus Status { get; set; }
+
+    public DateTimeOffset EffectiveAt { get; set; }
 }
