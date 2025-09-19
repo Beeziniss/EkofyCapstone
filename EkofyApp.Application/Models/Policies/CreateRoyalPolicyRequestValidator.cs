@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using EkofyApp.Domain.Utils;
+using FluentValidation;
 
 namespace EkofyApp.Application.Models.Policies;
 public sealed class CreateRoyalPolicyRequestValidator : AbstractValidator<CreateRoyalPolicyRequest>
@@ -20,7 +21,10 @@ public sealed class CreateRoyalPolicyRequestValidator : AbstractValidator<Create
         RuleFor(RuleFor => RuleFor.Currency)
             .IsInEnum().WithMessage("Invalid currency type.");
 
-        RuleFor(x => x.IsActive)
-            .NotNull().WithMessage("IsActive must be specified.");
+        //RuleFor(x => x.IsActive)
+        //    .NotNull().WithMessage("IsActive must be specified.");
+
+        RuleFor(x => x.EffectiveAt)
+            .GreaterThan(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Effective date must be in the future.");
     }
 }

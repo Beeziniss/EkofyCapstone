@@ -7,4 +7,5 @@ public sealed record class AuthListenerTokenResponse
     public string UserId { get; init; } = null!;
     public string ListenerId { get; init; } = null!;
     public UserRole Role { get; init; }
+    public string AvatarImage { get; init; } = null!;
 }

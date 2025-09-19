@@ -1,4 +1,6 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -15,4 +17,9 @@ public sealed class Work : IEntityCustom // TODO: Chưa xong hết các trườn
     public string? Description { get; set; } // Description of the work, if available
 
     public List<WorkSplit> WorkSplits { get; set; } = []; // List of splits for the work, e.g., 50% to Artist A, 50% to Artist B
+
+    public long Version { get; set; } // Version of the work, incremented on each update
+    public WorkStatus Status { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; } = HelperMethod.GetUtcPlus7TimeOffset(); // Timestamp when the work was created
 }

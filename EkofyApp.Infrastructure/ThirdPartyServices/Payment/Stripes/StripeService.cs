@@ -340,14 +340,21 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Code == createCheckoutSessionRequest.SubscriptionCode &&
                 x.Status == SubscriptionStatus.Active)
-            .Project<Subscription>(Builders<Subscription>.Projection
-                .Include(x => x.Id))
+            //.Project<Subscription>(Builders<Subscription>.Projection
+            //    .Include(x => x.Id))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
             .Find(x => x.SubscriptionId == subscription.Id && x.StripeProductActive == true)
             .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
                 .Include(x => x.Id)
+                .Include(x => x.SubscriptionPlanPrices)
+                .Include(x => x.StripeProductId)
+                .Include(x => x.StripeProductActive)
+                .Include(x => x.StripeProductName)
+                .Include(x => x.StripeProductImages)
+                .Include(x => x.StripeProductType)
+                .Include(x => x.StripeProductMetadata)
                 .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == createCheckoutSessionRequest.Period))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
 
@@ -421,8 +428,27 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
         {
             UserId = userId,
-            SubscriptionId = subscription.Id,
-            SubscriptionPlanId = subscriptionPlan.Id,
+            // Subscription
+            //SubscriptionId = subscription.Id,
+            SubscriptionName = subscription.Name,
+            SubscriptionDescription = subscription.Description,
+            SubscriptionCode = subscription.Code,
+            SubscriptionVersion = subscription.Version,
+            SubscriptionAmount = subscription.Amount,
+            SubscriptionCurrency = subscription.Currency,
+            SubscriptionTier = subscription.Tier,
+            SubscriptionStatus = subscription.Status,
+
+            // Subscription Plan
+            //SubscriptionPlanId = subscriptionPlan.Id,
+            SubscriptionPlanPrices = subscriptionPlan.SubscriptionPlanPrices,
+            StripeProductId = subscriptionPlan.StripeProductId,
+            StripeProductActive = subscriptionPlan.StripeProductActive,
+            StripeProductName = subscriptionPlan.StripeProductName,
+            StripeProductImages = subscriptionPlan.StripeProductImages,
+            StripeProductType = subscriptionPlan.StripeProductType,
+            StripeProductMetadata = subscriptionPlan.StripeProductMetadata,
+
             StripeCheckoutSessionId = checkoutSession.Id,
             StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
             StripePaymentMethod = checkoutSession.PaymentMethodTypes,

@@ -3,10 +3,12 @@ using EkofyApp.Application.Models.Auth.Admins;
 using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.Models.Auth.Moderators;
+using EkofyApp.Application.Models.Users;
 
 namespace EkofyApp.Application.ServiceInterfaces.Authentication;
 public interface IAuthenticationService
 {
+    Task<CurrentUserProfile> GetCurrentUserProfileAsync();
     Task<AuthAdminTokenResponse> LoginAdminAsync(LoginRequest loginRequest);
     Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest);
     Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest);
