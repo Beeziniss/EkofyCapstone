@@ -15,13 +15,18 @@ using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Coupons;
 using EkofyApp.Application.ServiceInterfaces.Entitlements;
+using EkofyApp.Application.ServiceInterfaces.Invoices;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.Listeners;
+using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ServiceInterfaces.Transactions;
 using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ServiceInterfaces.Works;
@@ -52,13 +57,18 @@ using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Coupons;
 using EkofyApp.Infrastructure.Services.Entitlements;
+using EkofyApp.Infrastructure.Services.Invoices;
 using EkofyApp.Infrastructure.Services.Jobs;
+using EkofyApp.Infrastructure.Services.Listeners;
+using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
+using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
+using EkofyApp.Infrastructure.Services.Transactions;
 using EkofyApp.Infrastructure.Services.Users;
 using EkofyApp.Infrastructure.Services.UserSubscriptions;
 using EkofyApp.Infrastructure.Services.Works;
@@ -345,7 +355,9 @@ public static class DependencyInjection
         // Business Services
         services.AddScoped<ITrackService, TrackService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IArtistService, ArtistService>();
+        services.AddScoped<IListenerService, ListenerService>();
         services.AddScoped<IAudioAnalysisService, AudioFeatureService>();
         services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
         services.AddScoped<IJsonWebToken, JsonWebToken>();
@@ -365,6 +377,10 @@ public static class DependencyInjection
         services.AddScoped<IRoyaltyPolicyService, RoyaltyPolicyService>();
         services.AddScoped<ILegalPolicyService, LegalPolicyService>();
         services.AddScoped<IArtistPackageService, ArtistPackageService>();
+        services.AddScoped<IInvoiceService, Services.Invoices.InvoiceService>();
+        services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
+        services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
+        services.AddScoped<ITransactionService, TransactionService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services

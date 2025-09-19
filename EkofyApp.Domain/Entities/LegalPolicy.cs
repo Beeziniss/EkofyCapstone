@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -11,5 +12,7 @@ public sealed class LegalPolicy : TimeStamped, IEntityCustom
     public string Name { get; set; } = null!;
     public string Content { get; set; } = null!; // HTML/Markdown
     public long Version { get; set; }
-    public bool IsActive { get; set; }
+    public PolicyStatus Status { get; set; }
+
+    public DateTimeOffset EffectiveAt { get; set; }
 }

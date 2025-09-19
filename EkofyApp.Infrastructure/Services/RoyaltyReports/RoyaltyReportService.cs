@@ -6,6 +6,7 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.RoyaltyReports;
@@ -13,6 +14,11 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
+
+    public IQueryable<RoyaltyReport> GetRoyaltyReports()
+    {
+        return _unitOfWork.GetCollection<RoyaltyReport>().AsQueryable();
+    }
 
     private async Task<Dictionary<string, string?>> GetRoyaltyPolicyValuesAsync(string key, params string[] fields)
     {
@@ -32,122 +38,138 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
         //decimal recordingRoyaltyPercentage = Convert.ToDecimal((await _redisCacheService.HashGetAsync("royalty_policy:active", "RecordingPercentage")));
         //decimal workRoyaltyPercentage = Convert.ToDecimal((await _redisCacheService.HashGetAsync("royalty_policy:active", "WorkPercentage")));
 
-        // Get all royalty policy values in a single Redis call
-        string[] royaltyPolicyFields = ["rate_per_stream", "recording_percentage", "work_percentage"];
-        Dictionary<string, string?> royaltyPolicyValues = await GetRoyaltyPolicyValuesAsync("royalty_policy:active", royaltyPolicyFields);
-
-        decimal ratePerStream = Convert.ToDecimal(royaltyPolicyValues["rate_per_stream"]);
-        decimal recordingRoyaltyPercentage = Convert.ToDecimal(royaltyPolicyValues["recording_percentage"]);
-        decimal workRoyaltyPercentage = Convert.ToDecimal(royaltyPolicyValues["work_percentage"]);
-
-        ProjectionDefinition<MonthlyStreamCountProjection> projectionDefinition = Builders<MonthlyStreamCountProjection>.Projection
-                .Exclude(x => x.CreatedAt)
-                .Exclude(x => x.ProcessedAt)
-                .Exclude(x => x.Level);
-
-        // Lấy toàn bộ thống kê theo tháng
-        List<MonthlyStreamCountProjection> monthlyStreamCountProjections = await _unitOfWork.GetCollection<MonthlyStreamCount>()
-            .Aggregate()
-            .Match(x => x.Month == month && x.Year == year && x.ProcessedAt == null)
-            .Lookup<MonthlyStreamCount, Recording, MonthlyStreamCountProjection>(
-                _unitOfWork.GetCollection<Recording>(),
-                x => x.RecordingId,
-                x => x.Id,
-                x => x.RecordingProjection)
-            .Lookup<MonthlyStreamCountProjection, Work, MonthlyStreamCountProjection>(
-                _unitOfWork.GetCollection<Work>(),
-                x => x.WorkId,
-                x => x.Id,
-                x => x.WorkProjection)
-            .Project<MonthlyStreamCountProjection>(projectionDefinition)
-            .ToListAsync(ct);
-
-        foreach (MonthlyStreamCountProjection monthlyStreamCountProjection in monthlyStreamCountProjections)
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            decimal totalRoyalty = monthlyStreamCountProjection.StreamCount * ratePerStream;
+            List<RoyaltyReport> royaltyReports = [];
+            List<string> processedMonthlyStreamCountIds = [];
 
-            List<RoyaltySplit> splits = [];
+            // Get all royalty policy values in a single Redis call
+            string[] royaltyPolicyFields = ["rate_per_stream", "recording_percentage", "work_percentage"];
+            Dictionary<string, string?> royaltyPolicyValues = await GetRoyaltyPolicyValuesAsync("royalty_policy:active", royaltyPolicyFields);
 
-            // Nếu có RecordingId → áp dụng RecordingSplits
-            decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage;
-            if (!string.IsNullOrEmpty(monthlyStreamCountProjection.RecordingId))
+            decimal ratePerStream = Convert.ToDecimal(royaltyPolicyValues["rate_per_stream"]);
+            decimal recordingRoyaltyPercentage = Convert.ToDecimal(royaltyPolicyValues["recording_percentage"]);
+            decimal workRoyaltyPercentage = Convert.ToDecimal(royaltyPolicyValues["work_percentage"]);
+
+            ProjectionDefinition<MonthlyStreamCountProjection> projectionDefinition = Builders<MonthlyStreamCountProjection>.Projection
+                    .Exclude(x => x.CreatedAt)
+                    .Exclude(x => x.Level);
+
+            // Lấy toàn bộ thống kê theo tháng
+            List<MonthlyStreamCountProjection> monthlyStreamCountProjections = await _unitOfWork.GetCollection<MonthlyStreamCount>()
+                .Aggregate()
+                .Match(x => x.Month == month && x.Year == year && x.ProcessedAt == null)
+                .Lookup<MonthlyStreamCount, Recording, MonthlyStreamCountProjection>(
+                    _unitOfWork.GetCollection<Recording>(),
+                    x => x.RecordingId,
+                    x => x.Id,
+                    x => x.RecordingProjection)
+                .Lookup<MonthlyStreamCountProjection, Work, MonthlyStreamCountProjection>(
+                    _unitOfWork.GetCollection<Work>(),
+                    x => x.WorkId,
+                    x => x.Id,
+                    x => x.WorkProjection)
+                .Project<MonthlyStreamCountProjection>(projectionDefinition)
+                .ToListAsync(ct);
+
+            foreach (MonthlyStreamCountProjection monthlyStreamCountProjection in monthlyStreamCountProjections)
             {
-                if (monthlyStreamCountProjection.RecordingProjection != null)
-                {
-                    // Kiểm tra tổng phần trăm có bằng 100% không
-                    // Đã có validate ở cấp độ Recording rồi, nhưng để chắc chắn thì vẫn kiểm tra lại ở đây
-                    decimal totalPercentage = monthlyStreamCountProjection.RecordingProjection.RecordingSplits.Sum(s => s.Percentage);
-                    if (totalPercentage != 100m)
-                    {
-                        throw new ConflictCustomException($"Recording splits for {monthlyStreamCountProjection.RecordingId} must equal 100%, but got {totalPercentage}%");
-                    }
+                decimal totalRoyalty = monthlyStreamCountProjection.StreamCount * ratePerStream;
 
-                    foreach (RecordingSplitProjection split in monthlyStreamCountProjection.RecordingProjection.RecordingSplits)
+                List<RoyaltySplit> splits = [];
+
+                // Nếu có RecordingId → áp dụng RecordingSplits
+                decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage;
+                if (!string.IsNullOrEmpty(monthlyStreamCountProjection.RecordingId))
+                {
+                    if (monthlyStreamCountProjection.RecordingProjection != null)
                     {
-                        decimal amount = recordingPool * split.Percentage / 100m;
-                        splits.Add(new RoyaltySplit
+                        // Kiểm tra tổng phần trăm có bằng 100% không
+                        // Đã có validate ở cấp độ Recording rồi, nhưng để chắc chắn thì vẫn kiểm tra lại ở đây
+                        decimal totalPercentage = monthlyStreamCountProjection.RecordingProjection.RecordingSplits.Sum(s => s.Percentage);
+                        if (totalPercentage != 100m)
                         {
-                            UserId = split.UserId,
-                            ArtistRole = split.ArtistRole,
-                            Percentage = split.Percentage,
-                            Amount = amount,
-                            Level = AggregationLevel.Recording
-                        });
+                            throw new ConflictCustomException($"Recording splits for {monthlyStreamCountProjection.RecordingId} must equal 100%, but got {totalPercentage}%");
+                        }
+
+                        foreach (RecordingSplitProjection split in monthlyStreamCountProjection.RecordingProjection.RecordingSplits)
+                        {
+                            decimal amount = recordingPool * split.Percentage / 100m;
+                            splits.Add(new RoyaltySplit
+                            {
+                                UserId = split.UserId,
+                                ArtistRole = split.ArtistRole,
+                                Percentage = split.Percentage,
+                                Amount = amount,
+                                Level = AggregationLevel.Recording
+                            });
+                        }
                     }
                 }
-            }
 
-            // Nếu có WorkId → áp dụng WorkSplits
-            decimal workPool = totalRoyalty * workRoyaltyPercentage;
-            if (!string.IsNullOrEmpty(monthlyStreamCountProjection.WorkId))
-            {
-                if (monthlyStreamCountProjection.WorkProjection != null)
+                // Nếu có WorkId → áp dụng WorkSplits
+                decimal workPool = totalRoyalty * workRoyaltyPercentage;
+                if (!string.IsNullOrEmpty(monthlyStreamCountProjection.WorkId))
                 {
-                    // Kiểm tra tổng phần trăm có bằng 100% không
-                    // Đã có validate ở cấp độ Recording rồi, nhưng để chắc chắn thì vẫn kiểm tra lại ở đây
-                    decimal totalPercentage = monthlyStreamCountProjection.WorkProjection.WorkSplits.Sum(s => s.Percentage);
-                    if (totalPercentage != 100m)
+                    if (monthlyStreamCountProjection.WorkProjection != null)
                     {
-                        throw new ConflictCustomException($"Work splits for {monthlyStreamCountProjection.WorkId} must equal 100%, but got {totalPercentage}%");
-                    }
-
-                    foreach (WorkSplitProjection split in monthlyStreamCountProjection.WorkProjection.WorkSplits)
-                    {
-                        decimal amount = workPool * split.Percentage / 100m;
-                        splits.Add(new RoyaltySplit
+                        // Kiểm tra tổng phần trăm có bằng 100% không
+                        // Đã có validate ở cấp độ Recording rồi, nhưng để chắc chắn thì vẫn kiểm tra lại ở đây
+                        decimal totalPercentage = monthlyStreamCountProjection.WorkProjection.WorkSplits.Sum(s => s.Percentage);
+                        if (totalPercentage != 100m)
                         {
-                            UserId = split.UserId,
-                            ArtistRole = split.ArtistRole,
-                            Percentage = split.Percentage,
-                            Amount = amount,
-                            Level = AggregationLevel.Work
-                        });
+                            throw new ConflictCustomException($"Work splits for {monthlyStreamCountProjection.WorkId} must equal 100%, but got {totalPercentage}%");
+                        }
+
+                        foreach (WorkSplitProjection split in monthlyStreamCountProjection.WorkProjection.WorkSplits)
+                        {
+                            decimal amount = workPool * split.Percentage / 100m;
+                            splits.Add(new RoyaltySplit
+                            {
+                                UserId = split.UserId,
+                                ArtistRole = split.ArtistRole,
+                                Percentage = split.Percentage,
+                                Amount = amount,
+                                Level = AggregationLevel.Work
+                            });
+                        }
                     }
                 }
+
+                // --- Validate tổng ---
+                decimal distributed = splits.Sum(s => s.Amount);
+                if (Math.Round(distributed, 2) != Math.Round(totalRoyalty, 2))
+                {
+                    throw new ConflictCustomException($"Distributed {distributed} != TotalRoyalty {totalRoyalty}");
+                }
+
+                RoyaltyReport report = new()
+                {
+                    TrackId = monthlyStreamCountProjection.TrackId,
+                    Month = monthlyStreamCountProjection.Month,
+                    Year = monthlyStreamCountProjection.Year,
+                    StreamCount = monthlyStreamCountProjection.StreamCount,
+                    TotalRoyaltyAmount = totalRoyalty,
+                    RoyaltySplits = splits,
+                };
+
+                royaltyReports.Add(report);
+                processedMonthlyStreamCountIds.Add(monthlyStreamCountProjection.Id);
             }
-
-            // --- Validate tổng ---
-            decimal distributed = splits.Sum(s => s.Amount);
-            if (Math.Round(distributed, 2) != Math.Round(totalRoyalty, 2))
-            {
-                throw new ConflictCustomException($"Distributed {distributed} != TotalRoyalty {totalRoyalty}");
-            }
-
-            // Tạo RoyaltyReport
-            RoyaltyReport report = new()
-            {
-                TrackId = monthlyStreamCountProjection.TrackId,
-                RecordingId = monthlyStreamCountProjection.RecordingId,
-                WorkId = monthlyStreamCountProjection.WorkId,
-                Month = monthlyStreamCountProjection.Month,
-                Year = monthlyStreamCountProjection.Year,
-                StreamCount = monthlyStreamCountProjection.StreamCount,
-                TotalRoyaltyAmount = totalRoyalty,
-                RoyaltySplits = splits
-            };
-
             // Tạo Royalty Report
-            await _unitOfWork.GetCollection<RoyaltyReport>().InsertOneAsync(report, cancellationToken: ct);
-        }
+            await _unitOfWork.GetCollection<RoyaltyReport>().InsertManyAsync(session, royaltyReports, cancellationToken: ct);
+
+            // Cập nhật lại trạng thái đã xử lý
+            UpdateDefinition<MonthlyStreamCount> updateDefinition = Builders<MonthlyStreamCount>.Update.Set(x => x.ProcessedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            UpdateResult updateResult = await _unitOfWork.GetCollection<MonthlyStreamCount>()
+                .UpdateManyAsync(session,
+                    x => processedMonthlyStreamCountIds.Contains(x.Id),
+                    updateDefinition,
+                    cancellationToken: ct);
+            if (updateResult.ModifiedCount < processedMonthlyStreamCountIds.Count)
+            {
+                throw new Exception($"Failed to update MonthlyStreamCount as processed.");
+            }
+        });
     }
 }

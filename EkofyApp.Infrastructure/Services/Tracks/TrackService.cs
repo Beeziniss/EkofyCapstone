@@ -81,6 +81,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
                 Description = workTempRequest.Description,
                 WorkSplits = _mapper.Map<List<WorkSplit>>(workTempRequest.WorkSplits),
+                Version = 1,
+                Status = WorkStatus.Active,
             };
 
             Recording recording = new()
@@ -89,7 +91,9 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 TrackId = trackResponse.Id,
 
                 Description = recordingTempRequest.Description,
-                RecordingSplits = _mapper.Map<List<RecordingSplit>>(recordingTempRequest.RecordingSplitRequests)
+                RecordingSplits = _mapper.Map<List<RecordingSplit>>(recordingTempRequest.RecordingSplitRequests),
+                Version = 1,
+                Status = RecordingStatus.Active,
             };
 
             await _unitOfWork.GetCollection<Track>().InsertOneAsync(session, track);
