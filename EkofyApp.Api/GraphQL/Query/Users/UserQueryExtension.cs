@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums.Users;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Users;
 
@@ -13,11 +14,15 @@ public class UserQueryExtension : ObjectTypeExtension<UserQuery>
             //    options.ProviderName = PagingProviderNames.Cursor; // CURSOR PAGING
             //    options.IncludeTotalCount = true;
             //})
+            .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
             .UseSorting();
 
         descriptor.Field(x => x.GetUserByIdAsync(default!))
-        .Authorize(roles: "Admin");
+            .Authorize(roles: HelperRoleBase.FullRoles)
+            .UseProjection()
+            .UseFiltering()
+            .UseSorting();
     }
 }

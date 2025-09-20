@@ -1,11 +1,16 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.RoyalReports;
+﻿using EkofyApp.Domain.Utils;
+
+namespace EkofyApp.Api.GraphQL.Query.RoyalReports;
 
 public sealed class RoyaltyReportQueryExtension : ObjectTypeExtension<RoyaltyReportQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<RoyaltyReportQuery> descriptor)
     {
         descriptor.Field(x => x.GetRoyaltyReports())
-            .Authorize(roles: ["Artist", "Moderator", "Admin"]);
+            .Authorize(roles: HelperRoleBase.FullRoles)
+            .UseProjection()
+            .UseFiltering()
+            .UseSorting();
         //.AllowAnonymous();
     }
 }

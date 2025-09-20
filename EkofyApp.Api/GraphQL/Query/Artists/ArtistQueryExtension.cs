@@ -1,4 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.Artists;
+﻿using EkofyApp.Domain.Utils;
+
+namespace EkofyApp.Api.GraphQL.Query.Artists;
 
 public sealed class ArtistQueryExtension : ObjectTypeExtension<ArtistQuery>
 {
@@ -10,6 +12,7 @@ public sealed class ArtistQueryExtension : ObjectTypeExtension<ArtistQuery>
         // descriptor.Field(x => x.GetAllArtists()).Description("Returns all artists.");
 
         descriptor.Field(x => x.GetArtists())
+            .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
             .UseSorting();
