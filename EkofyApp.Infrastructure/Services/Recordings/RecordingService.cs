@@ -97,23 +97,6 @@ public sealed class RecordingService(IUnitOfWork unitOfWork) : IRecordingService
             };
 
             await _unitOfWork.GetCollection<Recording>().InsertOneAsync(session, newRecording, cancellationToken: cancellationToken);
-
-            // Cập nhật lại MonthlyStreamCount để tham chiếu đến Recording mới
-            UpdateDefinition<MonthlyStreamCount> updateStreamCount = Builders<MonthlyStreamCount>.Update.Set(m => m.RecordingId, newRecording.Id);
-            UpdateResult updateResult = await _unitOfWork.GetCollection<MonthlyStreamCount>().UpdateOneAsync(session,
-                m => m.TrackId == trackId && m.RecordingId == currentRecording.Id && m.ProcessedAt == null,
-                updateStreamCount,
-                cancellationToken: cancellationToken);
-            if (updateResult.MatchedCount == 0)
-            {
-                throw new NotFoundCustomException("Not found monthly stream count with given conditions");
-            }
-
-            if (updateResult.ModifiedCount == 0)
-            {
-                throw new ConflictCustomException("Failed to update MonthlyStreamCount records with the new RecordingId.");
-            }
         });
     }
-
 }

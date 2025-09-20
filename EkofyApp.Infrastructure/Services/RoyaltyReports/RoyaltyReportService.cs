@@ -52,25 +52,23 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             decimal workRoyaltyPercentage = Convert.ToDecimal(royaltyPolicyValues["work_percentage"]);
 
             ProjectionDefinition<MonthlyStreamCountProjection> projectionDefinition = Builders<MonthlyStreamCountProjection>.Projection
-                    .Exclude(x => x.CreatedAt)
-                    .Exclude(x => x.Level);
+                    .Exclude(x => x.CreatedAt);
 
             // Lấy toàn bộ thống kê theo tháng
             List<MonthlyStreamCountProjection> monthlyStreamCountProjections = await _unitOfWork.GetCollection<MonthlyStreamCount>()
-                .Aggregate()
-                .Match(x => x.Month == month && x.Year == year && x.ProcessedAt == null)
-                .Lookup<MonthlyStreamCount, Recording, MonthlyStreamCountProjection>(
-                    _unitOfWork.GetCollection<Recording>(),
-                    x => x.RecordingId,
-                    x => x.Id,
-                    x => x.RecordingProjection)
-                .Lookup<MonthlyStreamCountProjection, Work, MonthlyStreamCountProjection>(
-                    _unitOfWork.GetCollection<Work>(),
-                    x => x.WorkId,
-                    x => x.Id,
-                    x => x.WorkProjection)
-                .Project<MonthlyStreamCountProjection>(projectionDefinition)
-                .ToListAsync(ct);
+                    .Aggregate()
+                    .Match(x => x.Month == month && x.Year == year && x.ProcessedAt == null)
+                    .Lookup<MonthlyStreamCount, Recording, MonthlyStreamCountProjection>(
+                        _unitOfWork.GetCollection<Recording>(),
+                        x => x.TrackId,
+                        x => x.TrackId,
+                        x => x.RecordingProjection)
+                    .Lookup<MonthlyStreamCountProjection, Work, MonthlyStreamCountProjection>(
+                        _unitOfWork.GetCollection<Work>(),
+                        x => x.TrackId,
+                        x => x.TrackId,
+                        x => x.WorkProjection)
+                    .ToListAsync(ct);
 
             foreach (MonthlyStreamCountProjection monthlyStreamCountProjection in monthlyStreamCountProjections)
             {
@@ -80,7 +78,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 
                 // Nếu có RecordingId → áp dụng RecordingSplits
                 decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage;
-                if (!string.IsNullOrEmpty(monthlyStreamCountProjection.RecordingId))
+                if (!string.IsNullOrEmpty(monthlyStreamCountProjection.RecordingProjection?.Id))
                 {
                     if (monthlyStreamCountProjection.RecordingProjection != null)
                     {
@@ -89,7 +87,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         decimal totalPercentage = monthlyStreamCountProjection.RecordingProjection.RecordingSplits.Sum(s => s.Percentage);
                         if (totalPercentage != 100m)
                         {
-                            throw new ConflictCustomException($"Recording splits for {monthlyStreamCountProjection.RecordingId} must equal 100%, but got {totalPercentage}%");
+                            throw new ConflictCustomException($"Recording splits for {monthlyStreamCountProjection.RecordingProjection.Id} must equal 100%, but got {totalPercentage}%");
                         }
 
                         foreach (RecordingSplitProjection split in monthlyStreamCountProjection.RecordingProjection.RecordingSplits)
@@ -109,7 +107,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 
                 // Nếu có WorkId → áp dụng WorkSplits
                 decimal workPool = totalRoyalty * workRoyaltyPercentage;
-                if (!string.IsNullOrEmpty(monthlyStreamCountProjection.WorkId))
+                if (!string.IsNullOrEmpty(monthlyStreamCountProjection.WorkProjection?.Id))
                 {
                     if (monthlyStreamCountProjection.WorkProjection != null)
                     {
@@ -118,7 +116,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         decimal totalPercentage = monthlyStreamCountProjection.WorkProjection.WorkSplits.Sum(s => s.Percentage);
                         if (totalPercentage != 100m)
                         {
-                            throw new ConflictCustomException($"Work splits for {monthlyStreamCountProjection.WorkId} must equal 100%, but got {totalPercentage}%");
+                            throw new ConflictCustomException($"Work splits for {monthlyStreamCountProjection.WorkProjection.Id} must equal 100%, but got {totalPercentage}%");
                         }
 
                         foreach (WorkSplitProjection split in monthlyStreamCountProjection.WorkProjection.WorkSplits)
