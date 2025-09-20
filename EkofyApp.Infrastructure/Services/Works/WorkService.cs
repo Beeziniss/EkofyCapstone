@@ -95,22 +95,6 @@ public sealed class WorkService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             };
 
             await _unitOfWork.GetCollection<Work>().InsertOneAsync(session, newWork, cancellationToken: cancellationToken);
-
-            // Cập nhật lại MonthlyStreamCount để tham chiếu đến Work mới
-            UpdateDefinition<MonthlyStreamCount> updateDefinition = Builders<MonthlyStreamCount>.Update.Set(x => x.WorkId, newWork.Id);
-            UpdateResult updateMonthlyStreamCount = await _unitOfWork.GetCollection<MonthlyStreamCount>().UpdateOneAsync(session,
-                x => x.TrackId == trackId && x.WorkId == currentWork.Id && x.ProcessedAt == null,
-                updateDefinition,
-                cancellationToken: cancellationToken);
-            if (updateMonthlyStreamCount.MatchedCount == 0)
-            {
-                throw new NotFoundCustomException("Not found monthly stream count with given conditions");
-            }
-
-            if (updateMonthlyStreamCount.ModifiedCount == 0)
-            {
-                throw new ConflictCustomException("Failed to update MonthlyStreamCount works with the new WorkId.");
-            }
         });
     }
 }
