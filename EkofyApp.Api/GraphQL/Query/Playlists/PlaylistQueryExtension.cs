@@ -1,11 +1,16 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.Playlists;
+﻿using EkofyApp.Domain.Utils;
+
+namespace EkofyApp.Api.GraphQL.Query.Playlists;
 
 public sealed class PlaylistQueryExtension : ObjectTypeExtension<PlaylistQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<PlaylistQuery> descriptor)
     {
         descriptor.Field(x => x.GetPlaylists())
-            .Authorize(roles: ["Listener", "Artist"]);
+            .Authorize(roles: HelperRoleBase.FullRoles)
+            .UseProjection()
+            .UseFiltering()
+            .UseSorting();
         //.AllowAnonymous();
     }
 }

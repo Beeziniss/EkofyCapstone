@@ -1,11 +1,16 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.Subscriptions;
+﻿using EkofyApp.Domain.Utils;
+
+namespace EkofyApp.Api.GraphQL.Query.Subscriptions;
 
 public sealed class SubscriptionPlanQueryExtension : ObjectTypeExtension<SubscriptionPlanQuery>
 {
     protected override void Configure(IObjectTypeDescriptor<SubscriptionPlanQuery> descriptor)
     {
         descriptor.Field(x => x.GetSubscriptionPlans())
-            .Authorize(roles: ["Listener", "Artist", "Moderator", "Admin"]);
+            .Authorize(roles: HelperRoleBase.FullRoles)
+            .UseProjection()
+            .UseFiltering()
+            .UseSorting();
         //.AllowAnonymous();
     }
 }

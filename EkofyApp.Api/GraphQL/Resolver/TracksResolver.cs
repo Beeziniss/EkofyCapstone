@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
-using EkofyApp.Api.GraphQL.DataLoader.Artists;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
