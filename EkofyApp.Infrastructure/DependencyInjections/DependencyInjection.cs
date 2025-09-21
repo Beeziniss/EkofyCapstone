@@ -108,7 +108,7 @@ public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
     {
-        services.AddHangfire();
+        //services.AddHangfire();
 
         //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
         services.AddAutoMapperExtension();

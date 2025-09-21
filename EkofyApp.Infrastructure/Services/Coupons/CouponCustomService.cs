@@ -16,6 +16,13 @@ public sealed class CouponCustomService(IUnitOfWork unitOfWork) : ICouponCustomS
         return _unitOfWork.GetCollection<EntityCoupon>().AsQueryable();
     }
 
+    public async Task<IEnumerable<EntityCoupon>> GetAllCouponsIE()
+    {
+        return await _unitOfWork.GetCollection<EntityCoupon>()
+            .Find(_ => true)
+            .ToListAsync();
+    }
+
     public async Task<bool> IsCouponCodeExistsAsync(string code)
     {
         string existingCoupon = await _unitOfWork.GetCollection<EntityCoupon>()

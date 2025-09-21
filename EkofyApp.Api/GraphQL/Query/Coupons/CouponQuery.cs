@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Coupons;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
+using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Coupons;
 
@@ -9,8 +11,13 @@ public sealed class CouponQuery(ICouponCustomService couponCustomService)
 {
     private readonly ICouponCustomService _couponCustomService = couponCustomService;
 
-    public IQueryable<Coupon> GetAllCoupons()
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Coupon>]
+    public IQueryable<Coupon> GetCoupons()
     {
-        return _couponCustomService.GetAllCoupons();
+        return _couponCustomService.GetAllCoupons().AsQueryable();
     }
 }

@@ -93,9 +93,14 @@ public static class GraphQLServer
             .AddType<EnumType<WorkStatus>>()
 
             // Paging
-            .AddQueryableCursorPagingProvider(defaultProvider: false)
-            .AddQueryableOffsetPagingProvider(defaultProvider: true)
-            .AddPagingArguments()
+            //.AddQueryableCursorPagingProvider(defaultProvider: true)
+            //.AddQueryableOffsetPagingProvider(defaultProvider: true)
+            //.AddCursorPagingProvider<CursorPagingQueryableExtensions>(defaultProvider: true)
+            //CursorPagingQueryableExtensions.ApplyCursorPaginationAsync();
+            //.AddOffsetPagingProvider<OffsetPagingQueryableExtensions>(defaultProvider: true)
+            //.AddCursorPagingProvider<QueryableCursorPagingProvider>(defaultProvider: true)
+            //.AddMongoDbPagingProviders(defaultProvider: true)
+            //.AddPagingArguments()
 
             // MongoDB integration
             //.AddMongoDbProjections()
