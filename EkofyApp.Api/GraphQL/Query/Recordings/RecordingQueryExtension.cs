@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Recordings;
 
@@ -10,12 +11,12 @@ public sealed class RecordingQueryExtension : ObjectTypeExtension<RecordingQuery
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Recording>();
 
-        descriptor.Field(x => x.GetMetadataRecordingUploadRequestAsync(default!))
-            .Authorize(roles: HelperRoleBase.FullRoles)
-            .UseProjection()
-            .UseFiltering()
-            .UseSorting();
+        //descriptor.Field(x => x.GetMetadataRecordingUploadRequestAsync(default!))
+        //    .Authorize(roles: HelperRoleBase.FullRoles)
+        //    .UseProjection()
+        //    .UseFiltering()
+        //    .UseSorting();
     }
 }

@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Subscriptions;
 
@@ -10,7 +11,7 @@ public sealed class SubscriptionQueryExtension : ObjectTypeExtension<Subscriptio
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Subscription>();
         //.AllowAnonymous();
     }
 }

@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
@@ -10,24 +11,23 @@ public class TrackQueryExtension : ObjectTypeExtension<TrackQuery>
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Track>();
 
         descriptor.Field(x => x.GetPendingTrackUploadRequestsAsync())
             .Authorize(roles: HelperRoleBase.ModeratorRoles)
             .UseProjection()
-            .UseFiltering()
-            .UseSorting();
+            .UseFiltering();
 
         descriptor.Field(x => x.GetMetadataTrackUploadRequestAsync(default!))
             .Authorize(roles: HelperRoleBase.ModeratorRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Track>();
 
         descriptor.Field(x => x.GetOriginalFileTrackUploadRequest(default!))
             .Authorize(roles: HelperRoleBase.ModeratorRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Track>();
     }
 }

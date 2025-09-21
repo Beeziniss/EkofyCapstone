@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Works;
 
@@ -10,13 +11,13 @@ public sealed class WorkQueryExtension : ObjectTypeExtension<WorkQuery>
             .Authorize(roles: HelperRoleBase.ModeratorRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Work>();
 
         descriptor.Field(x => x.GetMetadataWorkUploadRequestAsync(default!))
             .Authorize(roles: HelperRoleBase.ModeratorRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Work>();
 
         // TODO: Artist cũng nên xem được các work của chính mình
     }

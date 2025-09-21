@@ -17,12 +17,12 @@ public class UserQueryExtension : ObjectTypeExtension<UserQuery>
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<User>();
 
         descriptor.Field(x => x.GetUserByIdAsync(default!))
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<User>();
     }
 }
