@@ -1,4 +1,4 @@
-﻿using System.Transactions;
+﻿using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.Transactions;
 public interface ITransactionService

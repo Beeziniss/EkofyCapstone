@@ -1,5 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Transactions;
-using System.Transactions;
+using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Api.GraphQL.Query.Transactions;
 

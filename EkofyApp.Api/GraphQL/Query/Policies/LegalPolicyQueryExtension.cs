@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Policies;
 
@@ -10,7 +11,7 @@ public sealed class LegalPolicyQueryExtension : ObjectTypeExtension<LegalPolicyQ
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<LegalPolicy>();
         //.AllowAnonymous();
     }
 }

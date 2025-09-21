@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Coupons;
 
@@ -11,6 +12,6 @@ public sealed class CouponQueryExtension : ObjectTypeExtension<CouponQuery>
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<Coupon>();
     }
 }

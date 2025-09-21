@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Transactions;
+using EkofyApp.Domain.Entities;
 using MongoDB.Driver;
-using System.Transactions;
 
 namespace EkofyApp.Infrastructure.Services.Transactions;
 public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionService

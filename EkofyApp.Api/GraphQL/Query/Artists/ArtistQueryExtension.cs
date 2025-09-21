@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Query.Artists;
 
@@ -15,6 +16,6 @@ public sealed class ArtistQueryExtension : ObjectTypeExtension<ArtistQuery>
             .Authorize(roles: HelperRoleBase.FullRoles)
             .UseProjection()
             .UseFiltering()
-            .UseSorting();
+            .UseSorting<User>();
     }
 }
