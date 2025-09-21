@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
+using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.MonthlyStreamCounts;
 
@@ -9,6 +11,11 @@ public sealed class MonthlyStreamCountQuery(IMonthlyStreamCountService monthlySt
 {
     private readonly IMonthlyStreamCountService _monthlyStreamCountService = monthlyStreamCountService;
 
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<MonthlyStreamCount>]
     public IQueryable<MonthlyStreamCount> GetMonthlyStreamCounts()
     {
         return _monthlyStreamCountService.GetMonthlyStreamCounts();

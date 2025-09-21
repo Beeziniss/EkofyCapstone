@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
+using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Subscriptions;
 
@@ -9,6 +11,11 @@ public sealed class SubscriptionQuery(ISubscriptionService subscriptionService)
 {
     private readonly ISubscriptionService _subscriptionService = subscriptionService;
 
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Subscription>]
     public IQueryable<Subscription> GetSubscriptions()
     {
         return _subscriptionService.GetSubscriptions();

@@ -35,25 +35,50 @@ public static class HelperRoleBase
     private static readonly string[] adminRoles = [adminRole];
     #endregion
 
-    public static string[] FullRoles => fullRoles;
+    public static string[] FullRolesArray => fullRoles;
 
     // 3 roles
-    public static string[] ListenerArtistModeratorRoles => listenerArtistModeratorRoles;
-    public static string[] ListenerArtistAdminRoles => listenerArtistAdminRoles;
-    public static string[] ListenerModeratorAdminRoles => listenerModeratorAdminRoles;
-    public static string[] ArtistModeratorAdminRoles => artistModeratorAdminRoles;
+    public static string[] ListenerArtistModeratorRolesArray => listenerArtistModeratorRoles;
+    public static string[] ListenerArtistAdminRolesArray => listenerArtistAdminRoles;
+    public static string[] ListenerModeratorAdminRolesArray => listenerModeratorAdminRoles;
+    public static string[] ArtistModeratorAdminRolesArray => artistModeratorAdminRoles;
 
     // 2 roles
-    public static string[] ListenerArtistRoles => listenerArtistRoles;
-    public static string[] ListenerModeratorRoles => listenerModeratorRoles;
-    public static string[] ListenerAdminRoles => listenerAdminRoles;
-    public static string[] ArtistModeratorRoles => artistModeratorRoles;
-    public static string[] ArtistAdminRoles => artistAdminRoles;
-    public static string[] ModeratorAdminRoles => moderatorAdminRoles;
+    public static string[] ListenerArtistRolesArray => listenerArtistRoles;
+    public static string[] ListenerModeratorRolesArray => listenerModeratorRoles;
+    public static string[] ListenerAdminRolesArray => listenerAdminRoles;
+    public static string[] ArtistModeratorRolesArray => artistModeratorRoles;
+    public static string[] ArtistAdminRolesArray => artistAdminRoles;
+    public static string[] ModeratorAdminRolesArray => moderatorAdminRoles;
 
     // 1 role
-    public static string[] ListenerRoles => listenerRoles;
-    public static string[] ArtistRoles => artistRoles;
-    public static string[] ModeratorRoles => moderatorRoles;
-    public static string[] AdminRoles => adminRoles;
+    public static string[] ListenerRolesArray => listenerRoles;
+    public static string[] ArtistRolesArray => artistRoles;
+    public static string[] ModeratorRolesArray => moderatorRoles;
+    public static string[] AdminRolesArray => adminRoles;
+
+    #region Role group names
+    // 4 roles
+    public const string FullRoles = "FullRoles";
+
+    // 3 roles
+    public const string ListenerArtistModeratorRoles = "ListenerArtistModeratorRoles";
+    public const string ListenerArtistAdminRoles = "ListenerArtistAdminRoles";
+    public const string ListenerModeratorAdminRoles = "ListenerModeratorAdminRoles";
+    public const string ArtistModeratorAdminRoles = "ArtistModeratorAdminRoles";
+
+    // 2 roles
+    public const string ListenerArtistRoles = "ListenerArtistRoles";
+    public const string ListenerModeratorRoles = "ListenerModeratorRoles";
+    public const string ListenerAdminRoles = "ListenerAdminRoles";
+    public const string ArtistModeratorRoles = "ArtistModeratorRoles";
+    public const string ArtistAdminRoles = "ArtistAdminRoles";
+    public const string ModeratorAdminRoles = "ModeratorAdminRoles";
+
+    // 1 role
+    public const string ListenerRoles = "ListenerRoles";
+    public const string ArtistRoles = "ArtistRoles";
+    public const string ModeratorRoles = "ModeratorRoles";
+    public const string AdminRoles = "AdminRoles";
+    #endregion
 }
