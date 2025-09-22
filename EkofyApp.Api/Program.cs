@@ -53,13 +53,14 @@ public sealed class Program
             options.CustomSchemaIds(type => type.FullName);
 
             // JWT ListenerRegisterRequest without requiring "Bearer " prefix
-            options.AddSecurityDefinition("JWT", new OpenApiSecurityScheme
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
-                Type = SecuritySchemeType.ApiKey,
-                Scheme = "JWT",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
                 In = ParameterLocation.Header,
                 Description = "Enter your JWT token directly (without 'Bearer ' prefix)",
+                BearerFormat= "JWT"
             });
 
             options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -70,7 +71,7 @@ public sealed class Program
                         Reference = new OpenApiReference
                         {
                             Type = ReferenceType.SecurityScheme,
-                            Id = "JWT"
+                            Id = "Bearer"
                         }
                     },
                     Array.Empty<string>()

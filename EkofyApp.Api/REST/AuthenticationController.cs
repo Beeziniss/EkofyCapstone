@@ -129,4 +129,19 @@ public class AuthenticationController(IAuthenticationService authenticationServi
     // [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
 
     // [AllowAnonymous, HttpPost("forgot-password")]
+
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshTokenAsync([FromBody] string oldRefreshToken) 
+    {
+        var result = await _authenticationService.RefreshNewTokenAsync(oldRefreshToken);
+        return Ok(new { Message = "Refresh Token Successfully", result });
+    }
+
+
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("logout")]
+    public async Task<IActionResult> LogoutAsync()
+    {
+        await _authenticationService.LogoutAsync();
+        return Ok(new { Message = "Logout Successfully" });
+    }
 }

@@ -16,6 +16,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -195,11 +196,22 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
         ];
 
         // Tạo access token
-        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+        AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims);
+
+        CookieOptions cookieOptions = new()
+        {
+            Secure = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            MaxAge = TimeSpan.FromDays(7)
+        };
+
+        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy", token.RefreshToken, cookieOptions);
 
         return new AuthListenerTokenResponse()
         {
-            AccessToken = accessToken,
+            AccessToken = token.AccessToken,
+            RefreshToken = token.RefreshToken,
             UserId = userListener.Id,
             ListenerId = userListener.ListenerProjection.Id,
             Role = userListener.Role,
@@ -351,11 +363,22 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
         ];
 
         // Tạo access token
-        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+        AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims);
+
+        CookieOptions cookieOptions = new()
+        {
+            Secure = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            MaxAge = TimeSpan.FromDays(7)
+        };
+
+        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy_artist", token.RefreshToken, cookieOptions);
 
         return new AuthArtistTokenResponse()
         {
-            AccessToken = accessToken,
+            AccessToken = token.AccessToken,
+            RefreshToken = token.RefreshToken,
             UserId = userArtist.Id,
             ArtistId = userArtist.ArtistProjection.Id,
             Role = userArtist.Role,
@@ -401,11 +424,22 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
         ];
 
         // Tạo access token
-        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+        AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims);
+
+        CookieOptions cookieOptions = new()
+        {
+            Secure = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            MaxAge = TimeSpan.FromDays(7)
+        };
+
+        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy_mod", token.RefreshToken, cookieOptions);
 
         return new AuthModeratorTokenResponse()
         {
-            AccessToken = accessToken,
+            AccessToken = token.AccessToken,
+            RefreshToken = token.RefreshToken,
             UserId = moderator.Id,
             Role = moderator.Role,
         };
@@ -449,13 +483,36 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
         ];
 
         // Tạo access token
-        string accessToken = _jsonWebToken.GenerateAccessToken(claims);
+        AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims);
+
+        CookieOptions cookieOptions = new()
+        {
+            Secure = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            MaxAge = TimeSpan.FromDays(7)
+        };
+
+        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy_admin", token.RefreshToken, cookieOptions);
 
         return new AuthAdminTokenResponse()
         {
-            AccessToken = accessToken,
+            AccessToken = token.AccessToken,
+            RefreshToken = token.RefreshToken,
             UserId = admin.Id,
             Role = admin.Role,
         };
+    }
+
+    public async Task<AccessTokenResponse> RefreshNewTokenAsync(string refreshToken)
+    {
+        return await _jsonWebToken.GenerateRefreshTokenAsync(refreshToken);
+    }
+
+    public async Task LogoutAsync() 
+    {         
+        string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
+                        ?? throw new UnauthorizedCustomException("You have not login yet.");
+        await _jsonWebToken.RevokeToken(userId);
     }
 }

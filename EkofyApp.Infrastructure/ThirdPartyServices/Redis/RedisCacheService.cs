@@ -13,11 +13,19 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     private readonly ILogger<RedisCacheService> _logger = logger;
 
     #region Default Methods
-    public async Task SetAsync(string key, string value, TimeSpan? expiry = null)
+    public async Task SetAsync(string key, string value, bool overrides, TimeSpan? expiry = null)
     {
         try
         {
-            await _redisDb.StringSetAsync(key, value, expiry, when: When.NotExists);
+            if (overrides)
+            {
+                await _redisDb.StringSetAsync(key, value, expiry, when: When.Exists);
+                return;
+            }
+            else
+            {
+                await _redisDb.StringSetAsync(key, value, expiry, when: When.NotExists);
+            }
         }
         catch (Exception ex)
         {
