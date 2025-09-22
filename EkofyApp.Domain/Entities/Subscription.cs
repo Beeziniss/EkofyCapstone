@@ -13,7 +13,7 @@ public sealed class Subscription : TimeStamped, IEntityCustom
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
     public string Code { get; set; } = null!; // Unique code for the subscription
-    public int Version { get; init; } = 1; // Version of the subscription, default is 1
+    public int Version { get; init; } // Version of the subscription, default is 1
 
     public decimal Amount { get; set; }
     public CurrencyType Currency { get; set; } = CurrencyType.vnd; // Default currency is vnd

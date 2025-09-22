@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Stripes;
+﻿using EkofyApp.Application.Models.ArtistPackage;
+using EkofyApp.Application.Models.Stripes;
 using Stripe;
 using Account = Stripe.Account;
 using PortalSession = Stripe.BillingPortal.Session;
@@ -11,8 +12,10 @@ public interface IStripeService
     Task<Customer> CreateCustomerAsync();
     Task CreateExpressConnectedAccount();
     Task<Account> CreateExpressConnectedAccountTest();
-    //Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest);
-    Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateCheckoutSessionRequest createCheckoutSessionRequest);
+    Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreatePaymentCheckoutSessionRequest createPaymentCheckoutSessionRequest);
+
+    //Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest);
+    Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest);
     Task<PaymentIntent> CreateTopupAsync(long amount, string currency = "usd");
     Task DeleteConnectedAccount(string accountId);
     Balance GetBalance();

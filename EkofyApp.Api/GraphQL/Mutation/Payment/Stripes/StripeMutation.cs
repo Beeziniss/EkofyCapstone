@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Stripes;
+﻿using EkofyApp.Application.Models.ArtistPackage;
+using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Payment.Stripes;
@@ -20,17 +21,17 @@ public sealed class StripeMutation(IStripeService stripeService)
         return accountLink;
     }
 
-    //public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
-    //{
-    //    if(!await _stripeService.IsCustomerIdExisted())
-    //    {
-    //        await _stripeService.CreateCustomerAsync();
-    //    }
+    public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreatePaymentCheckoutSessionRequest createPaymentCheckoutSessionRequest)
+    {
+        if (!await _stripeService.IsCustomerIdExisted())
+        {
+            await _stripeService.CreateCustomerAsync();
+        }
 
-    //    return await _stripeService.CreatePaymentCheckoutSessionAsync(createCheckoutSessionRequest);
-    //}
+        return await _stripeService.CreatePaymentCheckoutSessionAsync(createPaymentCheckoutSessionRequest);
+    }
 
-    public async Task<CheckoutSessionResponse> CreateSubscriotionCheckoutSessionAsync(CreateCheckoutSessionRequest createCheckoutSessionRequest)
+    public async Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSessionAsync(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest)
     {
         if (!await _stripeService.IsCustomerIdExisted())
         {

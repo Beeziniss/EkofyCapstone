@@ -23,58 +23,65 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
 
         public async Task CreateArtistPackageAsync(CreateArtistPackageRequest createRequest)
         {
+            long currentVersion = await _unitOfWork.GetCollection<ArtistPackage>()
+                 .Find(x => x.PackageName == createRequest.PackageName)
+                 .SortByDescending(ap => ap.Version)
+                 .Project(ap => ap.Version)
+                 .FirstOrDefaultAsync();
+
             await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(new ArtistPackage
             {
                 Id = ObjectId.GenerateNewId().ToString(),
                 PackageName = createRequest.PackageName,
-                Price = createRequest.Price,
+                Amount = createRequest.Amount,
                 EstimateDeliveryDays = createRequest.EstimateDeliveryDays,
                 Description = createRequest.Description,
                 ServiceDetails = createRequest.ServiceDetails,
-                Status = ArtistPackageStatus.Pending
+                Status = ArtistPackageStatus.Pending,
+                Version = ++currentVersion,
             });
         }
 
-        public async Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
-        {
+        //public async Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
+        //{
 
-            List<UpdateDefinition<ArtistPackage>> updateDefinition = [];
-            UpdateDefinitionBuilder<ArtistPackage> builder = Builders<ArtistPackage>.Update;
+        //    List<UpdateDefinition<ArtistPackage>> updateDefinition = [];
+        //    UpdateDefinitionBuilder<ArtistPackage> builder = Builders<ArtistPackage>.Update;
 
-            if(!string.IsNullOrEmpty(updateRequest.PackageName))
-            {
-                updateDefinition.Add(builder.Set(ap => ap.PackageName, updateRequest.PackageName));
-            }
-            if(updateRequest.Price > 0)
-            {
-                updateDefinition.Add(builder.Set(ap => ap.Price, updateRequest.Price));
-            }
-            if(updateRequest.EstimateDeliveryDays > 0)
-            {
-                updateDefinition.Add(builder.Set(ap => ap.EstimateDeliveryDays, updateRequest.EstimateDeliveryDays));
-            }
-            if(!string.IsNullOrEmpty(updateRequest.Description))
-            {
-                updateDefinition.Add(builder.Set(ap => ap.Description, updateRequest.Description));
-            }
-            if(!string.IsNullOrEmpty(updateRequest.ServiceDetails))
-            {
-                updateDefinition.Add(builder.Set(ap => ap.ServiceDetails, updateRequest.ServiceDetails));
-            }
+        //    if(!string.IsNullOrEmpty(updateRequest.PackageName))
+        //    {
+        //        updateDefinition.Add(builder.Set(ap => ap.PackageName, updateRequest.PackageName));
+        //    }
+        //    if(updateRequest.Amount > 0)
+        //    {
+        //        updateDefinition.Add(builder.Set(ap => ap.Amount, updateRequest.Amount));
+        //    }
+        //    if(updateRequest.EstimateDeliveryDays > 0)
+        //    {
+        //        updateDefinition.Add(builder.Set(ap => ap.EstimateDeliveryDays, updateRequest.EstimateDeliveryDays));
+        //    }
+        //    if(!string.IsNullOrEmpty(updateRequest.Description))
+        //    {
+        //        updateDefinition.Add(builder.Set(ap => ap.Description, updateRequest.Description));
+        //    }
+        //    if(!string.IsNullOrEmpty(updateRequest.ServiceDetails))
+        //    {
+        //        updateDefinition.Add(builder.Set(ap => ap.ServiceDetails, updateRequest.ServiceDetails));
+        //    }
 
-            UpdateDefinition<ArtistPackage> combinedUpdate = builder.Combine(updateDefinition);
+        //    UpdateDefinition<ArtistPackage> combinedUpdate = builder.Combine(updateDefinition);
 
-            var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.Id == updateRequest.Id, combinedUpdate);
+        //    var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.Id == updateRequest.Id, combinedUpdate);
 
-            if(result.MatchedCount == 0)
-            {
-                throw new Exception("Artist package not found.");
-            }
-            if(result.ModifiedCount == 0)
-            {
-                throw new Exception("No changes were made to the artist package.");
-            }
-        }
+        //    if(result.MatchedCount == 0)
+        //    {
+        //        throw new Exception("Artist package not found.");
+        //    }
+        //    if(result.ModifiedCount == 0)
+        //    {
+        //        throw new Exception("No changes were made to the artist package.");
+        //    }
+        //}
 
         public async Task ChangeArtistPackageStatus(UpdateStatusArtistPackageRequest updateStatusRequest)
         {

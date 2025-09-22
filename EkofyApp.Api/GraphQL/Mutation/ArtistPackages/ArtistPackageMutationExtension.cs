@@ -8,8 +8,8 @@
             descriptor.Field(x => x.CreateArtistPackageAsync(default!))
                 .Authorize(roles: "Artist");
 
-            descriptor.Field(x => x.UpdateArtistPackageAsync(default!))
-                .Authorize(roles: "Artist");
+            //descriptor.Field(x => x.UpdateArtistPackageAsync(default!))
+            //    .Authorize(roles: "Artist");
 
             descriptor.Field(x => x.ChangeArtistPackageStatusAsync(default!))
                 .Authorize(roles: "Artist");

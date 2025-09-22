@@ -8,7 +8,6 @@ using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using HotChocolate.Execution.Processing;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -189,8 +188,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             string stripeSubscriptionId = invoice.Parent.SubscriptionDetails.SubscriptionId;
                             string stripeProductId = invoice.Lines.Data[0].Pricing.PriceDetails.Product;
 
-                            
-
                             switch (invoice.BillingReason)
                             {
                                 case "subscription_create":
@@ -233,7 +230,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         //    .Project<SubscriptionPlan>(projection)
                                         //    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active currentSubscription");
 
-                                        // Lấy interval từ Stripe Price
+                                        // Lấy interval từ Stripe Amount
                                         PriceService priceService = new();
                                         Price price = await priceService.GetAsync(stripePriceId);
                                         string interval = price.Recurring.Interval; // "day", "week", "month", or "year"
