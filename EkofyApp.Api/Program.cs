@@ -110,10 +110,10 @@ public sealed class Program
             });
             //app.UseSwaggerUI();
         }
-        
-        //app.UseHangfireDashboard("/hangfire");
-        //app.UseHangfireServer();
-        //app.ConfigureJobs();
+
+        app.UseHangfireDashboard("/hangfire");
+        app.UseHangfireServer();
+        app.ConfigureJobs();
 
         app.UseHttpsRedirection();
 
