@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using Hangfire;
@@ -11,10 +13,8 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Serilog;
 using StackExchange.Redis;
-using Stripe.Forwarding;
 using System.Net;
 using System.Net.Mail;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace EkofyApp.Infrastructure.Services.Jobs;
 public class BackgoundService : IBackgoundService
@@ -35,6 +35,7 @@ public class BackgoundService : IBackgoundService
         Console.WriteLine("Test Background Job is running...");
         Console.WriteLine($"Test Background Job has completed: {DateTime.Now}");
     }
+
 
 
     [Queue("default")]
@@ -75,17 +76,28 @@ public class BackgoundService : IBackgoundService
     }
 
 
+    [Queue("scheduled")]
+    [JobDisplayName("Scheduled Job Example")]
+    public async Task MonthlyRoyaltyReportJob()
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var royaltyReportService = scope.ServiceProvider.GetRequiredService<IRoyaltyReportService>();
+        await royaltyReportService.GenerateMonthlyRoyaltyReportsAsync(DateTime.Now.Month, DateTime.Now.Year);
+    }
+
+
     #region Stream Count Job
-    [Queue("default")]
+    [Queue("track_count")]
     [JobDisplayName("Update Stream Count")]
     public async Task UpdateStreamCountJob()
     {
         try
         {
             using var scope = _serviceScopeFactory.CreateScope();
-
+            //tạo 
             var redis = scope.ServiceProvider.GetRequiredService<IRedisCacheService>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var monthlyStreamCountService = scope.ServiceProvider.GetRequiredService<IMonthlyStreamCountService>();
 
             string pattern = "stream_count:*";
             string[] keyList = redis.GetAllKeysByPattern(pattern);
@@ -95,7 +107,10 @@ public class BackgoundService : IBackgoundService
             {
                 return;
             }
-            var tasks = keyList.Select(key => UpdateIntoMongoDB(key, redis, unitOfWork));
+            var tasks = keyList.Select(async key =>
+            {
+                await UpdateIntoMongoDB(key, redis, unitOfWork, monthlyStreamCountService);
+            });
             await Task.WhenAll(tasks);
         }
         catch (Exception ex)
@@ -105,11 +120,8 @@ public class BackgoundService : IBackgoundService
 
     }
 
-    private async Task UpdateIntoMongoDB(string key, IRedisCacheService redis, IUnitOfWork unitOfWork)
+    private async Task UpdateIntoMongoDB(string key, IRedisCacheService redis, IUnitOfWork unitOfWork,  IMonthlyStreamCountService monthlyStreamCountService)
     {
-        //string[] keyParts = key.Split(':');
-        //string userId = keyParts[1];
-
 
         HashEntry[]? hashEntry = await redis.HashGetAllAsync(key);
 
@@ -132,12 +144,9 @@ public class BackgoundService : IBackgoundService
                 //update rồi giảm count trong redis để tránh update lại cái cũ cho lần sau
                 await unitOfWork.GetCollection<Track>().UpdateOneAsync(rh => rh.Id == trackId, updateDefinition);
                 await redis.HashDecrementAsync(key, trackId, playedCount);
-            }
-            //else
-            //{
-            //    continue;
-            //}
 
+                await monthlyStreamCountService.UpsertMonthlyStreamCountAsync(trackId, playedCount, DateTime.Now.Month, DateTime.Now.Year);
+            }
         }
     }
     #endregion
