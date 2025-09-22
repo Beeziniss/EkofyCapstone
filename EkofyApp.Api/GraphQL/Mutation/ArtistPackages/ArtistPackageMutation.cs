@@ -15,11 +15,11 @@ namespace EkofyApp.Api.GraphQL.Mutation.ArtistPackages
             return true;
         }
 
-        public async Task<bool> UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
-        {
-            await _artistPackageService.UpdateArtistPackageAsync(updateRequest);
-            return true;
-        }
+        //public async Task<bool> UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
+        //{
+        //    await _artistPackageService.UpdateArtistPackageAsync(updateRequest);
+        //    return true;
+        //}
         public async Task<bool> ChangeArtistPackageStatusAsync(UpdateStatusArtistPackageRequest updateStatusRequest)
         {
             await _artistPackageService.ChangeArtistPackageStatus(updateStatusRequest);

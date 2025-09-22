@@ -8,7 +8,7 @@ namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
         IQueryable<ArtistPackage> GetArtistPackages();
         Task ChangeArtistPackageStatus(UpdateStatusArtistPackageRequest updateStatusRequest);
         Task CreateArtistPackageAsync(CreateArtistPackageRequest createRequest);
-        Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest);
+        //Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest);
         Task ApproveArtistPackage(UpdateStatusArtistPackageRequest updateStatusRequest);
     }
 }

@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Application.Models.Stripes;
-public sealed record class CreateCheckoutSessionRequest
+public sealed record class CreateSubscriptionCheckoutSessionRequest
 {
     public string SubscriptionCode { get; init; } = null!;
     //public SubscriptionTier SubscriptionTier { get; init; }

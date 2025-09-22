@@ -25,13 +25,19 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
 
     public async Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest)
     {
+        int currentVersion = await _unitOfWork.GetCollection<Subscription>()
+            .Find(x => x.Tier == createSubscriptionRequest.Tier)
+            .SortByDescending(x => x.Version)
+            .Project(x => x.Version)
+            .FirstOrDefaultAsync();
+
         await _unitOfWork.GetCollection<Subscription>().InsertOneAsync(new Subscription
         {
             Name = createSubscriptionRequest.Name,
             Description = createSubscriptionRequest.Description,
             Code = createSubscriptionRequest.Code,
-            Version = createSubscriptionRequest.Version,
             Amount = createSubscriptionRequest.Price,
+            Version = ++currentVersion,
             Tier = createSubscriptionRequest.Tier,
             Status = createSubscriptionRequest.Status,
         });
