@@ -259,8 +259,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                             Description = artistPackage.Description,
                         }
                     },
-                    Quantity = 1
-                }
+                    Quantity = 1,
+                },
             ],
             Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
             Mode = "payment",
@@ -270,6 +270,16 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             {
                 ReceiptEmail = createPaymentCheckoutSessionRequest.IsReceiptEmail ? user.Email : null, // Gửi biên lai về email của customer
                 SetupFutureUsage = createPaymentCheckoutSessionRequest.IsSavePaymentMethod ? "off_session" : null, // Lưu thẻ để thanh toán các lần sau
+            },
+            Metadata = new Dictionary<string, string>
+            {
+                { "is_subscription", "false" },
+                { "package_id", artistPackage.Id },
+                { "package_name", artistPackage.PackageName },
+                { "package_amount", artistPackage.Amount.ToString() },
+                { "package_currency", artistPackage.Currency.ToString() },
+                { "package_description", artistPackage.Description ?? string.Empty },
+                { "package_status", artistPackage.Status.ToString() },
             },
             //InvoiceCreation = new SessionInvoiceCreationOptions
             //{
@@ -291,16 +301,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
         {
             UserId = userId,
-            OneOffSnapshot = new()
-            {
-                PackageName = artistPackage.PackageName,
-                PackageAmount = artistPackage.Amount,
-                PackageCurrency = artistPackage.Currency,
-                Description = artistPackage.Description,
-                //ServiceDetails = artistPackage.ServiceDetails,
-                Status = artistPackage.Status,
-            },
-
             StripeCheckoutSessionId = checkoutSession.Id,
             StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
             StripePaymentMethod = checkoutSession.PaymentMethodTypes,
@@ -419,6 +419,12 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                     { "intervalCount",  subscriptionPlan.SubscriptionPlanPrices.First().IntervalCount.ToString()}
                 }
             },
+            Metadata = new Dictionary<string, string>
+            {
+                { "is_subscription", "true" },
+                { "subscription_code", subscription.Code },
+                { "subscription_period", createCheckoutSessionRequest.Period.ToString() },
+            },
         };
 
         CheckoutOption.SessionService service = new();
@@ -431,30 +437,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
         {
             UserId = userId,
-            // Subscription
-            //SubscriptionId = subscription.Id,
-            SubscriptionSnapshot = new()
-            {
-                SubscriptionName = subscription.Name,
-                SubscriptionDescription = subscription.Description,
-                SubscriptionCode = subscription.Code,
-                SubscriptionVersion = subscription.Version,
-                SubscriptionAmount = subscription.Amount,
-                SubscriptionCurrency = subscription.Currency,
-                SubscriptionTier = subscription.Tier,
-                SubscriptionStatus = subscription.Status,
-
-                // Subscription Plan
-                //SubscriptionPlanId = subscriptionPlan.Id,
-                SubscriptionPlanPrices = subscriptionPlan.SubscriptionPlanPrices,
-                StripeProductId = subscriptionPlan.StripeProductId,
-                StripeProductActive = subscriptionPlan.StripeProductActive,
-                StripeProductName = subscriptionPlan.StripeProductName,
-                StripeProductImages = subscriptionPlan.StripeProductImages,
-                StripeProductType = subscriptionPlan.StripeProductType,
-                StripeProductMetadata = subscriptionPlan.StripeProductMetadata,
-            },
-
             StripeCheckoutSessionId = checkoutSession.Id,
             StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
             StripePaymentMethod = checkoutSession.PaymentMethodTypes,
