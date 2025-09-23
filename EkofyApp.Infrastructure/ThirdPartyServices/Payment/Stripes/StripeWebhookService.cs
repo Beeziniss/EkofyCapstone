@@ -2,12 +2,14 @@
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using HotChocolate.Execution.Processing;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -374,14 +376,73 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                     Transaction transaction = await _unitOfWork.GetCollection<Transaction>().FindOneAndUpdateAsync(session, Builders<Transaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
 
+                    OneOffSnapshot? oneOffSnapshot = null;
+                    SubscriptionSnapshot? subscriptionSnapshot = null;
+                    if (Convert.ToBoolean(checkoutSession.Metadata["is_subscription"]))
+                    {
+                        Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
+                            .Find(x => x.Code == checkoutSession.Metadata["subscription_code"] &&
+                                x.Status == SubscriptionStatus.Active)
+                            //.Project<Subscription>(Builders<Subscription>.Projection
+                            //    .Include(x => x.Id))
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
+
+                        SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
+                            .Find(x => x.SubscriptionId == subscription.Id && x.StripeProductActive == true)
+                            .Project<SubscriptionPlan>(Builders<SubscriptionPlan>.Projection
+                                .Include(x => x.Id)
+                                .Include(x => x.SubscriptionPlanPrices)
+                                .Include(x => x.StripeProductId)
+                                .Include(x => x.StripeProductActive)
+                                .Include(x => x.StripeProductName)
+                                .Include(x => x.StripeProductImages)
+                                .Include(x => x.StripeProductType)
+                                .Include(x => x.StripeProductMetadata)
+                                .ElemMatch(x => x.SubscriptionPlanPrices, p => p.Interval == Enum.Parse<PeriodTime>(checkoutSession.Metadata["subscription_period"])))
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found subscription plan's price.");
+
+                        subscriptionSnapshot = new()
+                        {
+                            SubscriptionName = subscription.Name,
+                            SubscriptionDescription = subscription.Description,
+                            SubscriptionCode = subscription.Code,
+                            SubscriptionVersion = subscription.Version,
+                            SubscriptionAmount = subscription.Amount,
+                            SubscriptionCurrency = subscription.Currency,
+                            SubscriptionTier = subscription.Tier,
+                            SubscriptionStatus = subscription.Status,
+
+                            // Subscription Plan
+                            SubscriptionPlanPrices = subscriptionPlan.SubscriptionPlanPrices,
+                            StripeProductId = subscriptionPlan.StripeProductId,
+                            StripeProductActive = subscriptionPlan.StripeProductActive,
+                            StripeProductName = subscriptionPlan.StripeProductName,
+                            StripeProductImages = subscriptionPlan.StripeProductImages,
+                            StripeProductType = subscriptionPlan.StripeProductType,
+                            StripeProductMetadata = subscriptionPlan.StripeProductMetadata,
+                        };
+                    }
+                    else
+                    {
+                        oneOffSnapshot = new()
+                        {
+                            PackageName = checkoutSession.Metadata["package_name"],
+                            PackageAmount = Convert.ToDecimal(checkoutSession.Metadata["package_amount"]),
+                            PackageCurrency = Enum.Parse<CurrencyType>(checkoutSession.Metadata["package_currency"]),
+                            Description = checkoutSession.Metadata["package_description"],
+                            //ServiceDetails = artistPackage.ServiceDetails,
+                            Status = Enum.Parse<ArtistPackageStatus>(checkoutSession.Metadata["package_status"]),
+                        };
+                    }
+
                     // Tạo Invoice
                     await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
                     {
                         UserId = transaction.UserId,
                         TransactionId = transaction.Id,
 
-                        StripePaymentId = checkoutSession.PaymentIntentId,
-                        StripePaymentMethod = checkoutSession.PaymentMethodTypes,
+                        OneOffSnapshot = oneOffSnapshot,
+                        SubscriptionSnapshot = subscriptionSnapshot,
 
                         OriginContext = checkoutSession.OriginContext,
 

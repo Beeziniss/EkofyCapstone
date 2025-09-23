@@ -15,9 +15,6 @@ public sealed class Transaction : TimeStamped, IEntityCustom // Snapshot of a pa
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!;
 
-    public OneOffSnapshot? OneOffSnapshot { get; set; } // Snapshot of the one-off purchase at the time of transaction
-    public SubscriptionSnapshot? SubscriptionSnapshot { get; set; } // Snapshot of the subscription at the time of transaction
-
     #region Stripe
     public string StripeCheckoutSessionId { get; set; } = null!; // ID of the Checkout Session in Stripe
     public string? StripePaymentId { get; set; }// ID of the payment in Stripe

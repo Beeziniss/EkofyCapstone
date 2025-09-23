@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -14,6 +15,9 @@ public sealed class Invoice : IEntityCustom // Snapshot
     [BsonRepresentation(BsonType.ObjectId)]
     public string TransactionId { get; set; } = null!;
 
+    public OneOffSnapshot? OneOffSnapshot { get; set; } // Snapshot of the one-off purchase
+    public SubscriptionSnapshot? SubscriptionSnapshot { get; set; } // Snapshot of the subscription
+
     #region Stripe
     //public string StripeInvoiceId { get; set; } = null!; // ID of the invoice in Stripe
     //public string StripeInvoiceNumber { get; set; } = null!; // e.g., "0001"
@@ -21,8 +25,8 @@ public sealed class Invoice : IEntityCustom // Snapshot
     //public string StripeInvoiceDescription { get; set; } = null!; // Description of the invoice
     //public string StripeInvoiceStatementDescriptor { get; set; } = null!; // Statement descriptor for the invoice
 
-    public string StripePaymentId { get; set; } = null!; // ID of the payment in Stripe
-    public List<string> StripePaymentMethod { get; set; } = null!; // e.g., "visa", "master_card", "link"
+    //public string StripePaymentId { get; set; } = null!; // ID of the payment in Stripe
+    //public List<string> StripePaymentMethod { get; set; } = null!; // e.g., "visa", "master_card", "link"
     #endregion
 
     public string FullName { get; set; } = null!;
