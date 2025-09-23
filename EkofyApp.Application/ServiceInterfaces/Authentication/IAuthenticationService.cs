@@ -4,6 +4,7 @@ using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.Models.Auth.Moderators;
 using EkofyApp.Application.Models.Users;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 
 namespace EkofyApp.Application.ServiceInterfaces.Authentication;
 public interface IAuthenticationService
@@ -13,6 +14,8 @@ public interface IAuthenticationService
     Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest);
     Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest);
     Task<AuthModeratorTokenResponse> LoginModeratorAsync(LoginRequest loginRequest);
+    Task LogoutAsync();
+    Task<AccessTokenResponse> RefreshNewTokenAsync(string refreshToken);
     Task RegisterArtistAsync(ArtistRegisterRequest registerRequest);
     Task RegisterListenerAsync(ListenerRegisterRequest registerRequest);
 }

@@ -110,7 +110,7 @@ public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
     {
-        //services.AddHangfire();
+        services.AddHangfire();
 
         //services.AddAutoMapper(typeof(MappingProfile)); // OLD VERSION 14.0.1
         services.AddAutoMapperExtension();
@@ -683,7 +683,7 @@ public static class DependencyInjection
         //lấy đường dẫn Mongo làm storage cho hangfire
         string mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
 
-        string DatabaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE") ?? throw new UnconfiguredEnvironmentCustomException("MONGODB_HANGFIRE_STORAGE is not set in the environment variables");
+        string databaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE") ?? throw new UnconfiguredEnvironmentCustomException("MONGODB_HANGFIRE_STORAGE is not set in the environment variables");
 
         //đăng ký Hangfire với MongoDB
         service.AddHangfire(configuration => configuration
@@ -692,24 +692,27 @@ public static class DependencyInjection
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             //cấu hình Storage
-            .UseMongoStorage(mongoConnectionString.ToString(), DatabaseName, new MongoStorageOptions
+            .UseMongoStorage(mongoConnectionString.ToString(), databaseName, new MongoStorageOptions
             {
                 MigrationOptions = new MongoMigrationOptions
                 {
                     //tự động xử lý khi có sự thay đổi cấu trúc dữ liệu
                     MigrationStrategy = new MigrateMongoMigrationStrategy(),
                     //sao lưu dữ liệu cũ trước khi thay đổi cấu trúc
-                    BackupStrategy = new CollectionMongoBackupStrategy()
+                    BackupStrategy = new CollectionMongoBackupStrategy(),
                 },
                 Prefix = "backgroundjobs.hangfire",
                 CheckConnection = false,
+                
                 //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
             }));
+
 
         //đăng ký Hangfire server
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
+            ServerOptions.Queues = new[] { "scheduled", "email", "track_upload", "track_count" };
         });
 
         // Background Jobs Services

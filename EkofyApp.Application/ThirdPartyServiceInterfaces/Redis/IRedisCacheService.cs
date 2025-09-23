@@ -4,7 +4,7 @@ using StackExchange.Redis;
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 public interface IRedisCacheService
 {
-    Task SetAsync(string key, string value, TimeSpan? expiry = null);
+    Task SetAsync(string key, string value, bool overrides, TimeSpan? expiry = null);
     Task SetAsync<T>(string key, T value, TimeSpan? expiry = null);
     Task<string?> GetAsync(string key);
     bool TryGet(string key, out string? value);
