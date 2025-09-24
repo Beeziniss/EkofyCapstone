@@ -203,7 +203,7 @@ public static class DependencyInjection
         };
 
         ConfigurationOptions options;
-        if(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {
             options = new()
             {
@@ -214,7 +214,7 @@ public static class DependencyInjection
                 AbortOnConnectFail = false
             };
         }
-        else if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+        else
         {
             options = new()
             {
@@ -225,10 +225,10 @@ public static class DependencyInjection
                 AbortOnConnectFail = false
             };
         }
-        else
-        {
-            throw new PlatformNotSupportedException("Unsupported operating system for Redis configuration.");
-        }
+        //else
+        //{
+        //    throw new PlatformNotSupportedException("Unsupported operating system for Redis configuration.");
+        //}
 
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(options));
         //services.AddSingleton<IConnectionMultiplexer>(sp =>

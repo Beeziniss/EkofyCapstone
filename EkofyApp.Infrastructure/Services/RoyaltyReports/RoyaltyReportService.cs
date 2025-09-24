@@ -11,6 +11,7 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.RoyaltyReports;
 public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService, IStripeService stripeService) : IRoyaltyReportService
@@ -182,6 +183,57 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             }
 
             // Transfer tiền royalty ở đây
+            List<PayoutTransaction> payoutTransactions = [];
+
+            List<RoyaltySplit> royaltySplits = royaltyReports.SelectMany(r => r.RoyaltySplits).ToList();
+            List<string> userIds = royaltySplits.Select(s => s.UserId).Distinct().ToList();
+            Dictionary<string, long> userIdAmount = royaltySplits
+                .GroupBy(s => s.UserId)
+                .ToDictionary(g => g.Key, g => Convert.ToInt64(g.Sum(s => s.Amount))); // Stripe amount cần long
+
+            var users = await _unitOfWork.GetCollection<User>()
+                .Find(x => userIdAmount.ContainsKey(x.Id))
+                .Project(x => new { x.Id, x.StripeAccountId })
+                .ToListAsync(ct);
+
+            Dictionary<string, string?> userIdToStripeAccount = users
+                .ToDictionary(k => k.Id, v => v.StripeAccountId);
+
+
+            TransferService transferService = new();
+            string groupId = $"royalty-{month}-{year}-{ObjectId.GenerateNewId()}";
+
+            // Chuyển theo group
+            foreach (KeyValuePair<string, long> item in userIdAmount)
+            {
+                if (string.IsNullOrEmpty(item.Key) || item.Value <= 0)
+                {
+                    throw new ConflictCustomException($"Invalid userId or amount for transfer: userId={item.Key}, amount={item.Value}");
+                }
+
+                transferService.Create(new TransferCreateOptions
+                {
+                    Amount = item.Value, // Stripe amount cần long
+                    Currency = CurrencyType.vnd.ToString(),
+                    Destination = userIdToStripeAccount[$"{item.Key}"],
+                    TransferGroup = groupId,
+                    Description = $"Royalty payout for {month}/{year}"
+                });
+            }
+            
+
+            //foreach (string? artistAccountId in artistAccountIds)
+            //{
+            //    transferService.Create(new TransferCreateOptions
+            //    {
+            //        Amount = amount,
+            //        Currency = CurrencyType.vnd.ToString(),
+            //        Destination = artistAccountId,
+            //        TransferGroup = groupId,
+            //        Description = "Royalty payout for streaming"
+            //    });
+            //}
+
             foreach (RoyaltyReport report in royaltyReports)
             {
                 foreach (RoyaltySplit split in report.RoyaltySplits)
@@ -209,7 +261,8 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         Description = transferResponse.Description,
                     };
 
-                    await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(session, payoutTransaction, cancellationToken: ct);
+                    //await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(session, payoutTransaction, cancellationToken: ct);
+                    payoutTransactions.Add(payoutTransaction);
                 }
             }
         });

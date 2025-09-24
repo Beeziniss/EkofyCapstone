@@ -3,6 +3,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using Xabe.FFmpeg;
 
@@ -10,19 +11,44 @@ namespace EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 public sealed class FfmpegService : IFfmpegService
 {
     private readonly string _ffmpegPath;
+    private readonly ILogger<FfmpegService> _logger;
 
-    public FfmpegService()
+    public FfmpegService(ILogger<FfmpegService> logger)
     {
+        // Thiết lập đường dẫn FFmpeg
         _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "Tools");
         _ffmpegPath = Path.GetFullPath(_ffmpegPath);
 
         FFmpeg.SetExecutablesPath(_ffmpegPath);
 
-        if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg.exe")) &&
-            !File.Exists(Path.Combine(_ffmpegPath, "ffprobe.exe")))
+        if (HelperMethod.IsWindows())
         {
-            throw new FileNotFoundException($"FFmpeg not found in path: {_ffmpegPath}");
+            _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "Tools");
+            _ffmpegPath = Path.GetFullPath(_ffmpegPath);
+
+            if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg.exe")) &&
+            !File.Exists(Path.Combine(_ffmpegPath, "ffprobe.exe")))
+            {
+                throw new FileNotFoundException($"FFmpeg not found in path: {_ffmpegPath}");
+            }
         }
+        else if (HelperMethod.IsLinux())
+        {
+            _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "/app/Tools");
+            _ffmpegPath = Path.GetFullPath(_ffmpegPath);
+
+            if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg")) &&
+            !File.Exists(Path.Combine(_ffmpegPath, "ffprobe")))
+            {
+                throw new FileNotFoundException($"FFmpeg not found in path: {_ffmpegPath}");
+            }
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("Only Windows and Linux are supported.");
+        }
+
+        _logger = logger;
     }
 
     // Convert IFormFile to Waveform Audio File
@@ -138,11 +164,11 @@ public sealed class FfmpegService : IFfmpegService
         catch
         {
             // Xoá thư mục tạm nếu có lỗi xảy ra
-            HelperMethod.DeleteBatchIO(outputFolderTempPath);
-            //if (Directory.Exists(outputFolderTempPath))
-            //{
-            //    Directory.Delete(outputFolderTempPath, true);
-            //}
+            //HelperMethod.DeleteBatchIO(outputFolderTempPath);
+            if (Directory.Exists(outputFolderTempPath))
+            {
+                Directory.Delete(outputFolderTempPath, true);
+            }
         }
 
         return new WavFileResponse()
@@ -239,19 +265,25 @@ public sealed class FfmpegService : IFfmpegService
 
             await File.WriteAllLinesAsync(masterFilePath, lines);
         }
-        catch
+        catch (Exception ex)
         {
-            //if (File.Exists(wavFileResponse.OutputWavPath))
-            //{
-            //    File.Delete(wavFileResponse.OutputWavPath);
-            //}
+            Console.WriteLine("==============================");
+            Console.WriteLine("HLSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
+            Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+            Console.WriteLine("==============================");
+            _logger.LogError("Error during HLS conversion for WAV: {WavPath}", ex);
+            if (File.Exists(wavFileResponse.OutputWavPath))
+            {
+                File.Delete(wavFileResponse.OutputWavPath);
+            }
 
-            //if (Directory.Exists(outputFolder))
-            //{
-            //    Directory.Delete(outputFolder, true); // Xóa cả file bên trong
-            //}
+            if (Directory.Exists(outputFolder))
+            {
+                Directory.Delete(outputFolder, true); // Xóa cả file bên trong
+            }
 
-            HelperMethod.DeleteBatchIO(outputFolder, wavFileResponse.OutputWavPath);
+
+            //HelperMethod.DeleteBatchIO(outputFolder, wavFileResponse.OutputWavPath);
         }
         finally
         {

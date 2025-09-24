@@ -4,7 +4,9 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using SoundFingerprinting.Audio;
 using SoundFingerprinting.Builder;
@@ -13,9 +15,10 @@ using SoundFingerprinting.InMemory;
 using SoundFingerprinting.Query;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
-public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFingerprintService
+public sealed class AudioFingerprintService(IUnitOfWork unitOfWork, ILogger<AudioFingerprintService> logger) : IAudioFingerprintService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly ILogger<AudioFingerprintService> _logger = logger;
 
     public async Task<AudioFingerprint> GenerateFingerprint(WavFileResponse wavFileResponse)
     {
@@ -111,9 +114,11 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
             }
             #endregion
         }
-        catch
+        catch(Exception ex)
         {
             // Nếu có lỗi xảy ra trong quá trình so sánh, không cần làm gì cả
+            _logger.LogError(ex, "Error occurred while getting match confidence score.");
+
             if (File.Exists(wavFileResponse.OutputWavPath))
             {
                 File.Delete(wavFileResponse.OutputWavPath);
@@ -123,9 +128,9 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork) : IAudioFing
         {
             // Gọi GC để giải phóng bộ nhớ và đảm bảo không có rò rỉ bộ nhớ
             // Việc gọi GC không phải lúc nào cũng cần thiết, nhưng trong trường hợp này
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+            //GC.Collect();
+            //GC.WaitForPendingFinalizers();
+            //GC.Collect();
         }
 
         return new()
