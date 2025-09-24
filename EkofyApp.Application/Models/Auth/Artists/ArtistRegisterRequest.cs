@@ -14,7 +14,7 @@ public sealed record class ArtistRegisterRequest
     public string PhoneNumber { get; init; } = null!; // Optional phone number for the user
 
     // Special fields for artist registration
-    public bool IsLegalRepresentative { get; init; } // Indicates if the user is the representative of the artist
+    //public bool IsLegalRepresentative { get; init; } // Indicates if the user is the representative of the artist
 
     // For the artist profile
     public string StageName { get; init; } = default!; // DisplayName of the artist

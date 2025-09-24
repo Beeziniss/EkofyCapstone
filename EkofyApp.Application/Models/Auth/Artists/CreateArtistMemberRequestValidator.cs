@@ -26,6 +26,6 @@ public sealed class CreateArtistMemberRequestValidator : AbstractValidator<Creat
             .Matches(HelperMethod.RegexPatternPhoneNumber()).WithMessage("Invalid phone number format.");
 
         RuleFor(x => x.Gender)
-            .IsInEnum().WithMessage("");
+            .IsInEnum().WithMessage("Gender is required");
     }
 }
