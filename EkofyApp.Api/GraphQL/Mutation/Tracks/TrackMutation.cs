@@ -40,6 +40,8 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
             {
                 // Kiểm tra bản quyền
                 (double confidence, string trackId, string trackName) = await CheckTrackFingerprintAsync(stream);
+                stream.Position = 0;
+
                 switch (confidence)
                 {
                     case > 0.8:
@@ -57,6 +59,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                             // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
                             await ApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+                            stream.Position = 0;
 
                             return true;
                         }
@@ -64,6 +67,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                     default:
                         {
                             await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+                            stream.Position = 0;
 
                             return true;
                         }
@@ -80,59 +84,87 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
 
         internal async Task ApproveAutomaticallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
         {
-            // Duyệt tự động -> Lưu xuống database
-            string tempName = ObjectId.GenerateNewId().ToString();
-
-            // Convert sang WAV
-            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
-
-            // Convert file sang định dạng wav
-            WavFileResponse wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
-
-            // Tạo track temp
-            TrackTempRequest trackTempRequest = _trackService.CreateTrackTemp(createTrackRequest);
-            WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
-            RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
-
-            // Tạo hls từ file wav
-            AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
-            string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
-
-            AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
-            AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
-
-            // Xác định mood của track dựa trên đặc trưng âm thanh
-            IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(audioAnalysisResponse);
-
-            TrackTempResponse trackTempResponse = new()
+            string outputHlsPath = string.Empty;
+            WavFileResponse wavFileResponse = default!;
+            try
             {
-                Id = trackTempRequest.Id,
-                Name = trackTempRequest.Name,
-                Description = trackTempRequest.Description,
-                MainArtistIds = trackTempRequest.MainArtistIds,
-                FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
-                CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
-                Tags = trackTempRequest.Tags,
-                CoverImage = trackTempRequest.CoverImage,
-                PreviewVideo = trackTempRequest.PreviewVideo,
-                IsExplicit = trackTempRequest.IsExplicit,
-                Lyrics = trackTempRequest.Lyrics,
-                ReleaseInfo = trackTempRequest.ReleaseInfo,
-                AudioFingerprint = audioFingerprint,
-                AudioFeature = audioAnalysisResponse,
-                CreatedBy = trackTempRequest.CreatedBy,
-            };
+                // Duyệt tự động -> Lưu xuống database
+                string tempName = ObjectId.GenerateNewId().ToString();
 
-            await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+                //Console.WriteLine("===================================");
+                //Console.WriteLine($"Temp Name: {tempName}");
+                //Console.WriteLine("===================================");
 
-            // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
-            await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
+                // Convert sang WAV
+                AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
 
-            // Đẩy hls playlist lên S3
-            await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+                // Convert file sang định dạng wav
+                wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
 
-            // Xóa folder, file tạm sau khi upload lên S3
-            HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+                //Console.WriteLine("===================================");
+                //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+                //Console.WriteLine($"File Exists? {File.Exists(wavFileResponse.OutputWavPath)}");
+                //Console.WriteLine("===================================");
+
+                // Tạo track temp
+                TrackTempRequest trackTempRequest = _trackService.CreateTrackTemp(createTrackRequest);
+                WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
+                RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
+
+                // Tạo hls từ file wav
+                AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
+                outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+
+                //Console.WriteLine("===================================");
+                //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+                //Console.WriteLine("===================================");
+
+                AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
+                AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+
+                // Xác định mood của track dựa trên đặc trưng âm thanh
+                IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(audioAnalysisResponse);
+
+                TrackTempResponse trackTempResponse = new()
+                {
+                    Id = trackTempRequest.Id,
+                    Name = trackTempRequest.Name,
+                    Description = trackTempRequest.Description,
+                    MainArtistIds = trackTempRequest.MainArtistIds,
+                    FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
+                    CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
+                    Tags = trackTempRequest.Tags,
+                    CoverImage = trackTempRequest.CoverImage,
+                    PreviewVideo = trackTempRequest.PreviewVideo,
+                    IsExplicit = trackTempRequest.IsExplicit,
+                    Lyrics = trackTempRequest.Lyrics,
+                    ReleaseInfo = trackTempRequest.ReleaseInfo,
+                    AudioFingerprint = audioFingerprint,
+                    AudioFeature = audioAnalysisResponse,
+                    CreatedBy = trackTempRequest.CreatedBy,
+                };
+
+                await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+
+                // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
+                await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
+
+                // Đẩy hls playlist lên S3
+                await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+            }
+            finally
+            {
+                // Xóa folder, file tạm sau khi upload lên S3
+                //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+                if (Directory.Exists(outputHlsPath))
+                {
+                    Directory.Delete(outputHlsPath, true);
+                }
+                if (File.Exists(wavFileResponse.OutputWavPath))
+                {
+                    File.Delete(wavFileResponse.OutputWavPath);
+                }
+            }
         }
 
         internal async Task ApproveManuallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
@@ -161,12 +193,16 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
 
             AudioFingerprintResult result = await _audioFingerprintService.GetMatchConfidenceScore(wavFileResponse);
 
+            Console.WriteLine("===================================");
+            Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+            Console.WriteLine("===================================");
+
             // Xóa file tạm sau khi nhận diện xong
-            HelperMethod.DeleteBatchIO(wavFileResponse.OutputWavPath);
-            //if (File.Exists(wavFileResponse.OutputWavPath))
-            //{
-            //    File.Delete(wavFileResponse.OutputWavPath);
-            //}
+            //HelperMethod.DeleteBatchIO(wavFileResponse.OutputWavPath);
+            if(File.Exists(wavFileResponse.OutputWavPath))
+            {
+                File.Delete(wavFileResponse.OutputWavPath);
+            }
 
             return (result.BestConfidence, result.TrackId, result.TrackName);
         }
@@ -266,15 +302,15 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                 await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
 
                 // Xóa folder, file tạm sau khi upload lên S3
-                HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
-                //if (Directory.Exists(outputHlsPath))
-                //{
-                //    Directory.Delete(outputHlsPath, true);
-                //}
-                //if (File.Exists(wavFileResponse.OutputWavPath))
-                //{
-                //    File.Delete(wavFileResponse.OutputWavPath);
-                //}
+                //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+                if (Directory.Exists(outputHlsPath))
+                {
+                    Directory.Delete(outputHlsPath, true);
+                }
+                if (File.Exists(wavFileResponse.OutputWavPath))
+                {
+                    File.Delete(wavFileResponse.OutputWavPath);
+                }
 
                 // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
                 // Resolved: Đã xóa tag trên S3 và xóa request trên redis

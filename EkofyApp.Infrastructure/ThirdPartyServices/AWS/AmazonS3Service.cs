@@ -91,7 +91,7 @@ public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) 
             ContentType = "audio/mpeg",
             TagSet =
             [
-                isAutoDelete ? new Tag { Key = "delete", Value = "true" } : null
+                isAutoDelete ? new Tag { Key = "delete", Value = "true" } : new Tag { Key = "approved_automatically", Value = "true" }
             ]
 
         };

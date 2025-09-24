@@ -25,6 +25,10 @@ public static class GraphQLServer
             {
                 opt.ExecutionTimeout = TimeSpan.FromMinutes(5); // Tăng từ 30s lên 5 phút
             })
+            .ModifyCostOptions(opt =>
+            {
+                opt.MaxFieldCost = 100000;
+            })
             .AddErrorFilter<GraphQLExceptionFilter>()
             .AddAuthorization()
 
