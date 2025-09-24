@@ -4,6 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 using Hangfire;
 using Hangfire.Console;
 using Hangfire.Logging;
@@ -82,7 +83,7 @@ public class BackgoundService : IBackgoundService
     {
         using var scope = _serviceScopeFactory.CreateScope();
         var royaltyReportService = scope.ServiceProvider.GetRequiredService<IRoyaltyReportService>();
-        await royaltyReportService.GenerateMonthlyRoyaltyReportsAsync(DateTime.Now.Month, DateTime.Now.Year);
+        await royaltyReportService.GenerateMonthlyRoyaltyReportsAsync(HelperMethod.GetUtcPlus7TimeOffset().Month, HelperMethod.GetUtcPlus7TimeOffset().Year);
     }
 
 
@@ -145,7 +146,7 @@ public class BackgoundService : IBackgoundService
                 await unitOfWork.GetCollection<Track>().UpdateOneAsync(rh => rh.Id == trackId, updateDefinition);
                 await redis.HashDecrementAsync(key, trackId, playedCount);
 
-                await monthlyStreamCountService.UpsertMonthlyStreamCountAsync(trackId, playedCount, DateTime.Now.Month, DateTime.Now.Year);
+                await monthlyStreamCountService.UpsertMonthlyStreamCountAsync(trackId, playedCount, HelperMethod.GetUtcPlus7TimeOffset().Month, HelperMethod.GetUtcPlus7TimeOffset().Year);
             }
         }
     }

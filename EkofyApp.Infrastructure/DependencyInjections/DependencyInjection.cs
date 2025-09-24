@@ -542,7 +542,9 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.AllowAnyOrigin()
+                policy.WithOrigins("http://localhost:3000")
+                      .WithOrigins("https://localhost:8888")
+                      .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
             });

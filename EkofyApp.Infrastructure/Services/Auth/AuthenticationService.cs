@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using CloudinaryDotNet.Actions;
 using EkofyApp.Application.Models.Auth.Admins;
 using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
@@ -206,7 +205,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy", token.RefreshToken, cookieOptions);
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
 
         return new AuthListenerTokenResponse()
         {
@@ -246,17 +245,17 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             };
 
             List<ArtistMember> artistMembers = _mapper.Map<List<ArtistMember>>(registerRequest.Members);
-            if (!registerRequest.IsLegalRepresentative)
-            {
-                artistMembers.Add(new ArtistMember
-                {
-                    FullName = registerRequest.IdentityCard.FullName,
-                    Email = registerRequest.Email.Trim().ToLowerInvariant(),
-                    PhoneNumber = registerRequest.PhoneNumber,
-                    IsLeader = true,
-                    Gender = registerRequest.IdentityCard.Gender,
-                });
-            }
+            //if (!registerRequest.IsLegalRepresentative)
+            //{
+            //    artistMembers.Add(new ArtistMember
+            //    {
+            //        FullName = registerRequest.IdentityCard.FullName,
+            //        Email = registerRequest.Email.Trim().ToLowerInvariant(),
+            //        PhoneNumber = registerRequest.PhoneNumber,
+            //        IsLeader = true,
+            //        Gender = registerRequest.IdentityCard.Gender,
+            //    });
+            //}
 
             Artist artist = new()
             {
@@ -373,7 +372,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy_artist", token.RefreshToken, cookieOptions);
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
 
         return new AuthArtistTokenResponse()
         {
@@ -434,7 +433,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy_mod", token.RefreshToken, cookieOptions);
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
 
         return new AuthModeratorTokenResponse()
         {
@@ -493,7 +492,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext.Response.Cookies.Append("refresh_ekofy_admin", token.RefreshToken, cookieOptions);
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
 
         return new AuthAdminTokenResponse()
         {
@@ -504,15 +503,19 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
         };
     }
 
-    public async Task<AccessTokenResponse> RefreshNewTokenAsync(string refreshToken)
+    public async Task<AccessTokenResponse> RefreshNewTokenAsync()
     {
+        string refreshToken = _httpContextAccessor.HttpContext?.Request.Cookies["refresh_token"]
+                              ?? throw new BadRequestCustomException("Refresh token is missing.");
+
         return await _jsonWebToken.GenerateRefreshTokenAsync(refreshToken);
     }
 
     public async Task LogoutAsync() 
-    {         
+    {
         string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
                         ?? throw new UnauthorizedCustomException("You have not login yet.");
+
         await _jsonWebToken.RevokeToken(userId);
     }
 }

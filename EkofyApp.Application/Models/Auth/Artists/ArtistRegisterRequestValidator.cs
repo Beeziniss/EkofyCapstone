@@ -40,8 +40,8 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
             .MaximumLength(15).WithMessage("Phone number must not exceed 15 characters")
             .Matches(HelperMethod.RegexPatternPhoneNumber()).When(x => !string.IsNullOrEmpty(x.PhoneNumber)).WithMessage("Invalid phone number format");
 
-        RuleFor(x => x.IsLegalRepresentative)
-            .NotEmpty().WithMessage("Is Legal Representative is required");
+        //RuleFor(x => x.IsLegalRepresentative)
+        //    .NotEmpty().WithMessage("Is Legal Representative is required");
 
         RuleFor(x => x.StageName)
             .NotEmpty().WithMessage("DisplayName is required")

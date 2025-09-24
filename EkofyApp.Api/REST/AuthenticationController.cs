@@ -131,9 +131,9 @@ public class AuthenticationController(IAuthenticationService authenticationServi
     // [AllowAnonymous, HttpPost("forgot-password")]
 
     [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshTokenAsync([FromBody] string oldRefreshToken) 
+    public async Task<IActionResult> RefreshTokenAsync() 
     {
-        var result = await _authenticationService.RefreshNewTokenAsync(oldRefreshToken);
+        var result = await _authenticationService.RefreshNewTokenAsync();
         return Ok(new { Message = "Refresh Token Successfully", result });
     }
 
