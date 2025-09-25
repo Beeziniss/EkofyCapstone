@@ -59,7 +59,6 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                             // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
                             await ApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
-                            stream.Position = 0;
 
                             return true;
                         }
@@ -67,7 +66,6 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks
                     default:
                         {
                             await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
-                            stream.Position = 0;
 
                             return true;
                         }

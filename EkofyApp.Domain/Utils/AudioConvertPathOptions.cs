@@ -89,13 +89,30 @@ public sealed class AudioConvertPathOptions
     // Factory static methods
     public static AudioConvertPathOptions ForConvertToWav()
     {
-        return new AudioConvertPathOptions
+        if (HelperMethod.IsWindows())
         {
-            BasePath = AppDomain.CurrentDomain.BaseDirectory,
-            RootFolder = "audio_processing",
-            InputIntermediateFolder = "input_temp_audio",
-            OutputIntermediateFolder = "output_wav_audio"
-        };
+            return new AudioConvertPathOptions
+            {
+                BasePath = AppDomain.CurrentDomain.BaseDirectory,
+                RootFolder = "audio_processing",
+                InputIntermediateFolder = "input_temp_audio",
+                OutputIntermediateFolder = "output_wav_audio"
+            };
+        }
+        else if (HelperMethod.IsLinux())
+        {
+            return new AudioConvertPathOptions
+            {
+                BasePath = "/app/shared",
+                RootFolder = "audio_processing",
+                InputIntermediateFolder = "input_temp_audio",
+                OutputIntermediateFolder = "output_wav_audio"
+            };
+        }
+        else
+        {
+            throw new ValidationCustomException("Unsupported OS platform");
+        }
     }
 
     public static AudioConvertPathOptions ForConvertToHls(string trackId)
@@ -105,14 +122,33 @@ public sealed class AudioConvertPathOptions
             throw new ValidationCustomException("Track id cannot be null or empty");
         }
 
-        return new AudioConvertPathOptions
+        if (HelperMethod.IsWindows())
         {
-            BasePath = AppDomain.CurrentDomain.BaseDirectory,
-            RootFolder = "audio_processing",
-            InputIntermediateFolder = "input_temp_audio",
-            OutputIntermediateFolder = "output_hls_audio",
-            TargetFolder = trackId,
-        };
+            return new AudioConvertPathOptions
+            {
+                BasePath = AppDomain.CurrentDomain.BaseDirectory,
+                RootFolder = "audio_processing",
+                InputIntermediateFolder = "input_temp_audio",
+                OutputIntermediateFolder = "output_hls_audio",
+                TargetFolder = trackId,
+            };
+        }
+        else if (HelperMethod.IsLinux())
+        {
+            return new AudioConvertPathOptions
+            {
+                BasePath = "/app/shared",
+                RootFolder = "audio_processing",
+                InputIntermediateFolder = "input_temp_audio",
+                OutputIntermediateFolder = "output_hls_audio",
+                TargetFolder = trackId,
+            };
+        }
+        else
+        {
+            throw new ValidationCustomException("Unsupported OS platform");
+        }
+
     }
 
     // Optional: Có thể custom
