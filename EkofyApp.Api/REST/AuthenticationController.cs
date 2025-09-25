@@ -119,7 +119,29 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         return Ok(new { Message = "Login Successfully", result });
     }
 
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("users/me")]
+    public async Task<IActionResult> GetCurrentUserProfileAsync()
+    {
+        var result = await _authenticationService.GetCurrentUserProfileAsync();
+        return Ok(new { Message = "Retrieved current user profile successfully", result });
+    }
+
     // [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
 
     // [AllowAnonymous, HttpPost("forgot-password")]
+
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshTokenAsync() 
+    {
+        var result = await _authenticationService.RefreshNewTokenAsync();
+        return Ok(new { Message = "Refresh Token Successfully", result });
+    }
+
+
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("logout")]
+    public async Task<IActionResult> LogoutAsync()
+    {
+        await _authenticationService.LogoutAsync();
+        return Ok(new { Message = "Logout Successfully" });
+    }
 }

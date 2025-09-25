@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.Enums.Subcriptions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 

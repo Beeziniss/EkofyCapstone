@@ -1,6 +1,5 @@
 ﻿using EkofyApp.Application.Models.Entitlements;
 using EkofyApp.Application.ServiceInterfaces.Entitlements;
-using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Entitlements;
 
@@ -10,15 +9,16 @@ public sealed class EntitlementMutation(IEntitlementService entitlementService)
 {
     private readonly IEntitlementService _entitlementService = entitlementService;
 
-    public IQueryable<Entitlement> GetEntitlements()
+    public async Task<bool> SeedEntitlementsAsync(string password)
     {
-        return _entitlementService.GetEntitlements();
-    }
+        if(password == "Tú đẹp trai")
+        {
+            await _entitlementService.SeedDataAsync();
 
-    public async Task<bool> SeedEntitlementsAsync()
-    {
-        await _entitlementService.SeedDataAsync();
-        return true;
+            return true;
+        }
+
+        return false;
     }
 
     public async Task<bool> CreateEntitlementAsync(CreateEntitlementRequest createEntitlementRequest)

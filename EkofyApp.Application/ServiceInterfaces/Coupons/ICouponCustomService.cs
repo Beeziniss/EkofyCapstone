@@ -9,5 +9,6 @@ public interface ICouponCustomService
     Task DeleteCouponAsync(IEnumerable<string> couponIds);
     Task DeprecateCouponAsync(IEnumerable<string> couponIds);
     IQueryable<Coupon> GetAllCoupons();
+    Task<IEnumerable<Coupon>> GetAllCouponsIE();
     Task<bool> IsCouponCodeExistsAsync(string code);
 }

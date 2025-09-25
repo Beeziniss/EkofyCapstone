@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
 using EkofyApp.Application.ServiceInterfaces.BillingPortalConfigurations;
@@ -14,11 +15,18 @@ using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Coupons;
 using EkofyApp.Application.ServiceInterfaces.Entitlements;
+using EkofyApp.Application.ServiceInterfaces.Invoices;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.Listeners;
+using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Playlists;
+using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ServiceInterfaces.Transactions;
 using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ServiceInterfaces.Works;
@@ -41,6 +49,7 @@ using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.ArtistPackages;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.BillingPortalConfigurations;
@@ -48,11 +57,18 @@ using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
 using EkofyApp.Infrastructure.Services.Coupons;
 using EkofyApp.Infrastructure.Services.Entitlements;
+using EkofyApp.Infrastructure.Services.Invoices;
 using EkofyApp.Infrastructure.Services.Jobs;
+using EkofyApp.Infrastructure.Services.Listeners;
+using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
+using EkofyApp.Infrastructure.Services.Playlists;
+using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
+using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
+using EkofyApp.Infrastructure.Services.Transactions;
 using EkofyApp.Infrastructure.Services.Users;
 using EkofyApp.Infrastructure.Services.UserSubscriptions;
 using EkofyApp.Infrastructure.Services.Works;
@@ -187,7 +203,7 @@ public static class DependencyInjection
         };
 
         ConfigurationOptions options;
-        if (HelperMethod.IsWindows())
+        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
         {
             options = new()
             {
@@ -198,7 +214,7 @@ public static class DependencyInjection
                 AbortOnConnectFail = false
             };
         }
-        else if (HelperMethod.IsLinux())
+        else
         {
             options = new()
             {
@@ -209,10 +225,10 @@ public static class DependencyInjection
                 AbortOnConnectFail = false
             };
         }
-        else
-        {
-            throw new PlatformNotSupportedException("Unsupported operating system for Redis configuration.");
-        }
+        //else
+        //{
+        //    throw new PlatformNotSupportedException("Unsupported operating system for Redis configuration.");
+        //}
 
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(options));
         //services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -339,7 +355,9 @@ public static class DependencyInjection
         // Business Services
         services.AddScoped<ITrackService, TrackService>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IArtistService, ArtistService>();
+        services.AddScoped<IListenerService, ListenerService>();
         services.AddScoped<IAudioAnalysisService, AudioFeatureService>();
         services.AddScoped<IAudioFingerprintService, AudioFingerprintService>();
         services.AddScoped<IJsonWebToken, JsonWebToken>();
@@ -355,6 +373,14 @@ public static class DependencyInjection
         services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
         services.AddScoped<IEffectiveEntitlementService, EffectiveEntitlementService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
+        services.AddScoped<IRoyaltyReportService, RoyaltyReportService>();
+        services.AddScoped<IRoyaltyPolicyService, RoyaltyPolicyService>();
+        services.AddScoped<ILegalPolicyService, LegalPolicyService>();
+        services.AddScoped<IArtistPackageService, ArtistPackageService>();
+        services.AddScoped<IInvoiceService, Services.Invoices.InvoiceService>();
+        services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
+        services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
+        services.AddScoped<ITransactionService, TransactionService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -516,7 +542,9 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.AllowAnyOrigin()
+                policy.WithOrigins("http://localhost:3000")
+                      .WithOrigins("https://localhost:8888")
+                      .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
             });
@@ -649,6 +677,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CurrencyType), new EnumMemberSerializer<CurrencyType>());
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
+        BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
     }
 
     public static void AddHangfire(this IServiceCollection service)
@@ -656,7 +685,7 @@ public static class DependencyInjection
         //lấy đường dẫn Mongo làm storage cho hangfire
         string mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
 
-        string DatabaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE") ?? throw new UnconfiguredEnvironmentCustomException("MONGODB_HANGFIRE_STORAGE is not set in the environment variables");
+        string databaseName = Environment.GetEnvironmentVariable("MONGODB_HANGFIRE_STORAGE") ?? throw new UnconfiguredEnvironmentCustomException("MONGODB_HANGFIRE_STORAGE is not set in the environment variables");
 
         //đăng ký Hangfire với MongoDB
         service.AddHangfire(configuration => configuration
@@ -665,27 +694,30 @@ public static class DependencyInjection
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             //cấu hình Storage
-            .UseMongoStorage(mongoConnectionString.ToString(), DatabaseName, new MongoStorageOptions
+            .UseMongoStorage(mongoConnectionString.ToString(), databaseName, new MongoStorageOptions
             {
                 MigrationOptions = new MongoMigrationOptions
                 {
                     //tự động xử lý khi có sự thay đổi cấu trúc dữ liệu
                     MigrationStrategy = new MigrateMongoMigrationStrategy(),
                     //sao lưu dữ liệu cũ trước khi thay đổi cấu trúc
-                    BackupStrategy = new CollectionMongoBackupStrategy()
+                    BackupStrategy = new CollectionMongoBackupStrategy(),
                 },
                 Prefix = "backgroundjobs.hangfire",
                 CheckConnection = false,
+                
                 //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
             }));
+
 
         //đăng ký Hangfire server
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
+            ServerOptions.Queues = new[] { "scheduled", "email", "track_upload", "track_count" };
         });
 
         // Background Jobs Services
-        service.AddTransient<IBackgoundService, BackgoundService>();
+        service.AddSingleton<IBackgoundService, BackgoundService>();
     }
 }

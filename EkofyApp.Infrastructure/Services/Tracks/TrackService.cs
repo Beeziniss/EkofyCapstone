@@ -4,6 +4,7 @@ using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -16,11 +17,12 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService ) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
     public IQueryable<Track> GetTracksQueryable()
     {
@@ -79,6 +81,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
                 Description = workTempRequest.Description,
                 WorkSplits = _mapper.Map<List<WorkSplit>>(workTempRequest.WorkSplits),
+                Version = 1,
+                Status = WorkStatus.Active,
             };
 
             Recording recording = new()
@@ -87,7 +91,9 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 TrackId = trackResponse.Id,
 
                 Description = recordingTempRequest.Description,
-                RecordingSplits = _mapper.Map<List<RecordingSplit>>(recordingTempRequest.RecordingSplitRequests)
+                RecordingSplits = _mapper.Map<List<RecordingSplit>>(recordingTempRequest.RecordingSplitRequests),
+                Version = 1,
+                Status = RecordingStatus.Active,
             };
 
             await _unitOfWork.GetCollection<Track>().InsertOneAsync(session, track);
@@ -137,6 +143,10 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        
+        string key =  $"stream_count:{userId}";  //--> cái cũ là top track ??
+        //tăng lượt stream count lên 1 khi được gọi
+        await _redisCacheService.HashIncrementAsync(key, trackId);
+        //set thời gian tồn tại của key trong 30'
+        await _redisCacheService.SetExpirationAsync(key, TimeSpan.FromMinutes(3));
     }
 }

@@ -78,10 +78,10 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
 
             var updateBuilderCombine  = updateBuilder.Combine(updatedFields);
             
-            var a = await _unitOfWork.GetCollection<RequestHub>()
+            var result = await _unitOfWork.GetCollection<RequestHub>()
                              .UpdateOneAsync(rh => rh.Id == request.Id, updateBuilderCombine);
 
-            return a.ModifiedCount > 0;
+            return result.ModifiedCount > 0;
         }
 
         // NOT DO YET

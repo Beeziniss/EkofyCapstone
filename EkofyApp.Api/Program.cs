@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL;
+using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
@@ -52,13 +53,14 @@ public sealed class Program
             options.CustomSchemaIds(type => type.FullName);
 
             // JWT ListenerRegisterRequest without requiring "Bearer " prefix
-            options.AddSecurityDefinition("JWT", new OpenApiSecurityScheme
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
-                Type = SecuritySchemeType.ApiKey,
-                Scheme = "JWT",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
                 In = ParameterLocation.Header,
                 Description = "Enter your JWT token directly (without 'Bearer ' prefix)",
+                BearerFormat= "JWT"
             });
 
             options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -69,7 +71,7 @@ public sealed class Program
                         Reference = new OpenApiReference
                         {
                             Type = ReferenceType.SecurityScheme,
-                            Id = "JWT"
+                            Id = "Bearer"
                         }
                     },
                     Array.Empty<string>()
@@ -81,9 +83,20 @@ public sealed class Program
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
+        // Initialize policies or any other startup logic
+        // TODO: Nhớ bỏ comment khi chạy thực tế
+        using (IServiceScope scope = app.Services.CreateScope())
+        {
+            // Initialize Royalty Policy
+            //IRoyaltyPolicyService royaltyPolicyService = scope.ServiceProvider.GetRequiredService<IRoyaltyPolicyService>();
+            //royaltyPolicyService.InitializePolicyAsync().GetAwaiter().GetResult();
 
-        // Empty
+            // Initialize Legal Policy
+            //ILegalPolicyService legalPolicyService = scope.ServiceProvider.GetRequiredService<ILegalPolicyService>();
+            //legalPolicyService.InitializePolicyAsync().GetAwaiter().GetResult();
+        }
+
+        // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -97,8 +110,9 @@ public sealed class Program
             });
             //app.UseSwaggerUI();
         }
-        
+
         app.UseHangfireDashboard("/hangfire");
+        app.UseHangfireServer();
         app.ConfigureJobs();
 
         app.UseHttpsRedirection();

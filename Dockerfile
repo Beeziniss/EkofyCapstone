@@ -2,11 +2,17 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
+USER root
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    mkdir -p /app/Tools && \
+    cp /usr/bin/ffmpeg /app/Tools/ffmpeg && \
+    cp /usr/bin/ffprobe /app/Tools/ffprobe && \
+    rm -rf /var/lib/apt/lists/*
 
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build

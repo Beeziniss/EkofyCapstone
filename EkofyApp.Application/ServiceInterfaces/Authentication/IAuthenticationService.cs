@@ -3,14 +3,19 @@ using EkofyApp.Application.Models.Auth.Admins;
 using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.Models.Auth.Moderators;
+using EkofyApp.Application.Models.Users;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 
 namespace EkofyApp.Application.ServiceInterfaces.Authentication;
 public interface IAuthenticationService
 {
+    Task<CurrentUserProfile> GetCurrentUserProfileAsync();
     Task<AuthAdminTokenResponse> LoginAdminAsync(LoginRequest loginRequest);
     Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest);
     Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest);
     Task<AuthModeratorTokenResponse> LoginModeratorAsync(LoginRequest loginRequest);
+    Task LogoutAsync();
+    Task<AccessTokenResponse> RefreshNewTokenAsync();
     Task RegisterArtistAsync(ArtistRegisterRequest registerRequest);
     Task RegisterListenerAsync(ListenerRegisterRequest registerRequest);
 }

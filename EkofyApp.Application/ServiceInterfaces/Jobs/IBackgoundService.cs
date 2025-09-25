@@ -5,6 +5,8 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
     public interface IBackgoundService
     {
         void DisplayLogTest(PerformContext context);
-        void SendEmail(string toEmail);
+        Task MonthlyRoyaltyReportJob();
+        void SendEmailJob(string toEmail);
+        Task UpdateStreamCountJob();
     }
 }

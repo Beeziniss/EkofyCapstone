@@ -1,10 +1,12 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Subcriptions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Transaction : TimeStamped, IEntityCustom
+public sealed class Transaction : TimeStamped, IEntityCustom // Snapshot of a payment transaction
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -12,10 +14,6 @@ public sealed class Transaction : TimeStamped, IEntityCustom
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = null!;
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string SubscriptionId { get; set; } = null!;
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string SubscriptionPlanId { get; set; } = null!;
 
     #region Stripe
     public string StripeCheckoutSessionId { get; set; } = null!; // ID of the Checkout Session in Stripe

@@ -1,0 +1,21 @@
+﻿FROM python:3.13-slim AS base
+
+WORKDIR /app
+
+#copy requirements file into container
+COPY AudioFeatureExtractor/requirements.txt .
+
+#run new envỉonment
+RUN python -m venv /app/env
+
+#install python dependencies from requirements file
+RUN /app/env/bin/pip install --upgrade pip && \
+    /app/env/bin/pip install -r requirements.txt
+
+#copy all source into container
+COPY AudioFeatureExtractor /app/
+
+EXPOSE 50051
+
+#run python command
+CMD ["/app/env/bin/python", "/app/AudioFeatureExtractorAPI.py"]

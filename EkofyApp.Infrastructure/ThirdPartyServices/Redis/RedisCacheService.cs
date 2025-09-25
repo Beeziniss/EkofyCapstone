@@ -1,9 +1,10 @@
-﻿using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
+using static HotChocolate.ErrorCodes;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
@@ -12,11 +13,19 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     private readonly ILogger<RedisCacheService> _logger = logger;
 
     #region Default Methods
-    public async Task SetAsync(string key, string value, TimeSpan? expiry = null)
+    public async Task SetAsync(string key, string value, bool overrides, TimeSpan? expiry = null)
     {
         try
         {
-            await _redisDb.StringSetAsync(key, value, expiry, when: When.NotExists);
+            if (overrides)
+            {
+                await _redisDb.StringSetAsync(key, value, expiry, when: When.Exists);
+                return;
+            }
+            else
+            {
+                await _redisDb.StringSetAsync(key, value, expiry, when: When.NotExists);
+            }
         }
         catch (Exception ex)
         {
@@ -77,6 +86,24 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
 
         return CacheResult<string>.Fail();
+    }
+
+    public string[] GetAllKeysByPattern(string pattern)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: pattern).ToArray();
+
+            //chuyển RedisKey[] sang string[]
+            return keys.Select(key => key.ToString()).ToArray();
+        }
+        catch(Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] GetAllKeysByPattern failed. Pattern: {pattern}");
+            return Array.Empty<string>();
+        }
     }
 
     public async Task<bool> ExistsAsync(string key)
@@ -274,26 +301,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         return CacheResult<Dictionary<string, string?>>.Fail();
     }
 
-    public async Task<bool> SetHashAsync(string key, string field, string? value, TimeSpan? expiry = null)
-    {
-        try
-        {
-            await _redisDb.HashSetAsync(key, field, value ?? string.Empty);
-            // Nếu có TTL thì set luôn
-            if (expiry.HasValue)
-            {
-                await _redisDb.KeyExpireAsync(key, expiry);
-            }
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error when setting hash value to Redis for key {Key}, field {Field}", key, field);
-        }
-        return false;
-    }
-
-    public async Task<string?> GetHashAsync(string key, string field)
+    public async Task<string?> HashGetAsync(string key, string field)
     {
         try
         {
@@ -303,6 +311,79 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error when getting hash value from Redis for key {Key}, field {Field}", key, field);
+            return null;
+        }
+    }
+
+    public async Task HashSetAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null)
+    {
+        try
+        {
+            // Convert Dictionary to HashEntry array
+            HashEntry[] hashEntries = fields.Select(kvp => new HashEntry(kvp.Key, kvp.Value is null ? RedisValue.Null : kvp.Value)).ToArray();
+
+            // Set multiple hash fields at once
+            await _redisDb.HashSetAsync(key, hashEntries);
+
+            // Set expiration if provided
+            if (expiry.HasValue)
+            {
+                await _redisDb.KeyExpireAsync(key, expiry.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when setting hash fields to Redis for key {Key}", key);
+        }
+    }
+
+    public async Task HashDeleteAsync(string key)
+    {
+        try
+        {
+            await _redisDb.KeyDeleteAsync(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when deleting hash in Redis for key {Key}", key);
+        }
+    }
+
+    public async Task<bool> HashFieldExistsAsync(string key, string field)
+    {
+        try
+        {
+            return await _redisDb.HashExistsAsync(key, field);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when checking hash field existence in Redis for key {Key}, field {Field}", key, field);
+            return false;
+        }
+    }
+
+    public async Task<bool> HashFieldDeleteAsync(string key, string field)
+    {
+        try
+        {
+            return await _redisDb.HashDeleteAsync(key, field);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when deleting hash field in Redis for key {Key}, field {Field}", key, field);
+            return false;
+        }
+    }
+
+    public async Task<HashEntry[]?> HashGetAllAsync(string key) {        
+        try
+        {
+            HashEntry[] entries = await _redisDb.HashGetAllAsync(key);
+            return entries;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when getting all hash values from Redis for key {Key}", key);
             return null;
         }
     }
@@ -324,6 +405,19 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "Error when incrementing hash value in Redis for key {Key}, field {Field}", key, field);
             return -1; // hoặc throw
+        }
+    }
+
+    public async Task HashDecrementAsync(string key, string field, long decrementBy = 1)
+    {
+        try
+        {
+            // Redis sẽ tạo field nếu chưa tồn tại
+            long newValue = await _redisDb.HashDecrementAsync(key, field, decrementBy);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error when incrementing hash value in Redis for key {Key}, field {Field}", key, field);
         }
     }
 

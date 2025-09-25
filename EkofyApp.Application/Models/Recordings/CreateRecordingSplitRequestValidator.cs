@@ -7,7 +7,7 @@ public sealed class CreateRecordingSplitRequestValidator : AbstractValidator<Cre
     {
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("User ID is required.")
-            .MaximumLength(24).WithMessage("Recording ID must not exceed 24 characters.");
+            .MaximumLength(24).WithMessage("RecordingProjection ID must not exceed 24 characters.");
 
         RuleFor(x => x.ArtistRole)
             .IsInEnum().WithMessage("Must be correct value");

@@ -4,6 +4,8 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
+using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
@@ -15,12 +17,21 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
-    // TracksDB
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Track>]
     public IQueryable<Track> GetTracks()
     {
         return _trackService.GetTracksQueryable();
     }
 
+    // TODO: Sorting for requests?
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
     public async Task<IEnumerable<TrackTempRequest>> GetPendingTrackUploadRequestsAsync()
     {
         ICacheResult<IEnumerable<TrackTempRequest>> requests = await _redisCacheService.GetPendingTrackUploadsAsync();
@@ -32,6 +43,8 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return [];
     }
 
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseProjection]
     public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string trackId)
     {
         ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
@@ -43,6 +56,8 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return cacheResult.Value!;
     }
 
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseProjection]
     public string GetOriginalFileTrackUploadRequest(string trackId)
     {
         return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
