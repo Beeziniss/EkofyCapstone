@@ -15,16 +15,11 @@ public sealed class FfmpegService : IFfmpegService
 
     public FfmpegService(ILogger<FfmpegService> logger)
     {
-        // Thiết lập đường dẫn FFmpeg
-        _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "Tools");
-        _ffmpegPath = Path.GetFullPath(_ffmpegPath);
-
-        FFmpeg.SetExecutablesPath(_ffmpegPath);
-
         if (HelperMethod.IsWindows())
         {
             _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "Tools");
             _ffmpegPath = Path.GetFullPath(_ffmpegPath);
+            FFmpeg.SetExecutablesPath(_ffmpegPath);
 
             if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg.exe")) &&
             !File.Exists(Path.Combine(_ffmpegPath, "ffprobe.exe")))
@@ -34,8 +29,9 @@ public sealed class FfmpegService : IFfmpegService
         }
         else if (HelperMethod.IsLinux())
         {
-            _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "/app/Tools");
+            _ffmpegPath = "/app/Tools";
             _ffmpegPath = Path.GetFullPath(_ffmpegPath);
+            FFmpeg.SetExecutablesPath(_ffmpegPath);
 
             if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg")) &&
             !File.Exists(Path.Combine(_ffmpegPath, "ffprobe")))

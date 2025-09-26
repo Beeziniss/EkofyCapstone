@@ -13,7 +13,7 @@ namespace EkofyApp.Infrastructure.BackgroundJobs
 
             //BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendEmailJob("satori562003@gmail.com"));
 
-            RecurringJob.AddOrUpdate("add-stream-count", () => app.Services.GetService<IBackgoundService>()!.UpdateStreamCountJob(), "*/3 * * * *");
+            //RecurringJob.AddOrUpdate("add-stream-count", () => app.Services.GetService<IBackgoundService>()!.UpdateStreamCountJob(), "*/3 * * * *");
 
             // ở đây hangfire lấy theo giờ của mongo nên để chạy vào 23:59 ngày cuối tháng thì phải trừ 7 tiếng (giờ VN là GMT+7)
             RecurringJob.AddOrUpdate("monthly-royalty-report", () => app.Services.GetService<IBackgoundService>()!.MonthlyRoyaltyReportJob(), "59 16 L * ?");
