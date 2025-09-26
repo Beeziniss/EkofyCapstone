@@ -71,11 +71,14 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
 
     [ApiExplorerSettings(IgnoreApi = true)]
     [AllowAnonymous, HttpGet("{trackId}/{bitrate}/{segment}")]
-    public IActionResult ProxySegment(string trackId, string bitrate, string segment, [FromQuery] string token)
+    public async Task<IActionResult> ProxySegmentAsync(string trackId, string bitrate, string segment, [FromQuery] string token)
     {
         _amazonCloudFrontService.ValidateHlsToken(trackId, token);
 
-        string redirectUrl = _amazonCloudFrontService.GenerateStreamingSignedURL(trackId, bitrate, segment, token);
-        return Redirect(redirectUrl);
+        //string redirectUrl = _amazonCloudFrontService.GenerateStreamingSignedURL(trackId, bitrate, segment, token);
+        //return Redirect(redirectUrl);
+
+        byte[] segmentContent = await _amazonCloudFrontService.GetSegmentContentAsync(trackId, bitrate, segment, token);
+        return File(segmentContent, "application/octet-stream");
     }
 }
