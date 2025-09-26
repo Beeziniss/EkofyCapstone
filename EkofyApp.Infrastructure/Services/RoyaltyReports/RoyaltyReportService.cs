@@ -9,16 +9,18 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.RoyaltyReports;
-public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService, IStripeService stripeService) : IRoyaltyReportService
+public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService, IStripeService stripeService, ILogger<RoyaltyReportService> logger) : IRoyaltyReportService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IStripeService _stripeService = stripeService;
+    private readonly ILogger<RoyaltyReportService> _logger = logger;
 
     public IQueryable<RoyaltyReport> GetRoyaltyReports()
     {
@@ -111,7 +113,8 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                                 ArtistRole = split.ArtistRole,
                                 Percentage = split.Percentage,
                                 Amount = amount,
-                                Level = AggregationLevel.Recording
+                                Level = AggregationLevel.Recording,
+                                IsTransferred = true,
                             });
                         }
                     }
@@ -140,7 +143,8 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                                 ArtistRole = split.ArtistRole,
                                 Percentage = split.Percentage,
                                 Amount = amount,
-                                Level = AggregationLevel.Work
+                                Level = AggregationLevel.Work,
+                                IsTransferred = true,
                             });
                         }
                     }
@@ -167,7 +171,123 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 processedMonthlyStreamCountIds.Add(monthlyStreamCountProjection.Id);
             }
 
-            // Tạo Royalty Report
+            // Transfer tiền royalty ở đây
+            List<PayoutTransaction> payoutTransactions = [];
+
+            #region Dùng dictionary để tối ưu nhưng chưa dùng được do dictionary không cho duplicate key và không trace được reportId
+            //List<RoyaltySplit> royaltySplits = royaltyReports.SelectMany(r => r.RoyaltySplits).ToList();
+            //Dictionary<string, decimal> userIdAmount = royaltySplits
+            //    .GroupBy(s => s.UserId)
+            //    .ToDictionary(g => g.Key, g => g.Sum(s => s.Amount));
+
+            //var users = await _unitOfWork.GetCollection<User>()
+            //    .Find(x => userIdAmount.ContainsKey(x.Id))
+            //    .Project(x => new { x.Id, x.StripeAccountId })
+            //    .ToListAsync(ct);
+
+            //Dictionary<string, string?> userIdToStripeAccount = users
+            //    .ToDictionary(k => k.Id, v => v.StripeAccountId);
+
+            //TransferService transferService = new();
+            //string groupId = $"royalty-{month}-{year}-{ObjectId.GenerateNewId()}";
+
+            //// Chuyển theo group
+            //foreach (KeyValuePair<string, decimal> item in userIdAmount)
+            //{
+            //    if (string.IsNullOrEmpty(item.Key) || item.Value <= 0)
+            //    {
+            //        //throw new ConflictCustomException($"Invalid userId or amount for transfer: userId={item.Key}, amount={item.Value}");
+            //        _logger.LogWarning($"Skipping transfer for userId={item.Key} due to invalid userId or amount={item.Value}");
+            //        royaltySplits.FindAll(s => s.UserId == item.Key).ForEach(s => s.IsTransferred = false);
+            //        continue;
+            //    }
+
+            //    if (!userIdToStripeAccount.TryGetValue(item.Key, out string? stripeAccountId) || string.IsNullOrEmpty(stripeAccountId))
+            //    {
+            //        //throw new ConflictCustomException($"Missing StripeAccountId for userId={item.Key}");
+            //        _logger.LogWarning($"Skipping transfer for userId={item.Key} due to missing StripeAccountId");
+            //        royaltySplits.FindAll(s => s.UserId == item.Key).ForEach(s => s.IsTransferred = false);
+            //        continue;
+            //    }
+
+            //    Transfer transfer = transferService.Create(new TransferCreateOptions
+            //    {
+            //        Amount = Convert.ToInt64(item.Value), // Stripe amount cần long
+            //        Currency = CurrencyType.vnd.ToString(),
+            //        Destination = stripeAccountId,
+            //        TransferGroup = groupId,
+            //        Description = $"Royalty payout for {month}/{year}"
+            //    });
+
+            //    //Lưu transaction vào DB để trace
+            //    PayoutTransaction payoutTransaction = new()
+            //    {
+            //        UserId = stripeAccountId,
+            //        //RoyaltyReportId = ,
+            //        StripeTransferId = transfer.Id,
+            //        Amount = transfer.Amount,
+            //        Currency = transfer.Currency,
+            //        DestinationAccountId = transfer.DestinationId,
+            //        Description = transfer.Description,
+            //    };
+
+            //    payoutTransactions.Add(payoutTransaction);
+            //}
+            #endregion
+
+            TransferService transferService = new();
+            foreach (RoyaltyReport report in royaltyReports)
+            {
+                foreach (RoyaltySplit split in report.RoyaltySplits)
+                {
+                    // Lấy artistAccountId từ UserId
+                    string? artistAccountId = await _unitOfWork.GetCollection<User>()
+                        .Find(x => x.Id == split.UserId)
+                        .Project(x => x.StripeAccountId) // giả sử bạn lưu ở đây
+                        .FirstOrDefaultAsync(ct) ?? throw new NotFoundCustomException($"User {split.UserId} does not have stripe account."); ;
+
+                    Transfer transferResponse = transferService.Create(new TransferCreateOptions
+                    {
+                        Amount = Convert.ToInt64(split.Amount), // Stripe amount cần long
+                        Currency = CurrencyType.vnd.ToString(),
+                        Destination = artistAccountId,
+                        TransferGroup = $"royalty-{report.TrackId}-{month}-{year}-{HelperMethod.GetUtcPlus7TimeOffset().ToUnixTimeMilliseconds()}",
+                        Description = $"Royalty payout for track {report.TrackId}: {month}/{year}"
+                    });
+
+                    // Lưu transaction vào DB để trace
+                    PayoutTransaction payoutTransaction = new()
+                    {
+                        UserId = split.UserId,
+                        RoyaltyReportId = report.Id,
+                        StripeTransferId = transferResponse.Id,
+                        Amount = Convert.ToDecimal(transferResponse.Amount),
+                        Currency = transferResponse.Currency,
+                        DestinationAccountId = transferResponse.DestinationId,
+                        Description = transferResponse.Description,
+                    };
+
+                    //await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(session, payoutTransaction, cancellationToken: ct);
+                    payoutTransactions.Add(payoutTransaction);
+                }
+            }
+
+            // Lưu Payout Payout Transaction
+            if (payoutTransactions.Count == 0)
+            {
+                //_logger.LogWarning($"No payout transactions were created for month={month}, year={year}. Skipping further processing.");
+                throw new UnprocessableEntityCustomException($"No payout transactions were created for month={month}, year={year}. Skipping further processing.");
+            }
+
+            await _unitOfWork.GetCollection<PayoutTransaction>().InsertManyAsync(session, payoutTransactions, cancellationToken: ct);
+
+            // Lưu Royalty Report
+            if (royaltyReports.Count == 0)
+            {
+                //_logger.LogWarning($"No royalty reports were generated for month={month}, year={year}. Skipping further processing.");
+                throw new UnprocessableEntityCustomException($"No royalty reports were generated for month={month}, year={year}. Skipping further processing.");
+            }
+
             await _unitOfWork.GetCollection<RoyaltyReport>().InsertManyAsync(session, royaltyReports, cancellationToken: ct);
 
             // Cập nhật lại trạng thái đã xử lý
@@ -179,91 +299,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     cancellationToken: ct);
             if (updateResult.ModifiedCount < processedMonthlyStreamCountIds.Count)
             {
-                throw new Exception($"Failed to update MonthlyStreamCount as processed.");
-            }
-
-            // Transfer tiền royalty ở đây
-            List<PayoutTransaction> payoutTransactions = [];
-
-            List<RoyaltySplit> royaltySplits = royaltyReports.SelectMany(r => r.RoyaltySplits).ToList();
-            List<string> userIds = royaltySplits.Select(s => s.UserId).Distinct().ToList();
-            Dictionary<string, long> userIdAmount = royaltySplits
-                .GroupBy(s => s.UserId)
-                .ToDictionary(g => g.Key, g => Convert.ToInt64(g.Sum(s => s.Amount))); // Stripe amount cần long
-
-            var users = await _unitOfWork.GetCollection<User>()
-                .Find(x => userIdAmount.ContainsKey(x.Id))
-                .Project(x => new { x.Id, x.StripeAccountId })
-                .ToListAsync(ct);
-
-            Dictionary<string, string?> userIdToStripeAccount = users
-                .ToDictionary(k => k.Id, v => v.StripeAccountId);
-
-
-            TransferService transferService = new();
-            string groupId = $"royalty-{month}-{year}-{ObjectId.GenerateNewId()}";
-
-            // Chuyển theo group
-            foreach (KeyValuePair<string, long> item in userIdAmount)
-            {
-                if (string.IsNullOrEmpty(item.Key) || item.Value <= 0)
-                {
-                    throw new ConflictCustomException($"Invalid userId or amount for transfer: userId={item.Key}, amount={item.Value}");
-                }
-
-                transferService.Create(new TransferCreateOptions
-                {
-                    Amount = item.Value, // Stripe amount cần long
-                    Currency = CurrencyType.vnd.ToString(),
-                    Destination = userIdToStripeAccount[$"{item.Key}"],
-                    TransferGroup = groupId,
-                    Description = $"Royalty payout for {month}/{year}"
-                });
-            }
-            
-
-            //foreach (string? artistAccountId in artistAccountIds)
-            //{
-            //    transferService.Create(new TransferCreateOptions
-            //    {
-            //        Amount = amount,
-            //        Currency = CurrencyType.vnd.ToString(),
-            //        Destination = artistAccountId,
-            //        TransferGroup = groupId,
-            //        Description = "Royalty payout for streaming"
-            //    });
-            //}
-
-            foreach (RoyaltyReport report in royaltyReports)
-            {
-                foreach (RoyaltySplit split in report.RoyaltySplits)
-                {
-                    // Lấy artistAccountId từ UserId
-                    string? artistAccountId = await _unitOfWork.GetCollection<User>()
-                        .Find(x => x.Id == split.UserId)
-                        .Project(x => x.StripeAccountId) // giả sử bạn lưu ở đây
-                        .FirstOrDefaultAsync(ct) ?? throw new NotFoundCustomException($"User {split.UserId} does not have stripe account."); ;
-
-                    TransferResponse transferResponse = _stripeService.TransferToArtist(
-                        artistAccountId,
-                        Convert.ToInt64(split.Amount) // Stripe amount cần long
-                    );
-
-                    // Lưu transaction vào DB để trace
-                    PayoutTransaction payoutTransaction = new()
-                    {
-                        UserId = split.UserId,
-                        RoyaltyReportId = report.Id,
-                        StripeTransferId = transferResponse.Id,
-                        Amount = Convert.ToDecimal(transferResponse.Amount),
-                        Currency = transferResponse.Currency,
-                        DestinationAccountId = transferResponse.DestinationAccountId,
-                        Description = transferResponse.Description,
-                    };
-
-                    //await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(session, payoutTransaction, cancellationToken: ct);
-                    payoutTransactions.Add(payoutTransaction);
-                }
+                throw new UnprocessableEntityCustomException($"Failed to update MonthlyStreamCount as processed.");
             }
         });
     }

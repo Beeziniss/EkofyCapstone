@@ -667,7 +667,7 @@ public static class DependencyInjection
         // BillingPortalConfiguration
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
 
-        // Transaction
+        // PaymentTransaction
         BsonSerializer.RegisterSerializer(typeof(PaymentStatus), new EnumMemberSerializer<PaymentStatus>());
         BsonSerializer.RegisterSerializer(typeof(TransactionStatus), new EnumMemberSerializer<TransactionStatus>());
 
