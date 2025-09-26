@@ -544,6 +544,7 @@ public static class DependencyInjection
             {
                 policy.WithOrigins("http://localhost:3000")
                       .WithOrigins("https://localhost:8888")
+                      .WithOrigins("http://127.0.0.1:5500")
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();

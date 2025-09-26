@@ -451,4 +451,33 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         );
         return signedUrl;
     }
+
+    public async Task<byte[]> GetSegmentContentAsync(string trackId, string bitrate, string segment, string token)
+    {
+        string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
+
+        // Đường dẫn đến file .ts trong S3
+        string s3Key = $"{prefixKeyStreaming}/{trackId}/{bitrate}/{segment}";
+
+        try
+        {
+            GetObjectRequest request = new()
+            {
+                BucketName = _aWSSettings.BucketName,
+                Key = s3Key
+            };
+
+            using GetObjectResponse response = await _s3Client.GetObjectAsync(request);
+
+            // Đọc toàn bộ content của file .ts
+            using MemoryStream memoryStream = new();
+            await response.ResponseStream.CopyToAsync(memoryStream);
+
+            return memoryStream.ToArray();
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new NotFoundCustomException($"Segment file not found in S3: {s3Key}");
+        }
+    }
 }

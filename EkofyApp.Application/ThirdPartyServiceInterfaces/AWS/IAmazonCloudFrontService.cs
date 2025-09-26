@@ -11,4 +11,5 @@ public interface IAmazonCloudFrontService
     Task<string> GetBitratePlaylistAsync(string trackId, string bitrate, string token);
     string GenerateStreamingSignedURL(string trackId, string bitrate, string segment, string token);
     string GenerateOriginalSignedURL(string trackId);
+    Task<byte[]> GetSegmentContentAsync(string trackId, string bitrate, string segment, string token);
 }
