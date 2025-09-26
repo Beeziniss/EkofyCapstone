@@ -8,8 +8,8 @@ public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionSer
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public IQueryable<Transaction> GetTransactions()
+    public IQueryable<PaymentTransaction> GetTransactions()
     {
-        return _unitOfWork.GetCollection<Transaction>().AsQueryable();
+        return _unitOfWork.GetCollection<PaymentTransaction>().AsQueryable();
     }
 }

@@ -298,7 +298,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             throw new NotFoundCustomException("Error while generating URL for checkout session");
         }
 
-        await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
+        await _unitOfWork.GetCollection<PaymentTransaction>().InsertOneAsync(new PaymentTransaction
         {
             UserId = userId,
             StripeCheckoutSessionId = checkoutSession.Id,
@@ -434,7 +434,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             throw new NotFoundCustomException("Error while generating URL for checkout session");
         }
 
-        await _unitOfWork.GetCollection<Transaction>().InsertOneAsync(new Transaction
+        await _unitOfWork.GetCollection<PaymentTransaction>().InsertOneAsync(new PaymentTransaction
         {
             UserId = userId,
             StripeCheckoutSessionId = checkoutSession.Id,

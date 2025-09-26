@@ -1,12 +1,10 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
-using EkofyApp.Domain.Enums.Subcriptions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Transaction : TimeStamped, IEntityCustom // Snapshot of a payment transaction
+public sealed class PaymentTransaction : TimeStamped, IEntityCustom // Snapshot of a payment transaction
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

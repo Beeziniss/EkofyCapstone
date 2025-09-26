@@ -14,9 +14,9 @@ public sealed class InvoiceResolver
         return await userByIdDataLoader.LoadAsync(invoice.UserId, cancellationToken);
     }
 
-    public async Task<Transaction?> GetTransactionAsync(
+    public async Task<PaymentTransaction?> GetTransactionAsync(
         [Parent] Invoice invoice,
-        DataLoaderCustomOneToOne<Transaction> transactionByIdDataLoader,
+        DataLoaderCustomOneToOne<PaymentTransaction> transactionByIdDataLoader,
         CancellationToken cancellationToken)
     {
         return await transactionByIdDataLoader.LoadAsync(invoice.TransactionId, cancellationToken);
