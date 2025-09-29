@@ -26,7 +26,7 @@ public sealed class Track : Auditable, IEntityCustom
     public List<string> FeaturedArtistIds { get; set; } = [];
 
     public AudioFeature AudioFeature { get; set; } = null!; // Contains audio features
-    public AudioFingerprint AudioFingerprint { get; set; } = null!; // Unique identifier for the audio content
+    public AudioFingerprint? AudioFingerprint { get; set; } // Unique identifier for the audio content
 
     public long StreamCount { get; set; } = default; // Number of times the track has been streamed
     public long FavoriteCount { get; set; } = default; // Number of times the track has been favorited

@@ -5,7 +5,6 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
-using Xabe.FFmpeg;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 public sealed class FfmpegService : IFfmpegService
@@ -19,7 +18,7 @@ public sealed class FfmpegService : IFfmpegService
         {
             _ffmpegPath = HelperMethod.ResolvePath(PathTag.Base, "Tools");
             _ffmpegPath = Path.GetFullPath(_ffmpegPath);
-            FFmpeg.SetExecutablesPath(_ffmpegPath);
+            FFmpegNative.FFmpeg.SetExecutablesPath(_ffmpegPath);
 
             if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg.exe")) &&
             !File.Exists(Path.Combine(_ffmpegPath, "ffprobe.exe")))
@@ -31,7 +30,7 @@ public sealed class FfmpegService : IFfmpegService
         {
             _ffmpegPath = "/app/Tools";
             _ffmpegPath = Path.GetFullPath(_ffmpegPath);
-            FFmpeg.SetExecutablesPath(_ffmpegPath);
+            FFmpegNative.FFmpeg.SetExecutablesPath(_ffmpegPath);
 
             if (!File.Exists(Path.Combine(_ffmpegPath, "ffmpeg")) &&
             !File.Exists(Path.Combine(_ffmpegPath, "ffprobe")))
@@ -75,12 +74,12 @@ public sealed class FfmpegService : IFfmpegService
             outputWavPath = Path.Combine(outputFolderTempPath, $"{ObjectId.GenerateNewId()}.wav");
 
             // Kiểm tra file đầu vào có hợp lệ không
-            IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(inputTempPath);
+            FFmpegNative.IMediaInfo mediaInfo = await FFmpegNative.FFmpeg.GetMediaInfo(inputTempPath);
             if (!mediaInfo.AudioStreams.Any())
                 throw new InvalidOperationException("Tệp âm thanh không chứa stream âm thanh hợp lệ.");
 
             // Lấy stream âm thanh đầu tiên (nếu có nhiều stream thì lấy stream đầu tiên)
-            IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullException("Audio Stream is null");
+            FFmpegNative.IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullException("Audio Stream is null");
 
             // Nếu không có bitrate thì dùng 128k
             bitrate = audioStream.Bitrate;
@@ -88,7 +87,7 @@ public sealed class FfmpegService : IFfmpegService
             // Convert dùng Xabe.FFmpeg
             //IConversion conversion = await FFmpeg.Conversions.FromSnippet.Convert(inputTempPath, outputWavPath);
             //conversion.AddParameter("-ac 1 -ar 16000"); // Mono, 16kHz nếu cần
-            IConversion conversion = FFmpeg.Conversions.New()
+            FFmpegNative.IConversion conversion = Xabe.FFmpeg.FFmpeg.Conversions.New()
                 .AddStream(audioStream)
                 .SetOutput(outputWavPath);
 
@@ -139,18 +138,18 @@ public sealed class FfmpegService : IFfmpegService
             outputWavPath = Path.Combine(outputFolderTempPath, $"{ObjectId.GenerateNewId()}_{inputFileName}.wav");
 
             // Lấy thông tin âm thanh
-            IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(inputFilePath);
+            FFmpegNative.IMediaInfo mediaInfo = await FFmpegNative.FFmpeg.GetMediaInfo(inputFilePath);
             if (!mediaInfo.AudioStreams.Any())
             {
                 throw new InvalidOperationException("Tệp âm thanh không chứa stream âm thanh hợp lệ.");
             }
 
-            IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault()
+            FFmpegNative.IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault()
                 ?? throw new ArgumentNullException("Audio Stream is null");
 
             bitrate = audioStream.Bitrate;
 
-            IConversion conversion = FFmpeg.Conversions.New()
+            FFmpegNative.IConversion conversion = Xabe.FFmpeg.FFmpeg.Conversions.New()
                 .AddStream(audioStream)
                 .SetOutput(outputWavPath);
             // .AddParameter("-ac 1 -ar 16000"); // Nếu cần Mono, 16kHz
@@ -215,11 +214,11 @@ public sealed class FfmpegService : IFfmpegService
             ]);
 
             // Kiểm tra file đầu vào có hợp lệ không
-            IMediaInfo mediaInfo = await FFmpeg.GetMediaInfo(wavFileResponse.OutputWavPath);
+            FFmpegNative.IMediaInfo mediaInfo = await FFmpegNative.FFmpeg.GetMediaInfo(wavFileResponse.OutputWavPath);
             //if (!mediaInfo.AudioStreams.Any())
             //    throw new InvalidOperationException("AudioFile không chứa stream âm thanh hợp lệ.");
 
-            IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullCustomException("Audio Stream is null");
+            FFmpegNative.IAudioStream? audioStream = mediaInfo.AudioStreams.FirstOrDefault() ?? throw new ArgumentNullCustomException("Audio Stream is null");
             //long bitrate = audioStream.OriginalBitrate;
 
             foreach (long bitrateIndex in HelperMethod.GetValidBitratesEnumrable())
@@ -239,7 +238,7 @@ public sealed class FfmpegService : IFfmpegService
                 outputFilePath = Path.Combine(outputFolder, playlistFileName);
 
                 // Chuyển đổi bằng cách thêm Stream thay vì AddParameter
-                await FFmpeg.Conversions.New()
+                await Xabe.FFmpeg.FFmpeg.Conversions.New()
                     .AddStream(audioStream) // Lấy stream âm thanh
                     .SetOutput(outputFilePath)
                     .AddParameter($"-c:a aac -b:a {bitrateIndex} -hls_time 10 -hls_playlist_type vod -hls_key_info_file \"{keyInfoPath}\"")

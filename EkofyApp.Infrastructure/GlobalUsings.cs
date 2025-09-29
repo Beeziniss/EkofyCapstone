@@ -7,4 +7,6 @@ global using BillingPortalOption = Stripe.BillingPortal;
 global using StripeCoupon = Stripe.Coupon;
 global using EntityCoupon = EkofyApp.Domain.Entities.Coupon;
 
+global using FFmpegNative = Xabe.FFmpeg;
+
 namespace EkofyApp.Infrastructure;

@@ -25,6 +25,6 @@ public sealed record TrackTempResponse
     public string CreatedBy { get; init; } = null!;
     #endregion
 
-    public AudioFingerprint AudioFingerprint { get; init; } = null!;
+    //public AudioFingerprint AudioFingerprint { get; init; } = null!;
     public AudioFeature AudioFeature { get; init; } = null!;
 }
