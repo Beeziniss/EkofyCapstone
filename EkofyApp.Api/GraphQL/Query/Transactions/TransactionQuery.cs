@@ -15,8 +15,8 @@ public sealed class TransactionQuery(ITransactionService transactionService)
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    [UseSorting<Transaction>]
-    public IQueryable<Transaction> GetTransactions()
+    [UseSorting<PaymentTransaction>]
+    public IQueryable<PaymentTransaction> GetTransactions()
     {
         return _transactionService.GetTransactions();
     }

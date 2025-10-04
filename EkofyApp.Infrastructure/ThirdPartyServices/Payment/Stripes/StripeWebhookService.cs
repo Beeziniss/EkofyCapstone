@@ -366,15 +366,15 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 {
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
 
-                    // Cập nhật Transaction
-                    UpdateDefinition<Transaction> update = Builders<Transaction>.Update
+                    // Cập nhật PaymentTransaction
+                    UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
                         .Set(t => t.StripePaymentId, checkoutSession.PaymentIntentId)
                         .Set(t => t.StripePaymentMethod, checkoutSession.PaymentMethodTypes)
                         .Set(t => t.PaymentStatus, PaymentStatus.Paid)
                         .Set(t => t.Status, TransactionStatus.Completed)
                         .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-                    Transaction transaction = await _unitOfWork.GetCollection<Transaction>().FindOneAndUpdateAsync(session, Builders<Transaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
+                    PaymentTransaction transaction = await _unitOfWork.GetCollection<PaymentTransaction>().FindOneAndUpdateAsync(session, Builders<PaymentTransaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
 
                     OneOffSnapshot? oneOffSnapshot = null;
                     SubscriptionSnapshot? subscriptionSnapshot = null;

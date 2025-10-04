@@ -13,6 +13,7 @@ public sealed class PayoutTransaction : TimeStamped, IEntityCustom
     public string UserId { get; set; } = null!; // Artist nhận tiền
 
     // TODO: Chưa biết có cần không
+    // Resolved: Cần
     [BsonRepresentation(BsonType.ObjectId)]
     public string RoyaltyReportId { get; set; } = null!; // Liên kết tới report đã generate
 

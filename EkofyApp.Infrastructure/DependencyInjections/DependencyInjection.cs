@@ -32,6 +32,7 @@ using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Cloudinary;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.EmySound;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Momo;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
@@ -74,6 +75,7 @@ using EkofyApp.Infrastructure.Services.UserSubscriptions;
 using EkofyApp.Infrastructure.Services.Works;
 using EkofyApp.Infrastructure.ThirdPartyServices.AWS;
 using EkofyApp.Infrastructure.ThirdPartyServices.Cloudinaries;
+using EkofyApp.Infrastructure.ThirdPartyServices.EmySound;
 using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
@@ -130,6 +132,7 @@ public static class DependencyInjection
 
         services.AddGrpcClient();
 
+        services.AddEmySound();
         services.AddMomo();
         services.AddAmazonWebService();
         services.AddCloudinary();
@@ -544,11 +547,28 @@ public static class DependencyInjection
             {
                 policy.WithOrigins("http://localhost:3000")
                       .WithOrigins("https://localhost:8888")
+                      .WithOrigins("http://127.0.0.1:5500")
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
             });
         });
+    }
+
+    public static void AddEmySound(this IServiceCollection services)
+    {
+        string emySoundUrlBase = Environment.GetEnvironmentVariable("EMYSOUND_API_URL_BASE")
+            ?? throw new UnconfiguredEnvironmentCustomException("Base Address is not set in the environment variables");
+
+        services.AddRefitClient<IEmySoundApi>()
+            .ConfigureHttpClient(c =>
+            {
+                c.BaseAddress = new Uri(emySoundUrlBase);
+                c.DefaultRequestHeaders.Add("accept", "application/json");
+                c.DefaultRequestHeaders.Add("authorization", "Basic c2F0b3JpNTYyMDAzQGdtYWlsLmNvbTpTMmhvQG5nZGFuaA==");
+            });
+
+        services.AddScoped<IEmySoundService, EmySoundService>();
     }
 
     public static void AddMomo(this IServiceCollection services)
@@ -667,7 +687,7 @@ public static class DependencyInjection
         // BillingPortalConfiguration
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
 
-        // Transaction
+        // PaymentTransaction
         BsonSerializer.RegisterSerializer(typeof(PaymentStatus), new EnumMemberSerializer<PaymentStatus>());
         BsonSerializer.RegisterSerializer(typeof(TransactionStatus), new EnumMemberSerializer<TransactionStatus>());
 

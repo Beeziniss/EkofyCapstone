@@ -6,11 +6,14 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using FFmpeg.AutoGen.Bindings.DynamicallyLoaded;
+using GreenDonut;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using SoundFingerprinting.Audio;
 using SoundFingerprinting.Builder;
 using SoundFingerprinting.Data;
+using SoundFingerprinting.Emy;
 using SoundFingerprinting.InMemory;
 using SoundFingerprinting.Query;
 
@@ -83,7 +86,7 @@ public sealed class AudioFingerprintService(IUnitOfWork unitOfWork, ILogger<Audi
             {
                 TrackInfo track = new(trackAudioFingerprint.Id, trackAudioFingerprint.Name, trackAudioFingerprint.CreatedBy);
 
-                HashedFingerprint[] hashesFromDb = new HashedFingerprint[trackAudioFingerprint.AudioFingerprint.CompressedFingerprints.Count];
+                HashedFingerprint[] hashesFromDb = new HashedFingerprint[trackAudioFingerprint.AudioFingerprint!.CompressedFingerprints.Count];
                 for (int i = 0; i < trackAudioFingerprint.AudioFingerprint.CompressedFingerprints.Count; i++)
                 {
                     hashesFromDb[i] = new HashedFingerprint(

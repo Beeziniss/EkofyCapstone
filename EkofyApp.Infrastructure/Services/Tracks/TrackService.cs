@@ -59,7 +59,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 CoverImage = trackResponse.CoverImage,
                 PreviewVideo = trackResponse.PreviewVideo,
 
-                AudioFingerprint = trackResponse.AudioFingerprint,
+                //AudioFingerprint = trackResponse.AudioFingerprint,
                 AudioFeature = trackResponse.AudioFeature,
 
                 IsExplicit = trackResponse.IsExplicit,
