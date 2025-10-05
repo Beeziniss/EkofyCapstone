@@ -6,4 +6,5 @@ public interface IArtistService
 {
     Task<bool> CreateArtistAsync(CreateArtistRequest createArtistRequest);
     IQueryable<Artist> GetArtistsQueryable();
+    Task UpdateArtistAsync(UpdateArtistRequest updateArtistRequest);
 }
