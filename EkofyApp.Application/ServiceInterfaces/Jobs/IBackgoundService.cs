@@ -6,7 +6,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
     {
         void DisplayLogTest(PerformContext context);
         Task MonthlyRoyaltyReportJob();
-        void SendEmailJob(string toEmail);
+        void SendOtpEmailJob(string fullName, string toEmail, string otp);
         Task UpdateStreamCountJob();
     }
 }

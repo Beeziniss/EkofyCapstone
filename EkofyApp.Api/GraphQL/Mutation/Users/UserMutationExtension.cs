@@ -1,4 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Mutation.Users;
+﻿using EkofyApp.Domain.Utils;
+
+namespace EkofyApp.Api.GraphQL.Mutation.Users;
 
 public sealed class UserMutationExtension : ObjectTypeExtension<UserMutation>
 {
@@ -6,10 +8,16 @@ public sealed class UserMutationExtension : ObjectTypeExtension<UserMutation>
     {
         // Configure the UserMutation type here if needed
         descriptor.Field(x => x.CreateModeratorAsync(default!))
-            .Authorize(roles: "Admin");
+            .Authorize(HelperRoleBase.AdminRolesArray);
 
         descriptor.Field(x => x.CreateAdminAsync(default!))
             //.AllowAnonymous();
-        .Authorize(roles: "Admin");
+        .Authorize(HelperRoleBase.AdminRolesArray);
+
+        descriptor.Field(x => x.DeActiveUserAsync(default!))
+            .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
+
+        descriptor.Field(x => x.ReActiveUserAsync(default!))
+            .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
     }
 }

@@ -63,7 +63,7 @@ public class TestController : ControllerBase
         //await unitOfWork.GetCollection<Track>().InsertOneAsync(track);
 
         // Lưu request vào redis
-        await redisCacheService.SetAsync($"track:{trackId}:requestUpload", track, TimeSpan.FromDays(3));
+        await redisCacheService.SetGenericAsync($"track:{trackId}:requestUpload", track, TimeSpan.FromDays(3));
 
         // Upload file lên S3
         await amazonS3Service.UploadOriginalAudioAsync(stream, trackId);

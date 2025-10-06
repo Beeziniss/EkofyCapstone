@@ -29,7 +29,7 @@ public sealed class RecordingQuery(IRecordingService recordingService, IRedisCac
     [UseProjection]
     public async Task<RecordingTempRequest> GetMetadataRecordingUploadRequestAsync(string recordingId)
     {
-        ICacheResult<RecordingTempRequest> cacheResult = await _redisCacheService.TryGetAsync<RecordingTempRequest>($"recording:{recordingId}:requestUpload");
+        ICacheResult<RecordingTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<RecordingTempRequest>($"recording:{recordingId}:requestUpload");
         if (!cacheResult.Success)
         {
             throw new NotFoundCustomException("RecordingProjection upload request not found or expired.");
