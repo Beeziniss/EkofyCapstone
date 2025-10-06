@@ -432,4 +432,14 @@ public class TestController : ControllerBase
             Message = "Add count to cache successfully",
         });
     }
+
+    [HttpPost("generate-embed-for-track")]
+    public async Task<IActionResult> GenerateEmbedForTrack([FromServices] ITrackService trackService)
+    {
+        await trackService.AddEmbeddingVectorAsync();
+        return Ok(new
+        {
+            Message = "Generate embed code successfully",
+        });
+    }
 }

@@ -91,6 +91,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -141,6 +142,8 @@ public static class DependencyInjection
 
         services.AddValidation();
         services.AddEnumMemberSerializer();
+
+        services.AddEmbedGenerator();
 
         //services.AddSwaggerGen();
     }
@@ -725,7 +728,7 @@ public static class DependencyInjection
                 },
                 Prefix = "backgroundjobs.hangfire",
                 CheckConnection = false,
-                
+
                 //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
             }));
 
@@ -739,5 +742,10 @@ public static class DependencyInjection
 
         // Background Jobs Services
         service.AddSingleton<IBackgoundService, BackgoundService>();
+    }
+
+    private static void AddEmbedGenerator(this IServiceCollection services)
+    {
+        services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL")!, Environment.GetEnvironmentVariable("OLLAMA_MODEL")));
     }
 }
