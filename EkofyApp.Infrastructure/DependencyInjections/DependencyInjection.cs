@@ -746,6 +746,6 @@ public static class DependencyInjection
 
     private static void AddEmbedGenerator(this IServiceCollection services)
     {
-        services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL")!, Environment.GetEnvironmentVariable("OLLAMA_MODEL")));
+        services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_API_URL is not set in the environment"), Environment.GetEnvironmentVariable("OLLAMA_MODEL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_MODEL is not set in the environment")));
     }
 }

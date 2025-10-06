@@ -587,9 +587,6 @@ public sealed class AuthenticationService(
             }
 
             bool isValid = storedOtp.Equals(providedOtp, StringComparison.OrdinalIgnoreCase);
-            Console.WriteLine("=======================================");
-            Console.WriteLine($"Redis: {storedOtp} | Provided: {providedOtp}");
-            Console.WriteLine("=======================================");
 
             if (!isValid)
             {

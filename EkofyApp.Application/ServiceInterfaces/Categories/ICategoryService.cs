@@ -1,11 +1,14 @@
 ﻿using EkofyApp.Application.Models.Categories;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Application.ServiceInterfaces.Categories;
 public interface ICategoryService
 {
     Task CreateCategoryAsync(CreateCategoryRequest createCategoryRequest);
+    IEnumerable<MoodType> DetectMoods(AudioFeature feature);
+    string GenerateAlternativeDescription(AudioFeature audioFeature, IEnumerable<MoodType> moods);
     IQueryable<Category> GetCategories();
-    Task<IEnumerable<string>> GetMoodsFromAudioFeaturesAsync(AudioFeature audioFeature);
+    Task<IEnumerable<string>> GetMoodsFromAudioFeaturesAsync(IEnumerable<MoodType> moodTypes);
 }

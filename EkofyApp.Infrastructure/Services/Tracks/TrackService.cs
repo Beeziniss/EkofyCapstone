@@ -63,6 +63,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
                 //AudioFingerprint = trackResponse.AudioFingerprint,
                 AudioFeature = trackResponse.AudioFeature,
+                AlternativeDescription = trackResponse.AlternativeDescription,
+                EmbeddingVector = trackResponse.EmbeddingVector,
 
                 IsExplicit = trackResponse.IsExplicit,
                 Lyrics = trackResponse.Lyrics,
@@ -176,7 +178,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 string totalDescription = (track.Description ?? string.Empty) + ". " + track.AlternativeDescription;
                 if (!embedding.ContainsKey(totalDescription))
                 {
-                    embedding[track.Id] = await GenerateEmbeddings(totalDescription);
+                    embedding[track.Id] = await GenerateEmbeddingsAsync(totalDescription);
                 }
             }
 
@@ -202,7 +204,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
     }
 
-    private async Task<float[]> GenerateEmbeddings(string term)
+    public async Task<float[]> GenerateEmbeddingsAsync(string term)
     {
         var generatedEmbeddings = await _embeddingGenerator.GenerateAsync([term]);
         var embedding = generatedEmbeddings.Single();
@@ -219,7 +221,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         }
 
         //tạo vector từ text để tí so sánh
-        var embedding = await GenerateEmbeddings(text);
+        var embedding = await GenerateEmbeddingsAsync(text);
 
         var vectorSearchOptions = new VectorSearchOptions<Track>
         {
@@ -236,45 +238,5 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 .Exclude(t => t.AudioFeature)
                 .Exclude(t => t.AlternativeDescription))
             .ToListAsync();
-    }
-
-    private async Task AddOneEmbeddingVectorAsync(string trackId)
-    {
-        try
-        {
-            Track track = await _unitOfWork.GetCollection<Track>()
-                                .Find(t => t.Id == trackId && t.EmbeddingVector == null)
-                                .FirstOrDefaultAsync();
-
-            if (track is null)
-            {
-                return;
-            }
-
-
-            var embedding = new Dictionary<string, float[]>();
-
-
-            //nối description và alternative description roòi tạo vector
-            string totalDescription = (track.Description ?? string.Empty) + ". " + track.AlternativeDescription;
-            if (!embedding.ContainsKey(totalDescription))
-            {
-                embedding[track.Id] = await GenerateEmbeddings(totalDescription);
-            }
-
-
-            //update track chưa có embedding
-            var filter = Builders<Track>.Filter.Eq(t => t.Id, track.Id);
-            var update = Builders<Track>.Update.Set(t => t.EmbeddingVector, embedding[track.Id]);
-
-
-            await _unitOfWork.GetCollection<Track>().UpdateOneAsync(filter, update);
-
-        }
-        catch (Exception e)
-        {
-            throw new BadRequestCustomException(e.Message);
-        }
-
     }
 }

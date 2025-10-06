@@ -63,7 +63,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
     }
 
-    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
     [UseProjection]
     public async Task<IEnumerable<Track>> GetTrackBySemanticSearch(string term)
     {
