@@ -63,6 +63,13 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
     }
 
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseProjection]
+    public async Task<IEnumerable<Track>> GetTrackBySemanticSearch(string term)
+    {
+        return await _trackService.GetAllTracksBySemanticAsync(term);
+    }
+
     #region Original
     //public async Task<TrackResponse> GetTrackByIdAsync(string id, IResolverContext context, [Service] IUnitOfWork unitOfWork, [Service] IMapper mapper)
     //{
