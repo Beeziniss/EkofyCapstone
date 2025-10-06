@@ -144,4 +144,20 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         await _authenticationService.LogoutAsync();
         return Ok(new { Message = "Logout Successfully" });
     }
+
+    [AllowAnonymous, HttpPost("resend-otp")]
+    public async Task<IActionResult> ResendOtpAsync(string email)
+    {
+        await _authenticationService.ResendOtpAsync(email);
+
+        return Ok(new { Message = "Resend OTP Successfully" });
+    }
+
+    [AllowAnonymous, HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtpAsync(string email, string providedOtp)
+    {
+        await _authenticationService.VerifyOtpAsync(email, providedOtp);
+
+        return Ok(new { Message = "Verify OTP Successfully" });
+    }
 }

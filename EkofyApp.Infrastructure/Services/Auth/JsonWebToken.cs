@@ -28,7 +28,7 @@ public sealed class JsonWebToken : IJsonWebToken
         string userId = claims.FirstOrDefault(c => c.Type == "userId")!.Value.ToString();
 
         //lưu vào redis 7 ngày
-        await _redisCacheService.SetAsync("jwt:" + userId, refreshToken, TimeSpan.FromDays(7));
+        await _redisCacheService.SetGenericAsync("jwt:" + userId, refreshToken, TimeSpan.FromDays(7));
 
         return new AccessTokenResponse
         {
@@ -49,7 +49,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
         Console.WriteLine("==========++++++++********** "+userID);
 
-        string? tokenInRedis = await _redisCacheService.GetAsync("jwt:" + userID);
+        string? tokenInRedis = await _redisCacheService.GetStringAsync("jwt:" + userID);
 
         Console.WriteLine("==========++++++++********** " + tokenInRedis);
 
@@ -62,7 +62,7 @@ public sealed class JsonWebToken : IJsonWebToken
         string newRefreshToken = GenerateRefreshToken(principal.Claims, principal);
 
         //set lại refresh token và thời gian hết hạn mới
-        await _redisCacheService.SetAsync("jwt:" + userID, newRefreshToken, overrides: true ,TimeSpan.FromDays(7));
+        await _redisCacheService.SetStringAsync("jwt:" + userID, newRefreshToken, TimeSpan.FromDays(7));
         return new AccessTokenResponse
         {
             AccessToken = newAccessToken,
@@ -105,7 +105,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
     public async Task RevokeToken(string userId) { 
 
-        if(await _redisCacheService.GetAsync("jwt:" + userId) is null)
+        if(await _redisCacheService.GetStringAsync("jwt:" + userId) is null)
         {
             return;
         }

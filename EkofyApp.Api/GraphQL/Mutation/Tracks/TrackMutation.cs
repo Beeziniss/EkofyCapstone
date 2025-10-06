@@ -180,9 +180,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         RecordingTempRequest recordingTemp = _recordingService.CreateRecordingTemp(createRecordingRequest);
 
         // Đẩy request lên redis để chờ duyệt
-        await _redisCacheService.SetAsync($"track:{trackTemp.Id}:requestUpload", trackTemp, TimeSpan.FromDays(3));
-        await _redisCacheService.SetAsync($"work:{workTemp.Id}:requestUpload", workTemp, TimeSpan.FromDays(3));
-        await _redisCacheService.SetAsync($"recording:{recordingTemp.Id}:requestUpload", recordingTemp, TimeSpan.FromDays(3));
+        await _redisCacheService.SetGenericAsync($"track:{trackTemp.Id}:requestUpload", trackTemp, TimeSpan.FromDays(3));
+        await _redisCacheService.SetGenericAsync($"work:{workTemp.Id}:requestUpload", workTemp, TimeSpan.FromDays(3));
+        await _redisCacheService.SetGenericAsync($"recording:{recordingTemp.Id}:requestUpload", recordingTemp, TimeSpan.FromDays(3));
 
         // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
         await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTemp.Id);
@@ -214,7 +214,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
     public async Task<bool> RejectTrackUploadRequestAsync(string trackId, string workId, string recordingId)
     {
-        if (_redisCacheService.TryGet($"track:{trackId}:requestUpload", out TrackTempRequest? trackUploadRequest) &&
+        if (_redisCacheService.TryGetGeneric($"track:{trackId}:requestUpload", out TrackTempRequest? trackUploadRequest) &&
             await _redisCacheService.ExistsAsync($"work:{workId}:requestUpload") &&
             await _redisCacheService.ExistsAsync($"recording:{recordingId}:requestUpload"))
         {
@@ -241,9 +241,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     public async Task<bool> ApproveTrackUploadRequestAsync(string trackId, string workId, string recordingId)
     {
         // Lưu xuống database
-        if (_redisCacheService.TryGet($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest) &&
-            _redisCacheService.TryGet($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
-            _redisCacheService.TryGet($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
+        if (_redisCacheService.TryGetGeneric($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest) &&
+            _redisCacheService.TryGetGeneric($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
+            _redisCacheService.TryGetGeneric($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
         {
             WavFileResponse wavFileResponse = default!;
 

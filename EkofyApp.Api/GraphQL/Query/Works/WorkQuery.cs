@@ -29,7 +29,7 @@ public sealed class WorkQuery(IWorkService workService, IRedisCacheService redis
     [UseProjection]
     public async Task<WorkTempRequest> GetMetadataWorkUploadRequestAsync(string workId)
     {
-        ICacheResult<WorkTempRequest> cacheResult = await _redisCacheService.TryGetAsync<WorkTempRequest>($"work:{workId}:requestUpload");
+        ICacheResult<WorkTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<WorkTempRequest>($"work:{workId}:requestUpload");
         if (!cacheResult.Success)
         {
             throw new NotFoundCustomException("WorkProjection upload request not found or expired.");

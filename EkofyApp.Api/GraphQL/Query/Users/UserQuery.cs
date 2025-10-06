@@ -22,13 +22,13 @@ public sealed class UserQuery(IUserService userService)
         return _userService.GetUsers();
     }
 
-    // TODO: Query Object thì dùng Generic T ()
-    // Vì IQueryable chỉ trả về format chính là List/IEnumerable
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
-    [UseProjection]
-    [UseSorting<User>]
-    public Task<User> GetUserByIdAsync(string id)
-    {
-        return _userService.GetUserByIdAsync(id);
-    }
+    //// TODO: Query Object thì dùng Generic T ()
+    //// Vì IQueryable chỉ trả về format chính là List/IEnumerable
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    //[UseProjection]
+    //[UseSorting<User>]
+    //public Task<User> GetUserByIdAsync(string id)
+    //{
+    //    return _userService.GetUserByIdAsync(id);
+    //}
 }

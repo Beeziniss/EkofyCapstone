@@ -47,7 +47,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     [UseProjection]
     public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string trackId)
     {
-        ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
+        ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
         if (!cacheResult.Success)
         {
             throw new NotFoundCustomException("Track upload request not found or expired.");

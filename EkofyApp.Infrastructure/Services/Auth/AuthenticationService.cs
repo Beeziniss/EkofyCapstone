@@ -7,23 +7,35 @@ using EkofyApp.Application.Models.Projections;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Claims;
+using System.Text;
 using LoginRequest = EkofyApp.Application.Models.Auth.LoginRequest;
 
 namespace EkofyApp.Infrastructure.Services.Auth;
-public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IJsonWebToken jsonWebToken, IMapper mapper, IHttpContextAccessor httpContextAccessor) : IAuthenticationService
+
+public sealed class AuthenticationService(
+    IUnitOfWork unitOfWork,
+    IUserSubscriptionService userSubscriptionService,
+    IEffectiveEntitlementService effectiveEntitlementService,
+    IJsonWebToken jsonWebToken,
+    IMapper mapper,
+    IHttpContextAccessor httpContextAccessor,
+    IRedisCacheService redisCacheService) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
@@ -31,6 +43,7 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
     private readonly IJsonWebToken _jsonWebToken = jsonWebToken;
     private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
     public async Task<CurrentUserProfile> GetCurrentUserProfileAsync()
     {
@@ -144,6 +157,10 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
 
             // Xây dựng quyền lợi mặc định cho Listener (gói Free)
             await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Listener);
+
+            // Gửi mã OTP để xác thực email
+            string otp = await GenerateOtpAsync(user.Email);
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendOtpEmailJob(user.FullName, user.Email, otp));
         });
     }
 
@@ -296,6 +313,10 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
 
             // Xây dựng quyền lợi mặc định cho Artist (gói Free)
             await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Artist);
+
+            // Gửi mã OTP để xác thực email
+            string otp = await GenerateOtpAsync(user.Email);
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendOtpEmailJob(user.FullName, user.Email, otp));
         });
     }
 
@@ -511,11 +532,103 @@ public sealed class AuthenticationService(IUnitOfWork unitOfWork, IUserSubscript
         return await _jsonWebToken.GenerateRefreshTokenAsync(refreshToken);
     }
 
-    public async Task LogoutAsync() 
+    public async Task LogoutAsync()
     {
         string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
                         ?? throw new UnauthorizedCustomException("You have not login yet.");
 
         await _jsonWebToken.RevokeToken(userId);
+    }
+
+    private async Task<string> GenerateOtpAsync(string email)
+    {
+        // Tạo mã OTP gồm 6 ký tự chữ và số ngẫu nhiên với timestamp để tránh trùng
+        string characters = Environment.GetEnvironmentVariable("OTP_SECRET") ?? throw new UnconfiguredEnvironmentCustomException("OTP_SECRET is not set in the environment");
+
+        // Sử dụng timestamp để tạo seed và đảm bảo tính duy nhất
+        long timestamp = HelperMethod.GetUtcPlus7TimeOffset().ToUnixTimeMilliseconds();
+        Random random = new((int)(timestamp % int.MaxValue));
+        StringBuilder otpBuilder = new(6);
+
+        // 2 ký tự đầu dựa trên timestamp
+        string timestampString = timestamp.ToString();
+        int timestampLength = timestampString.Length;
+        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 2].ToString()) % characters.Length]);
+        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 1].ToString()) % characters.Length]);
+
+        // 4 ký tự còn lại ngẫu nhiên
+        for (int i = 2; i < 6; i++)
+        {
+            otpBuilder.Append(characters[random.Next(characters.Length)]);
+        }
+
+        string otpCode = otpBuilder.ToString();
+
+        // Tạo Redis key cho OTP
+        string redisKey = $"otp:{email}";
+
+        // Lưu mã OTP vào Redis với thời hạn 5 phút
+        await _redisCacheService.SetStringAsync(redisKey, otpCode, TimeSpan.FromMinutes(5));
+
+        return otpCode;
+    }
+
+    // Verify OTP
+    public async Task VerifyOtpAsync(string email, string providedOtp)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            string redisKey = $"otp:{email.ToLowerInvariant()}";
+            string? storedOtp = await _redisCacheService.GetStringAsync(redisKey);
+
+            if (string.IsNullOrEmpty(storedOtp))
+            {
+                throw new NotFoundCustomException("OTP is expired or not found"); // OTP expired or not found
+            }
+
+            bool isValid = storedOtp.Equals(providedOtp, StringComparison.OrdinalIgnoreCase);
+            Console.WriteLine("=======================================");
+            Console.WriteLine($"Redis: {storedOtp} | Provided: {providedOtp}");
+            Console.WriteLine("=======================================");
+
+            if (!isValid)
+            {
+                throw new ConflictCustomException("Invalid OTP provided.");
+            }
+
+            // Cập nhật trạng thái người dùng thành Active
+            UpdateResult result = await _unitOfWork.GetCollection<User>()
+                .UpdateOneAsync(session,
+                    u => u.Email == email.ToLowerInvariant() && u.Status == UserStatus.Inactive,
+                    Builders<User>.Update
+                        .Set(u => u.Status, UserStatus.Active)
+                        .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                );
+            if (result.MatchedCount == 0)
+            {
+                throw new NotFoundCustomException("User not found or already active.");
+            }
+            if (result.ModifiedCount == 0)
+            {
+                throw new UnprocessableEntityCustomException("Failed to activate user.");
+            }
+
+            // Remove OTP after successful verification
+            await _redisCacheService.RemoveAsync(redisKey);
+        });
+    }
+
+    public async Task ResendOtpAsync(string email)
+    {
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Email == email.ToLowerInvariant() && u.Status == UserStatus.Inactive)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found.");
+
+        // Gửi lại mã OTP
+        string otp = await GenerateOtpAsync(user.Email);
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendOtpEmailJob(user.FullName, user.Email, otp));
     }
 }
