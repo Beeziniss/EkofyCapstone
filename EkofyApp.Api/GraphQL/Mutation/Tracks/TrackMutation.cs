@@ -289,6 +289,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                 IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
                 IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
 
+                string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+                float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
+
                 TrackTempResponse trackTempResponse = new()
                 {
                     Id = trackTempRequest.Id,
@@ -306,6 +309,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
                     //AudioFingerprint = audioFingerprint,
                     AudioFeature = audioAnalysisResponse,
+                    AlternativeDescription = alternativeDescription,
+                    EmbeddingVector = embeddingVector,
+
                     CreatedBy = trackTempRequest.CreatedBy,
                 };
 
