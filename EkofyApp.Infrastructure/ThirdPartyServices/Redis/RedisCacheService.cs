@@ -1,4 +1,5 @@
 using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using Microsoft.Extensions.Logging;
@@ -546,6 +547,50 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "[Redis] Failed to get pending artist registrations.");
             return CacheResult<IEnumerable<PendingArtistRegistration>>.Fail();
+        }
+    }
+
+    public async Task<ICacheResult<IEnumerable<PendingListenerRegistration>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "listener:*:pendingRegistration").ToArray();
+
+            List<PendingListenerRegistration> allRequests = [];
+
+            foreach (RedisKey key in keys)
+            {
+                try
+                {
+                    RedisValue value = await _redisDb.StringGetAsync(key);
+
+                    if (value.HasValue)
+                    {
+                        PendingListenerRegistration? request = JsonSerializer.Deserialize<PendingListenerRegistration>(value!);
+                        if (request != null)
+                        {
+                            allRequests.Add(request);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize listener registration request. Key: {key}");
+                }
+            }
+
+            IEnumerable<PendingListenerRegistration> paged = allRequests.OrderBy(r => r.RequestedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return CacheResult<IEnumerable<PendingListenerRegistration>>.From(paged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Redis] Failed to get pending listener registrations.");
+            return CacheResult<IEnumerable<PendingListenerRegistration>>.Fail();
         }
     }
 }

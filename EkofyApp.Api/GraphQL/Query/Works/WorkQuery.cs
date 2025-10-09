@@ -15,7 +15,7 @@ public sealed class WorkQuery(IWorkService workService, IRedisCacheService redis
     private readonly IWorkService _workService = workService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
@@ -25,7 +25,7 @@ public sealed class WorkQuery(IWorkService workService, IRedisCacheService redis
         return _workService.GetWorksQueryable();
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseProjection]
     public async Task<WorkTempRequest> GetMetadataWorkUploadRequestAsync(string workId)
     {

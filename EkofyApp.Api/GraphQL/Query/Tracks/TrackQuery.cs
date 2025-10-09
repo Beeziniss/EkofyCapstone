@@ -5,6 +5,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
@@ -17,7 +18,8 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
@@ -28,7 +30,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     }
 
     // TODO: Sorting for requests?
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
@@ -43,7 +45,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return [];
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseProjection]
     public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string trackId)
     {
@@ -56,14 +58,14 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return cacheResult.Value!;
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseProjection]
     public string GetOriginalFileTrackUploadRequest(string trackId)
     {
         return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
     [UseProjection]
     public async Task<IEnumerable<Track>> GetTrackBySemanticSearch(string term)
     {

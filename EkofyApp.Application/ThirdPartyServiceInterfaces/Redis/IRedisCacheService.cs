@@ -1,4 +1,5 @@
 using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
 using StackExchange.Redis;
 
@@ -26,6 +27,7 @@ public interface IRedisCacheService
     Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
     Task<ICacheResult<IEnumerable<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20);
     Task<ICacheResult<IEnumerable<PendingArtistRegistration>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
+    Task<ICacheResult<IEnumerable<PendingListenerRegistration>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task<string?> HashGetAsync(string key, string field);
     Task<long> HashIncrementAsync(string key, string field, long incrementBy = 1);
     Task<bool> HashFieldExpireAsync(string key, string field, TimeSpan? expiry);

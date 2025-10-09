@@ -11,7 +11,7 @@ public sealed class RoyaltyPolicyQuery(IRoyaltyPolicyService royaltyPolicyServic
 {
     private readonly IRoyaltyPolicyService _royaltyPolicyService = royaltyPolicyService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

@@ -2,6 +2,7 @@
 using EkofyApp.Application.ThirdPartyServiceInterfaces.EmySound;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Refit;
 using System.Text.Json;
 
@@ -13,6 +14,7 @@ public sealed class EmySoundQuery(IEmySoundApi emySoundApi)
 {
     private readonly IEmySoundApi _emySoundApi = emySoundApi;
 
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
     public async Task<IEnumerable<QueryAudioFingerprintResponse>> QueryTracksAsync(IFile file)
     {
         using Stream stream = file.OpenReadStream();
@@ -57,6 +59,7 @@ public sealed class EmySoundQuery(IEmySoundApi emySoundApi)
         return results;
     }
 
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
     public async Task<QueryAudioFingerprintResponse> QueryTrackAsync(IFile file)
     {
         using Stream stream = file.OpenReadStream();
