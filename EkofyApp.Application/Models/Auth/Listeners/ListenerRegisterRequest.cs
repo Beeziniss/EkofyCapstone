@@ -13,4 +13,5 @@ public sealed record class ListenerRegisterRequest
 
     // For the listener profile
     public string DisplayName { get; init; } = default!; // DisplayName of the listener, e.g., "John Doe"
+    public string? AvatarImage { get; init; } // Optional avatar image URL for the listener
 }

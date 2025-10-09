@@ -71,7 +71,7 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
 
         //    UpdateDefinition<ArtistPackage> combinedUpdate = builder.Combine(updateDefinition);
 
-        //    var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.Id == updateRequest.Id, combinedUpdate);
+        //    var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.UserId == updateRequest.UserId, combinedUpdate);
 
         //    if(result.MatchedCount == 0)
         //    {

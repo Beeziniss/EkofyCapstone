@@ -7,6 +7,8 @@ using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.IdGenerators;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Users;
@@ -41,9 +43,12 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             throw new ConflictCustomException("Email already exists.");
         }
 
+        string moderatorId = ObjectId.GenerateNewId().ToString();
         await _unitOfWork.GetCollection<User>().InsertOneAsync(new User
         {
+            Id = moderatorId,
             Email = createModeratorRequest.Email.ToLowerInvariant(),
+            FullName  = $"{UserRole.Moderator.ToString()}-{moderatorId}",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(createModeratorRequest.Password),
 
             BirthDate = DateTimeOffset.MinValue, // Lý do dùng min vì không nên thay đổi cấu trúc non-nullable sang nullable chỉ vì 2 role là Moderator và Admin
@@ -62,9 +67,12 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             throw new ConflictCustomException("Email already exists.");
         }
 
+        string adminId = ObjectId.GenerateNewId().ToString();
         await _unitOfWork.GetCollection<User>().InsertOneAsync(new User
         {
+            Id = adminId,
             Email = createAdminRequest.Email.ToLowerInvariant(),
+            FullName  = $"{UserRole.Admin.ToString()}-{adminId}",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(createAdminRequest.Password),
 
             BirthDate = DateTimeOffset.MinValue, // Lý do dùng min vì không nên thay đổi cấu trúc non-nullable sang nullable chỉ vì 2 role là Moderator và Admin
@@ -88,7 +96,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("adminId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             UpdateDefinition<User> update = Builders<User>.Update
             .Set(u => u.Status, UserStatus.Active)
@@ -107,14 +115,14 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         });
     }
 
-    public async Task DeActiveUserAsync(string targetUserId)
+    public async Task BanUserAsync(string targetUserId)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("adminId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             UpdateDefinition <User> update = Builders<User>.Update
-            .Set(u => u.Status, UserStatus.Inactive)
+            .Set(u => u.Status, UserStatus.Banned)
             .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
             UpdateResult result = await _unitOfWork.GetCollection<User>()

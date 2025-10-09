@@ -77,7 +77,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     //    ProjectionDefinition<Track> projection = BuildProjection<Track>(selectedFields);
 
     //    Track tracks = await unitOfWork.GetCollection<Track>()
-    //        .Find(x => x.Id == id)
+    //        .Find(x => x.UserId == id)
     //        .Project<Track>(projection)
     //        .FirstOrDefaultAsync();
 

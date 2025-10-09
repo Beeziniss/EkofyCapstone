@@ -181,12 +181,12 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             //    .ToDictionary(g => g.Key, g => g.Sum(s => s.Amount));
 
             //var users = await _unitOfWork.GetCollection<User>()
-            //    .Find(x => userIdAmount.ContainsKey(x.Id))
-            //    .Project(x => new { x.Id, x.StripeAccountId })
+            //    .Find(x => userIdAmount.ContainsKey(x.UserId))
+            //    .Project(x => new { x.UserId, x.StripeAccountId })
             //    .ToListAsync(ct);
 
             //Dictionary<string, string?> userIdToStripeAccount = users
-            //    .ToDictionary(k => k.Id, v => v.StripeAccountId);
+            //    .ToDictionary(k => k.UserId, v => v.StripeAccountId);
 
             //TransferService transferService = new();
             //string groupId = $"royalty-{month}-{year}-{ObjectId.GenerateNewId()}";
@@ -224,7 +224,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             //    {
             //        UserId = stripeAccountId,
             //        //RoyaltyReportId = ,
-            //        StripeTransferId = transfer.Id,
+            //        StripeTransferId = transfer.UserId,
             //        Amount = transfer.Amount,
             //        Currency = transfer.Currency,
             //        DestinationAccountId = transfer.DestinationId,

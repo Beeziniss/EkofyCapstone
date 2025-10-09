@@ -154,7 +154,7 @@ public sealed class JsonWebToken : IJsonWebToken
         //    [
         //        new Claim(ClaimTypes.Name, principal.Identity?.Name ?? throw new ArgumentException("User's ID is not found in any session")),
         //            new Claim(ClaimTypes.Role, principal.FindFirst(ClaimTypes.Role)?.Value ?? throw new ArgumentException("User's Role is not found in any session")),
-        //            new Claim("ArtistId", principal.FindFirst("ArtistId")?.Value ?? throw new ArgumentException("Artist's ID is not found in any session")),
+        //            new Claim("UserId", principal.FindFirst("UserId")?.Value ?? throw new ArgumentException("Artist's ID is not found in any session")),
         //            new Claim(ClaimTypes.NameIdentifier, principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new ArgumentException("User's ID is not found in any session")),
         //            new Claim("Avatar", principal.FindFirst("Avatar")?.Value ?? throw new ArgumentException("User's Avatar is not found in any session")),
         //        ];

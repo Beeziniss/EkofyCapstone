@@ -51,6 +51,11 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
         RuleFor(x => x.ArtistType)
             .IsInEnum().WithMessage("Artist Type must be Individual, Band, or Other");
 
+        RuleFor(x => x.AvatarImage)
+            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute))
+            .When(x => !string.IsNullOrEmpty(x.AvatarImage))
+            .WithMessage("Avatar Image must be a valid URL");
+
         RuleFor(x => x.Members)
             .NotEmpty().When(x => x.ArtistType != ArtistType.Individual).WithMessage("Artist Members List cannot be null")
             .ForEach(x => x.SetValidator(new CreateArtistMemberRequestValidator())).When(x => x.ArtistType != ArtistType.Individual).WithMessage("Artist Members are required for non-individual artists.");

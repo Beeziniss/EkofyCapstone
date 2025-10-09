@@ -53,7 +53,7 @@ public sealed class TestMutation
     {
         await unitOfWork.GetCollection<Entitlement>().InsertOneAsync(new Entitlement
         {
-            //Id = ObjectId.GenerateNewId().ToString(),
+            //UserId = ObjectId.GenerateNewId().ToString(),
             Name = "Test Entitlement",
             Code = "test_entitlement",
             Description = "This is a test entitlement",

@@ -130,7 +130,7 @@ public class TestController : ControllerBase
     //    {
     //        moodIds = await unitOfWork.GetCollection<Category>()
     //            .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
-    //            .Project(mood => mood.Id)
+    //            .Project(mood => mood.UserId)
     //            .ToListAsync();
     //    }
 
@@ -145,7 +145,7 @@ public class TestController : ControllerBase
     //        .Set(track => track.AudioFeature, audioAnalysisResponse)
     //        .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
 
-    //    await unitOfWork.GetCollection<Track>().FindOneAndUpdateAsync(track => track.Id == trackId, updateDefinition);
+    //    await unitOfWork.GetCollection<Track>().FindOneAndUpdateAsync(track => track.UserId == trackId, updateDefinition);
 
     //    // Đẩy hls playlist lên S3
     //    await amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);
@@ -333,7 +333,7 @@ public class TestController : ControllerBase
             //    .Set(track => track.AudioFeature, audioAnalysisResponse)
             //    .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
 
-            //await unitOfWork.GetCollection<Track>().UpdateOneAsync(track => track.Id == trackId, updateDefinition);
+            //await unitOfWork.GetCollection<Track>().UpdateOneAsync(track => track.UserId == trackId, updateDefinition);
 
             // Đẩy hls playlist lên S3
             await amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);

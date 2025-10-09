@@ -11,7 +11,7 @@ namespace EkofyApp.Infrastructure.BackgroundJobs
         {
             //app.Services.CreateScope();
 
-            //BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendOtpEmailJob("satori562003@gmail.com"));
+            //BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendEmailJob("satori562003@gmail.com"));
 
             //RecurringJob.AddOrUpdate("add-stream-count", () => app.Services.GetService<IBackgoundService>()!.UpdateStreamCountJob(), "*/3 * * * *");
 

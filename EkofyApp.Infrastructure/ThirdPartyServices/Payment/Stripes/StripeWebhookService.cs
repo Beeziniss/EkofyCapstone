@@ -222,7 +222,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         //    Builders<SubscriptionPlan>.Filter.Eq(x => x.StripeProductActive, true);
 
                                         //ProjectionDefinition<SubscriptionPlan> projection = Builders<SubscriptionPlan>.Projection
-                                        //    .Include(x => x.Id)
+                                        //    .Include(x => x.UserId)
                                         //    .Include(x => x.SubscriptionId)
                                         //    .Include(x => x.SubscriptionPlanPrices)
                                         //    .ElemMatch(x => x.SubscriptionPlanPrices, e => e.StripePriceId == stripePriceId); // Trả về đúng 1 phần tử trong list trong SubscriptionPlanPrices
@@ -239,9 +239,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                                         //string subscriptionId = subscriptionPlan.SubscriptionId;
                                         //Subscription currentSubscription = await _unitOfWork.GetCollection<Subscription>()
-                                        //    .Find(x => x.Id == currentSubscriptionId && x.Status == SubscriptionStatus.Active)
+                                        //    .Find(x => x.UserId == currentSubscriptionId && x.Status == SubscriptionStatus.Active)
                                         //    .Project<Subscription>(Builders<Subscription>.Projection
-                                        //        .Include(x => x.Id)
+                                        //        .Include(x => x.UserId)
                                         //        .Include(x => x.Tier)
                                         //        .Include(x => x.Version))
                                         //    .FirstOrDefaultAsync();
@@ -384,7 +384,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             .Find(x => x.Code == checkoutSession.Metadata["subscription_code"] &&
                                 x.Status == SubscriptionStatus.Active)
                             //.Project<Subscription>(Builders<Subscription>.Projection
-                            //    .Include(x => x.Id))
+                            //    .Include(x => x.UserId))
                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
                         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
