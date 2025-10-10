@@ -16,7 +16,7 @@ public class ArtistMutation(IArtistService artistService)
 
     public async Task<bool> UpdateArtistAsync(UpdateArtistRequest updateArtistRequest)
     {
-        await _artistService.UpdateArtistAsync(updateArtistRequest);
+        await _artistService.UpdateProfileAsync(updateArtistRequest);
         return true;
     }
 }

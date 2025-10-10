@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using EkofyApp.Domain.Utils;
+using FluentValidation;
 
 namespace EkofyApp.Application.Models.Listeners;
 public sealed class UpdateListenerRequestValidator : AbstractValidator<UpdateListenerRequest>
@@ -6,6 +7,7 @@ public sealed class UpdateListenerRequestValidator : AbstractValidator<UpdateLis
     public UpdateListenerRequestValidator()
     {
         RuleFor(x => x.DisplayName)
+            .Matches(HelperMethod.RegexPatternAlphaNumericWithSpecific()).WithMessage("DisplayName must contain only alphanumeric characters, spaces, and underscores.")
             .MaximumLength(100).WithMessage("DisplayName cannot exceed 100 characters.")
             .When(x => x.DisplayName is not null);
 
@@ -21,7 +23,12 @@ public sealed class UpdateListenerRequestValidator : AbstractValidator<UpdateLis
             .EmailAddress().WithMessage("Email must be a valid email address.")
             .When(x => x.Email is not null);
 
+        RuleFor(x => x.PhoneNumber)
+            .Matches(HelperMethod.RegexPatternPhoneNumber()).WithMessage("PhoneNumber must be a valid phone number.")
+            .When(x => x.PhoneNumber is not null);
+
         RuleFor(x => x.FullName)
+            .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("FullName must contain only alphabetic characters and spaces.")
             .MaximumLength(100).WithMessage("FullName cannot exceed 100 characters.")
             .When(x => x.FullName is not null);
     }

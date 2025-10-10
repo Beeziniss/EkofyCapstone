@@ -13,6 +13,7 @@ using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.Artists;
 
@@ -45,51 +46,141 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return true;
     }
 
-    public async Task UpdateArtistAsync(UpdateArtistRequest updateArtistRequest)
+    public async Task UpdateProfileAsync(UpdateArtistRequest updateArtistRequest)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
+            // Check for email conflict if email is being updated
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.Email))
+            {
+                if (await _unitOfWork.GetCollection<Artist>().Find(a => a.Email == updateArtistRequest.Email).AnyAsync() == true)
+                {
+                    throw new ConflictCustomException($"Email {updateArtistRequest.Email} is already in use");
+                }
+            }
+
+            // Get user and artist information
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
             string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("artistId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            List<UpdateDefinition<Artist>> updateDefinitions =
+            User user = _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == userId)
+                .Project<User>(Builders<User>.Projection
+                    .Include(x => x.FullName)
+                    .Include(x => x.StripeCustomerId))
+                .FirstOrDefault() ?? throw new NotFoundCustomException($"Not found user with id {userId}");
+
+            Artist artist = await _unitOfWork.GetCollection<Artist>()
+                .Find(a => a.Id == artistId)
+                .Project<Artist>(Builders<Artist>.Projection
+                    .Include(x => x.Email)
+                    .Include(x => x.StageName))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found artist with id {artistId}");
+
+            // Create list of update definitions for Artist
+            List<UpdateDefinition<Artist>> updates =
             [
                 Builders<Artist>.Update.Set(a => a.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
             ];
 
+            // Create list of update definitions for User
+            List<UpdateDefinition<User>> updatesUser =
+            [
+                Builders<User>.Update.Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            ];
+
+            // Artist-specific updates
             if (!string.IsNullOrWhiteSpace(updateArtistRequest.StageName))
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.StageName, updateArtistRequest.StageName));
+                updates.Add(Builders<Artist>.Update.Set(a => a.StageName, updateArtistRequest.StageName));
             }
 
             if (!string.IsNullOrWhiteSpace(updateArtistRequest.Biography))
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.Biography, updateArtistRequest.Biography));
+                updates.Add(Builders<Artist>.Update.Set(a => a.Biography, updateArtistRequest.Biography));
             }
 
             if (updateArtistRequest.AvatarImage != null)
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.AvatarImage, updateArtistRequest.AvatarImage));
+                updates.Add(Builders<Artist>.Update.Set(a => a.AvatarImage, updateArtistRequest.AvatarImage));
             }
 
             if (updateArtistRequest.BannerImage != null)
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.BannerImage, updateArtistRequest.BannerImage));
+                updates.Add(Builders<Artist>.Update.Set(a => a.BannerImage, updateArtistRequest.BannerImage));
             }
 
-            UpdateDefinition<Artist> update = Builders<Artist>.Update.Combine(updateDefinitions);
-            UpdateResult result = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(
-                session,
-                a => a.Id == artistId,
-                update
-            );
+            // Track which fields are being updated for Stripe
+            bool isEmailUpdated = false;
+            bool isFullNameUpdated = false;
 
-            if (result.MatchedCount == 0)
+            // Email updates (both Artist and User)
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.Email))
             {
-                throw new NotFoundCustomException($"Not found artist with id {artistId}");
+                updates.Add(Builders<Artist>.Update.Set(a => a.Email, updateArtistRequest.Email));
+                updatesUser.Add(Builders<User>.Update.Set(u => u.Email, updateArtistRequest.Email));
+                isEmailUpdated = true;
             }
-            if (result.ModifiedCount < updateDefinitions.Count)
+
+            // User-specific updates
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.PhoneNumber))
             {
-                throw new BadRequestCustomException("No changes were made to the artist profile");
+                updatesUser.Add(Builders<User>.Update.Set(u => u.PhoneNumber, updateArtistRequest.PhoneNumber));
+            }
+
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.FullName))
+            {
+                updatesUser.Add(Builders<User>.Update.Set(u => u.FullName, updateArtistRequest.FullName));
+                isFullNameUpdated = true;
+            }
+
+            // Update Stripe customer if needed
+            if (!string.IsNullOrWhiteSpace(user.StripeCustomerId))
+            {
+                if (isEmailUpdated && isFullNameUpdated)
+                {
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Email = updateArtistRequest.Email,
+                        Name = updateArtistRequest.FullName,
+                    };
+
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else if (isEmailUpdated)
+                {
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Email = updateArtistRequest.Email,
+                    };
+
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else if (isFullNameUpdated)
+                {
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Name = updateArtistRequest.FullName,
+                    };
+
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+            }
+
+            // Combine all updates
+            UpdateDefinition<Artist> updateDefinition = Builders<Artist>.Update.Combine(updates);
+            UpdateDefinition<User> updateDefinitionUser = Builders<User>.Update.Combine(updatesUser);
+
+            // Update the artist and user
+            UpdateResult updateArtist = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(session, x => x.Id == artistId, updateDefinition);
+            UpdateResult updateUser = await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, x => x.Id == userId, updateDefinitionUser);
+
+            if (updateArtist.ModifiedCount < updates.Count && updateUser.ModifiedCount < updatesUser.Count)
+            {
+                throw new UnprocessableEntityCustomException("No changes were made to the artist profile");
             }
         });
     }
