@@ -548,9 +548,8 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.WithOrigins("http://localhost:3000")
-                      .WithOrigins("https://localhost:8888")
-                      .WithOrigins("http://127.0.0.1:5500")
+                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
+                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
