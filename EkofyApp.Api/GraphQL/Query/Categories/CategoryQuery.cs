@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Categories;
@@ -11,7 +12,8 @@ public sealed class CategoryQuery(ICategoryService categoryService)
 {
     private readonly ICategoryService _categoryService = categoryService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

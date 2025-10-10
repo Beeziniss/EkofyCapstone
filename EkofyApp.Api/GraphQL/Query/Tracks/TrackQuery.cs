@@ -5,6 +5,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Tracks;
@@ -17,7 +18,8 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
@@ -28,7 +30,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     }
 
     // TODO: Sorting for requests?
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
@@ -43,11 +45,11 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return [];
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseProjection]
     public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string trackId)
     {
-        ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
+        ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
         if (!cacheResult.Success)
         {
             throw new NotFoundCustomException("Track upload request not found or expired.");
@@ -56,11 +58,18 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return cacheResult.Value!;
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseProjection]
     public string GetOriginalFileTrackUploadRequest(string trackId)
     {
         return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
+    [UseProjection]
+    public async Task<IEnumerable<Track>> GetTrackBySemanticSearch(string term)
+    {
+        return await _trackService.GetAllTracksBySemanticAsync(term);
     }
 
     #region Original
@@ -70,7 +79,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     //    ProjectionDefinition<Track> projection = BuildProjection<Track>(selectedFields);
 
     //    Track tracks = await unitOfWork.GetCollection<Track>()
-    //        .Find(x => x.Id == id)
+    //        .Find(x => x.UserId == id)
     //        .Project<Track>(projection)
     //        .FirstOrDefaultAsync();
 

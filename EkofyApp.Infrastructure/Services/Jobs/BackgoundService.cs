@@ -4,13 +4,11 @@ using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
 using Hangfire;
-using Hangfire.Console;
-using Hangfire.Logging;
 using Hangfire.Server;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Serilog;
 using StackExchange.Redis;
@@ -37,15 +35,13 @@ public class BackgoundService : IBackgoundService
         Console.WriteLine($"Test Background Job has completed: {DateTime.Now}");
     }
 
-
-
     [Queue("default")]
     [JobDisplayName("Send Email")]
-    public void SendEmailJob(string toEmail)
+    public void SendEmailJob(EmailTemplateType templateType, string toEmail, params string[] parameters)
     {
         try
         {
-            SmtpClient smtpClient = new SmtpClient(Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST"))
+            SmtpClient smtpClient = new(Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST"))
             {
                 Port = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") != null ? int.Parse(Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT")!) : 587,
 
@@ -54,11 +50,15 @@ public class BackgoundService : IBackgoundService
                 EnableSsl = true,
             };
 
-            var mailMessage = new MailMessage
+            // Lấy template và subject dựa vào enum
+            Func<string[], string> emailTemplate = EmailTemplateFactory.GetTemplate(templateType);
+            string subject = EmailTemplateFactory.GetSubject(templateType);
+
+            MailMessage mailMessage = new()
             {
                 From = new MailAddress(Environment.GetEnvironmentVariable("EMAIL_SMTP_USERNAME")!),
-                Subject = "Test gửi email từ EkofyApp",
-                Body = "<h1>Chào bạn, đây là email được gửi từ EkofyApp</h1><p>Đây là nội dung của email.</p>",
+                Subject = subject,
+                Body = emailTemplate.Invoke(parameters),
                 IsBodyHtml = true,
             };
             mailMessage.To.Add(toEmail);
@@ -121,7 +121,7 @@ public class BackgoundService : IBackgoundService
 
     }
 
-    private async Task UpdateIntoMongoDB(string key, IRedisCacheService redis, IUnitOfWork unitOfWork,  IMonthlyStreamCountService monthlyStreamCountService)
+    private async Task UpdateIntoMongoDB(string key, IRedisCacheService redis, IUnitOfWork unitOfWork, IMonthlyStreamCountService monthlyStreamCountService)
     {
 
         HashEntry[]? hashEntry = await redis.HashGetAllAsync(key);

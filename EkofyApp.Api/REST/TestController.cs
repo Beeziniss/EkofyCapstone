@@ -18,6 +18,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Infrastructure.Services.Categories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
@@ -63,7 +64,7 @@ public class TestController : ControllerBase
         //await unitOfWork.GetCollection<Track>().InsertOneAsync(track);
 
         // Lưu request vào redis
-        await redisCacheService.SetAsync($"track:{trackId}:requestUpload", track, TimeSpan.FromDays(3));
+        await redisCacheService.SetGenericAsync($"track:{trackId}:requestUpload", track, TimeSpan.FromDays(3));
 
         // Upload file lên S3
         await amazonS3Service.UploadOriginalAudioAsync(stream, trackId);
@@ -74,96 +75,96 @@ public class TestController : ControllerBase
         });
     }
 
-    // Upload UseCase Handler
-    [HttpPost("upload")]
-    public async Task<IActionResult> HandleUploadUsecase(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
-    {
-        // Phase 1: Kiểm duyệt
-        // Khởi tạo track entity
-        // Lưu file gốc vào S3 để kiểm duyệt
-        // Kiểm tra tự động -> không cần moderator duyệt
-        // Kiểm tra thủ công -> cần moderator duyệt
-        // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
-        // Nếu có vi phạm cần moderator kiểm tra thủ công
-        // Nếu không có vi phạm thì chuyển sang Phase 2
+    //// Upload UseCase Handler
+    //[HttpPost("upload")]
+    //public async Task<IActionResult> HandleUploadUsecase(string trackId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
+    //{
+    //    // Phase 1: Kiểm duyệt
+    //    // Khởi tạo track entity
+    //    // Lưu file gốc vào S3 để kiểm duyệt
+    //    // Kiểm tra tự động -> không cần moderator duyệt
+    //    // Kiểm tra thủ công -> cần moderator duyệt
+    //    // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
+    //    // Nếu có vi phạm cần moderator kiểm tra thủ công
+    //    // Nếu không có vi phạm thì chuyển sang Phase 2
 
 
-        // Phase 2: Phân tích
-        // Convert file sang định dạng Wav
-        // Chia thêm 2 phase nhỏ: convert wav sang hls và tạo fingerprint, trích xuất đặc trưng âm thanh
+    //    // Phase 2: Phân tích
+    //    // Convert file sang định dạng Wav
+    //    // Chia thêm 2 phase nhỏ: convert wav sang hls và tạo fingerprint, trích xuất đặc trưng âm thanh
 
-        WavFileResponse wavFileResponse = default!;
+    //    WavFileResponse wavFileResponse = default!;
 
-        // Tài nguyên từ S3
-        await amazonS3Service.DownloadOriginalAudioAsync(trackId, async stream =>
-        {
-            string tempName = ObjectId.GenerateNewId().ToString();
+    //    // Tài nguyên từ S3
+    //    await amazonS3Service.DownloadOriginalAudioAsync(trackId, async stream =>
+    //    {
+    //        string tempName = ObjectId.GenerateNewId().ToString();
 
-            // Convert sang WAV
-            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
+    //        // Convert sang WAV
+    //        AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
 
-            // Convert file sang định dạng wav
-            wavFileResponse = await ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
-        });
+    //        // Convert file sang định dạng wav
+    //        wavFileResponse = await ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
+    //    });
 
-        // Tài nguyên từ file vật lý
-        // TODO: Viết hàm xử lý batch HLS folder
-        // Purpose: Thêm data thủ công
-        // Resolved: Đã có hàm upload multiple files manually
+    //    // Tài nguyên từ file vật lý
+    //    // TODO: Viết hàm xử lý batch HLS folder
+    //    // Purpose: Thêm data thủ công
+    //    // Resolved: Đã có hàm upload multiple files manually
 
-        // 1. Tạo hls từ file wav
-        AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
-        string outputHlsPath = await ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+    //    // 1. Tạo hls từ file wav
+    //    AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackId);
+    //    string outputHlsPath = await ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
 
-        // 2. Tạo fingerprint từ file wav
-        AudioFingerprint audioFingerprint = await fingerprintCustomService.GenerateFingerprint(wavFileResponse);
+    //    // 2. Tạo fingerprint từ file wav
+    //    AudioFingerprint audioFingerprint = await fingerprintCustomService.GenerateFingerprint(wavFileResponse);
 
-        // 3. Lấy đặc trưng âm thanh từ python service
-        AudioFeature audioAnalysisResponse = await audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+    //    // 3. Lấy đặc trưng âm thanh từ python service
+    //    AudioFeature audioAnalysisResponse = await audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
-        // Xác định mood của track dựa trên đặc trưng âm thanh
-        IEnumerable<MoodType> moodTypes = HelperMethod.DetectMoods(audioAnalysisResponse);
-        IEnumerable<string> moodIds = [];
+    //    // Xác định mood của track dựa trên đặc trưng âm thanh
+    //    IEnumerable<MoodType> moodTypes = HelperMethod.DetectMoods(audioAnalysisResponse);
+    //    IEnumerable<string> moodIds = [];
 
-        if (moodTypes.Any())
-        {
-            moodIds = await unitOfWork.GetCollection<Category>()
-                .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
-                .Project(mood => mood.Id)
-                .ToListAsync();
-        }
+    //    if (moodTypes.Any())
+    //    {
+    //        moodIds = await unitOfWork.GetCollection<Category>()
+    //            .Find(mood => mood.Type == CategoryType.Mood && moodTypes.Contains(Enum.Parse<MoodType>(mood.Name)))
+    //            .Project(mood => mood.UserId)
+    //            .ToListAsync();
+    //    }
 
-        // Phase 3: Lưu trữ
-        // Ở phase này sẽ tổng hợp lại tất cả các kết quả phân tích
-        // Sau đó lưu trữ vào cơ sở dữ liệu
+    //    // Phase 3: Lưu trữ
+    //    // Ở phase này sẽ tổng hợp lại tất cả các kết quả phân tích
+    //    // Sau đó lưu trữ vào cơ sở dữ liệu
 
-        // Cập nhật track với các thông tin đã phân tích
-        UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
-            .Set(track => track.CategoryIds, moodIds)
-            .Set(track => track.AudioFingerprint, audioFingerprint)
-            .Set(track => track.AudioFeature, audioAnalysisResponse)
-            .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
+    //    // Cập nhật track với các thông tin đã phân tích
+    //    UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
+    //        .Set(track => track.CategoryIds, moodIds)
+    //        .Set(track => track.AudioFingerprint, audioFingerprint)
+    //        .Set(track => track.AudioFeature, audioAnalysisResponse)
+    //        .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
 
-        await unitOfWork.GetCollection<Track>().FindOneAndUpdateAsync(track => track.Id == trackId, updateDefinition);
+    //    await unitOfWork.GetCollection<Track>().FindOneAndUpdateAsync(track => track.UserId == trackId, updateDefinition);
 
-        // Đẩy hls playlist lên S3
-        await amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);
+    //    // Đẩy hls playlist lên S3
+    //    await amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);
 
-        // Xóa folder, file tạm sau khi upload lên S3
-        if (Directory.Exists(outputHlsPath))
-        {
-            Directory.Delete(outputHlsPath, true);
-        }
-        if (System.IO.File.Exists(wavFileResponse.OutputWavPath))
-        {
-            System.IO.File.Delete(wavFileResponse.OutputWavPath);
-        }
+    //    // Xóa folder, file tạm sau khi upload lên S3
+    //    if (Directory.Exists(outputHlsPath))
+    //    {
+    //        Directory.Delete(outputHlsPath, true);
+    //    }
+    //    if (System.IO.File.Exists(wavFileResponse.OutputWavPath))
+    //    {
+    //        System.IO.File.Delete(wavFileResponse.OutputWavPath);
+    //    }
 
-        return Ok(new
-        {
-            Message = "Upload UseCase Handler Successfully",
-        });
-    }
+    //    return Ok(new
+    //    {
+    //        Message = "Upload UseCase Handler Successfully",
+    //    });
+    //}
 
     [HttpPost("recognization")]
     public async Task<IActionResult> RecognizeAudio(IFormFile file, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IFfmpegService ffmpegService)
@@ -191,7 +192,7 @@ public class TestController : ControllerBase
 
     // Upload UseCase Handler
     [HttpPost("upload-multiple")]
-    public async Task<IActionResult> UploadMultipleFilesManually(string userId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork)
+    public async Task<IActionResult> UploadMultipleFilesManually(string userId, [FromServices] IFfmpegService ffmpegService, [FromServices] IAmazonS3Service amazonS3Service, [FromServices] IAudioFingerprintService fingerprintCustomService, [FromServices] IAudioAnalysisService audioAnalysisService, [FromServices] IUnitOfWork unitOfWork, [FromServices] CategoryService categoryService)
     {
 
         await unitOfWork.BeginTransactionAsync();
@@ -244,7 +245,7 @@ public class TestController : ControllerBase
             AudioFeature audioAnalysisResponse = await audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
             // Xác định mood của track dựa trên đặc trưng âm thanh
-            IEnumerable<MoodType> moodTypes = HelperMethod.DetectMoods(audioAnalysisResponse);
+            IEnumerable<MoodType> moodTypes = categoryService.DetectMoods(audioAnalysisResponse);
             IEnumerable<string> moodIds = [];
             IEnumerable<string> categoriIds = ["687349125b05d32e18b77374"];
 
@@ -332,7 +333,7 @@ public class TestController : ControllerBase
             //    .Set(track => track.AudioFeature, audioAnalysisResponse)
             //    .Set(track => track.UpdatedAt, HelperMethod.GetUtcPlus7Time());
 
-            //await unitOfWork.GetCollection<Track>().UpdateOneAsync(track => track.Id == trackId, updateDefinition);
+            //await unitOfWork.GetCollection<Track>().UpdateOneAsync(track => track.UserId == trackId, updateDefinition);
 
             // Đẩy hls playlist lên S3
             await amazonS3Service.UploadFolderAsync(outputHlsPath, trackId);
@@ -430,6 +431,16 @@ public class TestController : ControllerBase
         return Ok(new
         {
             Message = "Add count to cache successfully",
+        });
+    }
+
+    [HttpPost("generate-embed-for-track")]
+    public async Task<IActionResult> GenerateEmbedForTrack([FromServices] ITrackService trackService)
+    {
+        await trackService.AddEmbeddingVectorAsync();
+        return Ok(new
+        {
+            Message = "Generate embed code successfully",
         });
     }
 }

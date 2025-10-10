@@ -24,7 +24,7 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            if(await _unitOfWork.GetCollection<Listener>().Find(l => l.Email == updateListenerRequest.Email).AnyAsync() == true)
+            if (await _unitOfWork.GetCollection<Listener>().Find(l => l.Email == updateListenerRequest.Email).AnyAsync() == true)
             {
                 throw new ConflictCustomException($"Email {updateListenerRequest.Email} is already in use");
             }
@@ -52,6 +52,9 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
             [
                 Builders<Listener>.Update.Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
             ];
+            List<UpdateDefinition<User>> updatesUser = [
+                Builders<User>.Update.Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            ];
 
             if (!string.IsNullOrWhiteSpace(updateListenerRequest.DisplayName))
             {
@@ -74,57 +77,68 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
             if (!string.IsNullOrWhiteSpace(updateListenerRequest.Email))
             {
                 updates.Add(Builders<Listener>.Update.Set(l => l.Email, updateListenerRequest.Email));
+                updatesUser.Add(Builders<User>.Update.Set(u => u.Email, updateListenerRequest.Email));
                 isEmailUpdated = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(updateListenerRequest.PhoneNumber))
+            {
+                updatesUser.Add(Builders<User>.Update.Set(u => u.PhoneNumber, updateListenerRequest.PhoneNumber));
             }
 
             if (!string.IsNullOrWhiteSpace(updateListenerRequest.FullName))
             {
-                updates.Add(Builders<Listener>.Update.Set(l => l.DisplayName, updateListenerRequest.FullName));
+                updatesUser.Add(Builders<User>.Update.Set(l => l.FullName, updateListenerRequest.FullName));
                 isFullNameUpdated = true;
             }
 
-            if (isEmailUpdated && isFullNameUpdated)
+            if (!string.IsNullOrWhiteSpace(user.StripeCustomerId))
             {
-                CustomerUpdateOptions customerUpdateOptions = new()
+                if (isEmailUpdated && isFullNameUpdated)
                 {
-                    Email = listener.Email,
-                    Name = user.FullName,
-                };
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Email = listener.Email,
+                        Name = user.FullName,
+                    };
 
-                CustomerService customerService = new();
-                await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
-            }
-            else if (isEmailUpdated)
-            {
-                CustomerUpdateOptions customerUpdateOptions = new()
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else if (isEmailUpdated)
                 {
-                    Email = listener.Email,
-                };
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Email = listener.Email,
+                    };
 
-                CustomerService customerService = new();
-                await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
-            }
-            else if (isFullNameUpdated)
-            {
-                CustomerUpdateOptions customerUpdateOptions = new()
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else if (isFullNameUpdated)
                 {
-                    Name = user.FullName,
-                };
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Name = user.FullName,
+                    };
 
-                CustomerService customerService = new();
-                await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
-            }
-            else
-            {
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else
+                {
+                }
             }
 
             // Combine all updates
             UpdateDefinition<Listener> updateDefinition = Builders<Listener>.Update.Combine(updates);
+            UpdateDefinition<User> updateDefinitionUser = Builders<User>.Update.Combine(updatesUser);
 
             // Update the listener
             UpdateResult update = await _unitOfWork.GetCollection<Listener>().UpdateOneAsync(session, x => x.Id == listenerId, updateDefinition);
+            UpdateResult updateUser = await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, x => x.Id == userId, updateDefinitionUser);
 
-            if (update.ModifiedCount < updates.Count)
+            if (update.ModifiedCount < updates.Count && updateUser.ModifiedCount < updatesUser.Count)
             {
                 throw new UnprocessableEntityCustomException("No changes were made to the listener profile");
             }

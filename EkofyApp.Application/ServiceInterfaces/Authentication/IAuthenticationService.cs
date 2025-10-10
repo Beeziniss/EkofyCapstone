@@ -18,4 +18,6 @@ public interface IAuthenticationService
     Task<AccessTokenResponse> RefreshNewTokenAsync();
     Task RegisterArtistAsync(ArtistRegisterRequest registerRequest);
     Task RegisterListenerAsync(ListenerRegisterRequest registerRequest);
+    Task ResendOtpAsync(string email);
+    Task VerifyOtpAsync(string email, string providedOtp);
 }

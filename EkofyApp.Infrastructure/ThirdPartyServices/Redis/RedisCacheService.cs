@@ -1,10 +1,10 @@
+using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
-using EkofyApp.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
-using static HotChocolate.ErrorCodes;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
@@ -13,19 +13,12 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     private readonly ILogger<RedisCacheService> _logger = logger;
 
     #region Default Methods
-    public async Task SetAsync(string key, string value, bool overrides, TimeSpan? expiry = null)
+    public async Task SetStringAsync(string key, string value, TimeSpan? expiry = null)
     {
         try
         {
-            if (overrides)
-            {
-                await _redisDb.StringSetAsync(key, value, expiry, when: When.Exists);
-                return;
-            }
-            else
-            {
-                await _redisDb.StringSetAsync(key, value, expiry, when: When.NotExists);
-            }
+            await _redisDb.StringSetAsync(key, value, expiry, when: When.Always);
+            return;
         }
         catch (Exception ex)
         {
@@ -33,7 +26,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
     }
 
-    public async Task<string?> GetAsync(string key)
+    public async Task<string?> GetStringAsync(string key)
     {
         try
         {
@@ -47,7 +40,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
     }
 
-    public bool TryGet(string key, out string? value)
+    public bool TryGetString(string key, out string? value)
     {
         try
         {
@@ -60,7 +53,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, $"[Redis] TryGet failed. Key: {key}");
+            _logger.LogWarning(ex, $"[Redis] TryGetString failed. Key: {key}");
         }
 
         value = default;
@@ -68,7 +61,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         return false;
     }
 
-    public async Task<ICacheResult<string>> TryGetAsync(string key)
+    public async Task<ICacheResult<string>> TryGetStringAsync(string key)
     {
         try
         {
@@ -82,7 +75,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, $"[Redis] TryGet failed. Key: {key}");
+            _logger.LogWarning(ex, $"[Redis] TryGetString failed. Key: {key}");
         }
 
         return CacheResult<string>.Fail();
@@ -202,16 +195,16 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     #endregion
 
     #region Generic Methods
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
+    public async Task SetGenericAsync<T>(string key, T value, TimeSpan? expiry = null)
     {
         try
         {
             string json = JsonSerializer.Serialize(value);
-            await _redisDb.StringSetAsync(key, json, expiry, when: When.NotExists);
+            await _redisDb.StringSetAsync(key, json, expiry, when: When.Always);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"[Redis] SetAsync failed. Key: {key}");
+            _logger.LogError(ex, $"[Redis] SetStringAsync failed. Key: {key}");
         }
     }
 
@@ -227,13 +220,13 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"[Redis] GetAsync failed. Key: {key}");
+            _logger.LogError(ex, $"[Redis] GetStringAsync failed. Key: {key}");
         }
 
         return default;
     }
 
-    public bool TryGet<T>(string key, out T? value)
+    public bool TryGetGeneric<T>(string key, out T? value)
     {
         try
         {
@@ -246,7 +239,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, $"[Redis] TryGet failed. Key: {key}");
+            _logger.LogWarning(ex, $"[Redis] TryGetString failed. Key: {key}");
         }
 
         value = default;
@@ -254,7 +247,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         return false;
     }
 
-    public async Task<ICacheResult<T>> TryGetAsync<T>(string key)
+    public async Task<ICacheResult<T>> TryGetGenericAsync<T>(string key)
     {
         try
         {
@@ -268,7 +261,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, $"[Redis] TryGetAsync failed. Key: {key}");
+            _logger.LogWarning(ex, $"[Redis] TryGetStringAsync failed. Key: {key}");
         }
 
         return CacheResult<T>.Fail();
@@ -510,6 +503,94 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "[Redis] Failed to get pending track uploads.");
             return CacheResult<IEnumerable<TrackTempRequest>>.Fail();
+        }
+    }
+
+    public async Task<ICacheResult<IEnumerable<PendingArtistRegistration>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "artist:*:pendingRegistration").ToArray();
+
+            List<PendingArtistRegistration> allRequests = [];
+
+            foreach (RedisKey key in keys)
+            {
+                try
+                {
+                    RedisValue value = await _redisDb.StringGetAsync(key);
+
+                    if (value.HasValue)
+                    {
+                        PendingArtistRegistration? request = JsonSerializer.Deserialize<PendingArtistRegistration>(value!);
+                        if (request != null)
+                        {
+                            allRequests.Add(request);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize artist registration request. Key: {key}");
+                }
+            }
+
+            IEnumerable<PendingArtistRegistration> paged = allRequests.OrderBy(r => r.RequestedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return CacheResult<IEnumerable<PendingArtistRegistration>>.From(paged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Redis] Failed to get pending artist registrations.");
+            return CacheResult<IEnumerable<PendingArtistRegistration>>.Fail();
+        }
+    }
+
+    public async Task<ICacheResult<IEnumerable<PendingListenerRegistration>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "listener:*:pendingRegistration").ToArray();
+
+            List<PendingListenerRegistration> allRequests = [];
+
+            foreach (RedisKey key in keys)
+            {
+                try
+                {
+                    RedisValue value = await _redisDb.StringGetAsync(key);
+
+                    if (value.HasValue)
+                    {
+                        PendingListenerRegistration? request = JsonSerializer.Deserialize<PendingListenerRegistration>(value!);
+                        if (request != null)
+                        {
+                            allRequests.Add(request);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize listener registration request. Key: {key}");
+                }
+            }
+
+            IEnumerable<PendingListenerRegistration> paged = allRequests.OrderBy(r => r.RequestedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return CacheResult<IEnumerable<PendingListenerRegistration>>.From(paged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Redis] Failed to get pending listener registrations.");
+            return CacheResult<IEnumerable<PendingListenerRegistration>>.Fail();
         }
     }
 }

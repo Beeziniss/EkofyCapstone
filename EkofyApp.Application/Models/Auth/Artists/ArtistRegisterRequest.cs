@@ -19,6 +19,7 @@ public sealed record class ArtistRegisterRequest
     // For the artist profile
     public string StageName { get; init; } = default!; // DisplayName of the artist
     public ArtistType ArtistType { get; init; } // Type of artist, e.g., Individual, Band, etc.
+    public string? AvatarImage { get; init; } // Optional avatar image URL for the artist
     public List<CreateArtistMemberRequest> Members { get; init; } = []; // List of members in the artist group, if applicable
 
     public CreateIdentityCardRequest IdentityCard { get; init; } = null!; // Identity card details for the artist

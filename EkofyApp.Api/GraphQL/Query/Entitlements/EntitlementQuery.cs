@@ -11,7 +11,7 @@ public sealed class EntitlementQuery(IEntitlementService entitlementService)
 {
     private readonly IEntitlementService _entitlementService = entitlementService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.AdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

@@ -20,4 +20,16 @@ public sealed class UserMutation(IUserService userService)
         await _userService.CreateAdminAsync(createAdminRequest);
         return true;
     }
+
+    public async Task<bool> BanUserAsync(string targetUserId)
+    {
+        await _userService.BanUserAsync(targetUserId);
+        return true;
+    }
+
+    public async Task<bool> ReActiveUserAsync(string targetUserId)
+    {
+        await _userService.ReActiveUserAsync(targetUserId);
+        return true;
+    }
 }

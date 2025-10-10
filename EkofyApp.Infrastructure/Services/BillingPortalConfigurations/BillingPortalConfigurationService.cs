@@ -32,7 +32,7 @@ public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, IL
                 //    .Find(x => x.Tier == createBillingPortalConfigurationRequest.SubscriptionTier &&
                 //    x.Version == createBillingPortalConfigurationRequest.SubscriptionVersion &&
                 //    x.Status == SubscriptionStatus.Active)
-                //    .Project(x => x.Id)
+                //    .Project(x => x.UserId)
                 //    .FirstOrDefaultAsync();
 
                 //SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
@@ -88,7 +88,7 @@ public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, IL
                 Configuration existedConfiguration = configService.Get(configuration.Id);
                 if (existedConfiguration == null)
                 {
-                    throw new UnprocessableEntityCustomException($"BillingPortalConfiguration Id with {configuration.Id} does not exist.");
+                    throw new UnprocessableEntityCustomException($"BillingPortalConfiguration UserId with {configuration.Id} does not exist.");
                 }
 
                 await _unitOfWork.GetCollection<BillingPortalConfiguration>().InsertOneAsync(new BillingPortalConfiguration

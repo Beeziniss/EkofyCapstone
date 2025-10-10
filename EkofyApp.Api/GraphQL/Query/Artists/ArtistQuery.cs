@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Artists;
@@ -11,7 +12,8 @@ public sealed class ArtistQuery(IArtistService artistService)
 {
     private readonly IArtistService _artistService = artistService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

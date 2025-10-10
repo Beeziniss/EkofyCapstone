@@ -38,5 +38,10 @@ public sealed class ListenerRegisterRequestValidator : AbstractValidator<Listene
             .NotEmpty().WithMessage("DisplayName is required")
             .MinimumLength(3).WithMessage("DisplayName must be at least 3 characters long")
             .MaximumLength(100).WithMessage("DisplayName must not exceed 100 characters");
+
+        RuleFor(x => x.AvatarImage)
+            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute))
+            .When(x => !string.IsNullOrEmpty(x.AvatarImage))
+            .WithMessage("Avatar Image must be a valid URL");
     }
 }

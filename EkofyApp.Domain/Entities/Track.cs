@@ -26,6 +26,7 @@ public sealed class Track : Auditable, IEntityCustom
     public List<string> FeaturedArtistIds { get; set; } = [];
 
     public AudioFeature AudioFeature { get; set; } = null!; // Contains audio features
+    public string AlternativeDescription { get; set; } = null!;
     public AudioFingerprint? AudioFingerprint { get; set; } // Unique identifier for the audio content
 
     public long StreamCount { get; set; } = default; // Number of times the track has been streamed
@@ -46,4 +47,5 @@ public sealed class Track : Auditable, IEntityCustom
 
     // TODO: Nên thêm thông tin về bản quyền, hợp đồng, v.v.
     // TODO: Có nên thêm verified track bởi moderator nào không
+    public float[] EmbeddingVector { get; set; } = null!; 
 }

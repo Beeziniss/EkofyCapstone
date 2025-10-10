@@ -91,6 +91,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -141,6 +142,8 @@ public static class DependencyInjection
 
         services.AddValidation();
         services.AddEnumMemberSerializer();
+
+        services.AddEmbedGenerator();
 
         //services.AddSwaggerGen();
     }
@@ -545,9 +548,8 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.WithOrigins("http://localhost:3000")
-                      .WithOrigins("https://localhost:8888")
-                      .WithOrigins("http://127.0.0.1:5500")
+                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
+                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
@@ -725,7 +727,7 @@ public static class DependencyInjection
                 },
                 Prefix = "backgroundjobs.hangfire",
                 CheckConnection = false,
-                
+
                 //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
             }));
 
@@ -739,5 +741,10 @@ public static class DependencyInjection
 
         // Background Jobs Services
         service.AddSingleton<IBackgoundService, BackgoundService>();
+    }
+
+    private static void AddEmbedGenerator(this IServiceCollection services)
+    {
+        services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_API_URL is not set in the environment"), Environment.GetEnvironmentVariable("OLLAMA_MODEL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_MODEL is not set in the environment")));
     }
 }

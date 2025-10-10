@@ -8,8 +8,11 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
 {
     public interface ITrackService
     {
+        Task AddEmbeddingVectorAsync();
         Task CreateTrackFromTrackUploadRequestAsync(TrackTempResponse trackResponse, WorkTempRequest workTempRequest, RecordingTempRequest recordingTempRequest);
         TrackTempRequest CreateTrackTemp(CreateTrackRequest createTrackRequest);
+        Task<float[]> GenerateEmbeddingsAsync(string term);
+        Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracksQueryable();
         Task UpdateStreamCount(string trackId);

@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Playlists;
@@ -11,7 +12,8 @@ public sealed class PlaylistQuery(IPlaylistService playlistService)
 {
     private readonly IPlaylistService _playlistService = playlistService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

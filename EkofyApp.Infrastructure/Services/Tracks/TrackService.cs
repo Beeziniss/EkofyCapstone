@@ -12,17 +12,19 @@ using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.AI;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService ) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
+    private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
 
     public IQueryable<Track> GetTracksQueryable()
     {
@@ -61,6 +63,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
                 //AudioFingerprint = trackResponse.AudioFingerprint,
                 AudioFeature = trackResponse.AudioFeature,
+                AlternativeDescription = trackResponse.AlternativeDescription,
+                EmbeddingVector = trackResponse.EmbeddingVector,
 
                 IsExplicit = trackResponse.IsExplicit,
                 Lyrics = trackResponse.Lyrics,
@@ -143,10 +147,96 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        string key =  $"stream_count:{userId}";  //--> cái cũ là top track ??
+        string key = $"stream_count:{userId}";  //--> cái cũ là top track ??
         //tăng lượt stream count lên 1 khi được gọi
         await _redisCacheService.HashIncrementAsync(key, trackId);
         //set thời gian tồn tại của key trong 30'
         await _redisCacheService.SetExpirationAsync(key, TimeSpan.FromMinutes(3));
+    }
+
+    //NOTE: Hàm để chạy duyệt qua các track chưa có embedding chứ ko phải 1 track
+    public async Task AddEmbeddingVectorAsync()
+    {
+        try
+        {
+            IEnumerable<Track> tracks = await _unitOfWork.GetCollection<Track>()
+            .Find(t => t.Description != null)
+            .ToListAsync();
+
+            //lọc ra các track chưa có embedding
+            var trackWithoutEmbedding = tracks
+                                        .Where(t => t.EmbeddingVector is null or { Length: 0 })
+                                        .ToList();
+
+
+            var embedding = new Dictionary<string, float[]>();
+
+            //lặp qua các track chưa có embedding và tạo vector cho từng track
+            foreach (var track in trackWithoutEmbedding)
+            {
+                //nối description và alternative description
+                string totalDescription = (track.Description ?? string.Empty) + ". " + track.AlternativeDescription;
+                if (!embedding.ContainsKey(totalDescription))
+                {
+                    embedding[track.Id] = await GenerateEmbeddingsAsync(totalDescription);
+                }
+            }
+
+            //update tất cả các track chưa có embedding
+            var updates = new List<UpdateOneModel<Track>>();
+            foreach (var track in trackWithoutEmbedding)
+            {
+                var filter = Builders<Track>.Filter.Eq(t => t.Id, track.Id);
+                var update = Builders<Track>.Update.Set(t => t.EmbeddingVector, embedding[track.Id]);
+                updates.Add(new UpdateOneModel<Track>(filter, update));
+
+            }
+
+            if (updates.Any())
+            {
+                await _unitOfWork.GetCollection<Track>().BulkWriteAsync(updates);
+            }
+        }
+        catch (Exception e)
+        {
+            throw new BadRequestCustomException(e.Message);
+        }
+
+    }
+
+    public async Task<float[]> GenerateEmbeddingsAsync(string term)
+    {
+        var generatedEmbeddings = await _embeddingGenerator.GenerateAsync([term]);
+        var embedding = generatedEmbeddings.Single();
+        return embedding.Vector.ToArray();
+    }
+
+    //NOTE: Hàm tìm kiếm track theo semantic
+    public async Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text,int limit = 20)
+    {
+        //nếu text rỗng thì trả về track nhu bình thường
+        if (string.IsNullOrEmpty(text))
+        {
+            return GetTracksQueryable();
+        }
+
+        //tạo vector từ text để tí so sánh
+        var embedding = await GenerateEmbeddingsAsync(text);
+
+        var vectorSearchOptions = new VectorSearchOptions<Track>
+        {
+            IndexName = "vector_index",
+            //lấy 150 vector gần giống để so sánh
+            NumberOfCandidates = 150,
+        };
+
+        return await _unitOfWork.GetCollection<Track>()
+            .Aggregate()
+            .VectorSearch(track => track.EmbeddingVector, embedding, limit, vectorSearchOptions)
+            .Project<Track>(Builders<Track>.Projection
+                .Exclude(t => t.EmbeddingVector)
+                .Exclude(t => t.AudioFeature)
+                .Exclude(t => t.AlternativeDescription))
+            .ToListAsync();
     }
 }

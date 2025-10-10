@@ -1,16 +1,18 @@
+using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
 using StackExchange.Redis;
 
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 public interface IRedisCacheService
 {
-    Task SetAsync(string key, string value, bool overrides, TimeSpan? expiry = null);
-    Task SetAsync<T>(string key, T value, TimeSpan? expiry = null);
-    Task<string?> GetAsync(string key);
-    bool TryGet(string key, out string? value);
-    Task<ICacheResult<string>> TryGetAsync(string key);
-    bool TryGet<T>(string key, out T? value);
-    Task<ICacheResult<T>> TryGetAsync<T>(string key);
+    Task SetStringAsync(string key, string value, TimeSpan? expiry = null);
+    Task SetGenericAsync<T>(string key, T value, TimeSpan? expiry = null);
+    Task<string?> GetStringAsync(string key);
+    bool TryGetString(string key, out string? value);
+    Task<ICacheResult<string>> TryGetStringAsync(string key);
+    bool TryGetGeneric<T>(string key, out T? value);
+    Task<ICacheResult<T>> TryGetGenericAsync<T>(string key);
     Task<TimeSpan?> GetTTLAsync(string key);
     Task<bool> SetExpirationAsync(string key, TimeSpan? expiry);
     Task<bool> ExistsAsync(string key);
@@ -24,6 +26,8 @@ public interface IRedisCacheService
     [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
     Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
     Task<ICacheResult<IEnumerable<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20);
+    Task<ICacheResult<IEnumerable<PendingArtistRegistration>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
+    Task<ICacheResult<IEnumerable<PendingListenerRegistration>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task<string?> HashGetAsync(string key, string field);
     Task<long> HashIncrementAsync(string key, string field, long incrementBy = 1);
     Task<bool> HashFieldExpireAsync(string key, string field, TimeSpan? expiry);

@@ -15,7 +15,7 @@ public sealed class RecordingQuery(IRecordingService recordingService, IRedisCac
     private readonly IRecordingService _recordingService = recordingService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
@@ -25,11 +25,11 @@ public sealed class RecordingQuery(IRecordingService recordingService, IRedisCac
         return _recordingService.GetRecordingsQueryable();
     }
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseProjection]
     public async Task<RecordingTempRequest> GetMetadataRecordingUploadRequestAsync(string recordingId)
     {
-        ICacheResult<RecordingTempRequest> cacheResult = await _redisCacheService.TryGetAsync<RecordingTempRequest>($"recording:{recordingId}:requestUpload");
+        ICacheResult<RecordingTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<RecordingTempRequest>($"recording:{recordingId}:requestUpload");
         if (!cacheResult.Success)
         {
             throw new NotFoundCustomException("RecordingProjection upload request not found or expired.");
