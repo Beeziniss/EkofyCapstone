@@ -95,7 +95,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
     //            foreach (UpdateEntitlementRequest entitlementRequest in updateEntitlementsSubscriptionRequest.Entitlements)
     //            {
     //                FilterDefinition<Subscription> filter = Builders<Subscription>.Filter.And(
-    //                    Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
+    //                    Builders<Subscription>.Filter.Eq(x => x.UserId, updateEntitlementsSubscriptionRequest.SubscriptionId),
     //                    Builders<Subscription>.Filter.ElemMatch(x => x.Entitlements, e => e.Code == entitlementRequest.Code)
     //                );
 
@@ -140,7 +140,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
     //                    UpdateDefinition<Subscription> addToSetUpdate = Builders<Subscription>.Update.AddToSet(x => x.Entitlements, newEntitlement);
     //                    UpdateResult addToSetResult = await _unitOfWork.GetCollection<Subscription>().UpdateOneAsync(
     //                        session,
-    //                        Builders<Subscription>.Filter.Eq(x => x.Id, updateEntitlementsSubscriptionRequest.SubscriptionId),
+    //                        Builders<Subscription>.Filter.Eq(x => x.UserId, updateEntitlementsSubscriptionRequest.SubscriptionId),
     //                        addToSetUpdate
     //                    );
 
@@ -172,7 +172,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
     //        {
     //            UpdateResult pullResult = await _unitOfWork.GetCollection<Subscription>()
     //                .UpdateOneAsync(session,
-    //                    x => x.Id == deleteEntitlementsSubscriptionRequest.SubscriptionId,
+    //                    x => x.UserId == deleteEntitlementsSubscriptionRequest.SubscriptionId,
     //                    Builders<Subscription>.Update.PullFilter(
     //                        x => x.Entitlements,
     //                        e => deleteEntitlementsSubscriptionRequest.Codes.Contains(e.Code)
@@ -234,7 +234,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
         {
             try
             {
-                // Tạo subscription plan Id
+                // Tạo subscription plan UserId
                 string subscriptionPlanId = ObjectId.GenerateNewId().ToString();
 
                 // Kiểm tra có subscription trươcc khi tạo

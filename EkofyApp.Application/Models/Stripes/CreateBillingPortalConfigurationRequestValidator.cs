@@ -52,7 +52,7 @@ public sealed class CreateBillingPortalConfigurationRequestValidator : AbstractV
             .ChildRules(product =>
             {
                 product.RuleFor(p => p.Id)
-                    .NotEmpty().WithMessage("Product Id must not be empty.");
+                    .NotEmpty().WithMessage("Product UserId must not be empty.");
 
                 product.RuleFor(p => p.StripePriceIds)
                     .NotNull().WithMessage("StripePriceIds must not be null.")

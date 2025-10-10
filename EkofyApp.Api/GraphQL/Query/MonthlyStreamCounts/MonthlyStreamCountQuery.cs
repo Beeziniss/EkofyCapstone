@@ -11,7 +11,7 @@ public sealed class MonthlyStreamCountQuery(IMonthlyStreamCountService monthlySt
 {
     private readonly IMonthlyStreamCountService _monthlyStreamCountService = monthlyStreamCountService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

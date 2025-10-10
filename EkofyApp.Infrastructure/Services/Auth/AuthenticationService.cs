@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
+using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.Auth.Admins;
 using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
 using EkofyApp.Application.Models.Auth.Moderators;
+using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Projections;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
@@ -55,7 +57,7 @@ public sealed class AuthenticationService(
             .Project<User>(Builders<User>.Projection
                 .Include(x => x.Id)
                 .Include(x => x.Role))
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found user Id");
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found user UserId");
 
         if (user.Role == UserRole.Artist)
         {
@@ -114,54 +116,54 @@ public sealed class AuthenticationService(
 
     public async Task RegisterListenerAsync(ListenerRegisterRequest registerRequest)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        // Kiểm tra xem email tồn tại trong database
+        if (await IsEmailExistsAsync(registerRequest.Email.Trim().ToLowerInvariant()))
         {
-            // Kiểm tra xem email tồn tại
-            if (await IsEmailExistsAsync(registerRequest.Email.Trim().ToLowerInvariant()))
+            throw new ConflictCustomException("Email already exists.");
+        }
+
+        // Kiểm tra xem email đã có đơn đăng ký pending chưa
+        string redisKey = $"listener:*:pendingRegistration";
+        string[] pendingKeys = _redisCacheService.GetAllKeysByPattern(redisKey);
+
+        foreach (string key in pendingKeys)
+        {
+            if (_redisCacheService.TryGetGeneric<PendingListenerRegistration>(key, out var pendingReg)
+                && pendingReg != null
+                && pendingReg.Email.Equals(registerRequest.Email.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
-                throw new ConflictCustomException("Email already exists.");
+                throw new ConflictCustomException("A pendingListener registration request with this email is already pending verification.");
             }
+        }
 
-            string userId = ObjectId.GenerateNewId().ToString();
+        string userId = ObjectId.GenerateNewId().ToString();
 
-            // Tạo người dùng mới
-            User user = new()
-            {
-                Id = userId,
-                Email = registerRequest.Email.Trim().ToLowerInvariant(),
-                PasswordHash = HashPassword(registerRequest.Password),
-                FullName = registerRequest.FullName,
-                BirthDate = registerRequest.BirthDate.Date,
-                Gender = registerRequest.Gender,
-                Role = UserRole.Listener, // Mặc định là Listener
-                IsLinkedWithGoogle = false,
-            };
+        // Tạo đối tượng pending registration
+        PendingListenerRegistration pendingRegistration = new()
+        {
+            Id = userId,
+            Email = registerRequest.Email.Trim().ToLowerInvariant(),
+            PasswordHash = HashPassword(registerRequest.Password),
+            FullName = registerRequest.FullName,
+            BirthDate = registerRequest.BirthDate.Date,
+            Gender = registerRequest.Gender,
+            DisplayName = registerRequest.DisplayName,
+            AvatarImage = registerRequest.AvatarImage,
+            RequestedAt = HelperMethod.GetUtcPlus7TimeOffset()
+        };
 
-            Listener listener = new()
-            {
-                UserId = userId,
-                DisplayName = registerRequest.DisplayName,
-                Email = registerRequest.Email.Trim().ToLowerInvariant(),
-                Restriction = new Restriction
-                {
-                    Type = RestrictionType.None, // Mặc định không có hạn chế
-                },
-            };
+        // Lưu vào Redis với TTL 24 giờ (thời gian để verify OTP)
+        string pendingKey = $"listener:{userId}:pendingRegistration";
+        await _redisCacheService.SetGenericAsync(pendingKey, pendingRegistration, TimeSpan.FromHours(24));
 
-            // Lưu người dùng và artist vào cơ sở dữ liệu
-            await _unitOfWork.GetCollection<User>().InsertOneAsync(session, user);
-            await _unitOfWork.GetCollection<Listener>().InsertOneAsync(session, listener);
-
-            // Tạo mới UserSubscription với gói Free
-            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
-
-            // Xây dựng quyền lợi mặc định cho Listener (gói Free)
-            await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Listener);
-
-            // Gửi mã OTP để xác thực email
-            string otp = await GenerateOtpAsync(user.Email);
-            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendOtpEmailJob(user.FullName, user.Email, otp));
-        });
+        // Gửi mã OTP để xác thực email
+        string otp = await GenerateOtpAsync(pendingRegistration.Email);
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+            EmailTemplateType.VerifyOtp,
+            pendingRegistration.Email,
+            pendingRegistration.FullName,
+            otp
+        ));
     }
 
     public async Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest)
@@ -237,87 +239,70 @@ public sealed class AuthenticationService(
 
     public async Task RegisterArtistAsync(ArtistRegisterRequest registerRequest)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        // Kiểm tra xem email tồn tại trong database
+        if (await IsEmailExistsAsync(registerRequest.Email.Trim().ToLowerInvariant()))
         {
-            // Kiểm tra xem email tồn tại
-            if (await IsEmailExistsAsync(registerRequest.Email.Trim().ToLowerInvariant()))
+            throw new ConflictCustomException("Email already exists.");
+        }
+
+        // Kiểm tra xem email đã có đơn đăng ký pending chưa
+        string redisKey = $"artist:*:pendingRegistration";
+        string[] pendingKeys = _redisCacheService.GetAllKeysByPattern(redisKey);
+
+        foreach (string key in pendingKeys)
+        {
+            if (_redisCacheService.TryGetGeneric<PendingArtistRegistration>(key, out var pendingReg)
+                && pendingReg != null
+                && pendingReg.Email.Equals(registerRequest.Email.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
-                throw new ConflictCustomException("Email already exists.");
+                throw new ConflictCustomException("An artist registration request with this email is already pending approval.");
             }
+        }
 
-            string userId = ObjectId.GenerateNewId().ToString();
+        string userId = ObjectId.GenerateNewId().ToString();
+        List<ArtistMember> artistMembers = _mapper.Map<List<ArtistMember>>(registerRequest.Members);
 
-            // Tạo người dùng mới
-            User user = new()
+        // Tạo đối tượng pending registration
+        PendingArtistRegistration pendingRegistration = new()
+        {
+            UserId = userId,
+            Email = registerRequest.Email.Trim().ToLowerInvariant(),
+            PasswordHash = HashPassword(registerRequest.Password),
+            FullName = registerRequest.FullName,
+            BirthDate = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.BirthDate.Date),
+            Gender = registerRequest.Gender,
+            PhoneNumber = registerRequest.PhoneNumber,
+            StageName = registerRequest.StageName,
+            ArtistType = registerRequest.ArtistType,
+            AvatarImage = registerRequest.AvatarImage,
+            Members = artistMembers,
+            IdentityCard = new IdentityCard
             {
-                Id = userId,
-                Email = registerRequest.Email.Trim().ToLowerInvariant(),
-                PasswordHash = HashPassword(registerRequest.Password),
-                FullName = registerRequest.FullName,
-                BirthDate = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.BirthDate.Date),
-                Gender = registerRequest.Gender,
-                PhoneNumber = registerRequest.PhoneNumber,
-                Role = UserRole.Artist,
-                IsLinkedWithGoogle = false,
-            };
+                Number = registerRequest.IdentityCard.Number,
+                FullName = registerRequest.IdentityCard.FullName,
+                DateOfBirth = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.DateOfBirth.Date),
+                Gender = registerRequest.IdentityCard.Gender,
+                PlaceOfOrigin = registerRequest.IdentityCard.PlaceOfOrigin,
+                Nationality = registerRequest.IdentityCard.Nationality,
+                PlaceOfResidence = registerRequest.IdentityCard.PlaceOfResidence,
+                FrontImage = registerRequest.IdentityCard.FrontImage,
+                BackImage = registerRequest.IdentityCard.BackImage,
+                ValidUntil = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.ValidUntil.Date),
+            },
+            RequestedAt = HelperMethod.GetUtcPlus7TimeOffset()
+        };
 
-            List<ArtistMember> artistMembers = _mapper.Map<List<ArtistMember>>(registerRequest.Members);
-            //if (!registerRequest.IsLegalRepresentative)
-            //{
-            //    artistMembers.Add(new ArtistMember
-            //    {
-            //        FullName = registerRequest.IdentityCard.FullName,
-            //        Email = registerRequest.Email.Trim().ToLowerInvariant(),
-            //        PhoneNumber = registerRequest.PhoneNumber,
-            //        IsLeader = true,
-            //        Gender = registerRequest.IdentityCard.Gender,
-            //    });
-            //}
+        // Lưu vào Redis với TTL 7 ngày (thời gian để moderator duyệt)
+        string pendingKey = $"artist:{userId}:pendingRegistration";
+        await _redisCacheService.SetGenericAsync(pendingKey, pendingRegistration, TimeSpan.FromDays(7));
 
-            Artist artist = new()
-            {
-                UserId = userId,
-                StageName = registerRequest.StageName,
-                Email = registerRequest.Email.Trim().ToLowerInvariant(),
-                Restriction = new Restriction
-                {
-                    Type = RestrictionType.None, // Mặc định không có hạn chế
-                },
-
-                ArtistType = registerRequest.ArtistType,
-                Members = artistMembers,
-
-                // TODO: Cập nhật thông tin thật nha và tạm thời không validate IdentityCard
-                // Vì đang giả định thông tin này là đúng và được xử lý từ phía client có dùng AI FPT
-                IdentityCard = new IdentityCard
-                {
-                    Number = registerRequest.IdentityCard.Number,
-                    FullName = registerRequest.IdentityCard.FullName,
-                    DateOfBirth = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.DateOfBirth.Date),
-                    Gender = registerRequest.IdentityCard.Gender,
-                    PlaceOfOrigin = registerRequest.IdentityCard.PlaceOfOrigin,
-                    Nationality = registerRequest.IdentityCard.Nationality,
-                    PlaceOfResidence = registerRequest.IdentityCard.PlaceOfResidence,
-                    FrontImage = registerRequest.IdentityCard.FrontImage,
-                    BackImage = registerRequest.IdentityCard.BackImage,
-                    ValidUntil = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(registerRequest.IdentityCard.ValidUntil.Date),
-                }
-            };
-
-            // Lưu người dùng và artist vào cơ sở dữ liệu
-            await _unitOfWork.GetCollection<User>().InsertOneAsync(session, user);
-            await _unitOfWork.GetCollection<Artist>().InsertOneAsync(session, artist);
-
-            // Tạo mới UserSubscription với gói Free
-            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
-
-            // Xây dựng quyền lợi mặc định cho Artist (gói Free)
-            await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Artist);
-
-            // Gửi mã OTP để xác thực email
-            string otp = await GenerateOtpAsync(user.Email);
-            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendOtpEmailJob(user.FullName, user.Email, otp));
-        });
+        // Gửi thông báo email
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+            EmailTemplateType.RegisterNotification,
+            pendingRegistration.Email,
+            pendingRegistration.FullName,
+            pendingRegistration.Email
+        ));
     }
 
     public async Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest)
@@ -576,59 +561,149 @@ public sealed class AuthenticationService(
     // Verify OTP
     public async Task VerifyOtpAsync(string email, string providedOtp)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        string redisOtpKey = $"otp:{email.ToLowerInvariant()}";
+        string? storedOtp = await _redisCacheService.GetStringAsync(redisOtpKey);
+
+        if (string.IsNullOrEmpty(storedOtp))
         {
-            string redisKey = $"otp:{email.ToLowerInvariant()}";
-            string? storedOtp = await _redisCacheService.GetStringAsync(redisKey);
+            throw new NotFoundCustomException("OTP is expired or not found"); // OTP expired or not found
+        }
 
-            if (string.IsNullOrEmpty(storedOtp))
+        bool isValid = storedOtp.Equals(providedOtp, StringComparison.OrdinalIgnoreCase);
+
+        if (!isValid)
+        {
+            throw new ConflictCustomException("Invalid OTP provided.");
+        }
+
+        // Tìm kiếm pending pendingListener registration
+        string[] listenerKeys = _redisCacheService.GetAllKeysByPattern("listener:*:pendingRegistration");
+
+        // Tìm pending pendingListener registration
+        foreach (string key in listenerKeys)
+        {
+            if (_redisCacheService.TryGetGeneric<PendingListenerRegistration>(key, out PendingListenerRegistration? pendingListener)
+                && pendingListener != null
+                && pendingListener.Email.Equals(email.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
-                throw new NotFoundCustomException("OTP is expired or not found"); // OTP expired or not found
-            }
+                // Tạo pendingListener và user mới từ pending registration
+                await _unitOfWork.ExecuteInTransactionAsync(async session =>
+                {
+                    // Tạo pendingListener và user từ pending registration
+                    User user = new()
+                    {
+                        Id = pendingListener.Id,
+                        Email = pendingListener.Email,
+                        PasswordHash = pendingListener.PasswordHash,
+                        FullName = pendingListener.FullName,
+                        BirthDate = pendingListener.BirthDate,
+                        Gender = pendingListener.Gender,
+                        Role = UserRole.Listener,
+                        Status = UserStatus.Active, // Active ngay sau khi verify OTP
+                        IsLinkedWithGoogle = false,
+                        CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
+                    };
 
-            bool isValid = storedOtp.Equals(providedOtp, StringComparison.OrdinalIgnoreCase);
-            Console.WriteLine("=======================================");
-            Console.WriteLine($"Redis: {storedOtp} | Provided: {providedOtp}");
-            Console.WriteLine("=======================================");
+                    Listener listener = new()
+                    {
+                        UserId = pendingListener.Id,
+                        DisplayName = pendingListener.DisplayName,
+                        AvatarImage = pendingListener.AvatarImage,
+                        Email = pendingListener.Email,
+                        Restriction = new Restriction
+                        {
+                            Type = RestrictionType.None,
+                        },
+                        CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
+                    };
 
-            if (!isValid)
-            {
-                throw new ConflictCustomException("Invalid OTP provided.");
-            }
+                    await _unitOfWork.GetCollection<User>().InsertOneAsync(session, user);
+                    await _unitOfWork.GetCollection<Listener>().InsertOneAsync(session, listener);
 
-            // Cập nhật trạng thái người dùng thành Active
-            UpdateResult result = await _unitOfWork.GetCollection<User>()
-                .UpdateOneAsync(session,
-                    u => u.Email == email.ToLowerInvariant() && u.Status == UserStatus.Inactive,
-                    Builders<User>.Update
-                        .Set(u => u.Status, UserStatus.Active)
-                        .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                );
-            if (result.MatchedCount == 0)
-            {
-                throw new NotFoundCustomException("User not found or already active.");
-            }
-            if (result.ModifiedCount == 0)
-            {
-                throw new UnprocessableEntityCustomException("Failed to activate user.");
-            }
+                    // Tạo mới UserSubscription với gói Free
+                    await _userSubscriptionService.CreateUserSubscriptionAsync(session, pendingListener.Id, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
 
-            // Remove OTP after successful verification
-            await _redisCacheService.RemoveAsync(redisKey);
-        });
+                    // Xây dựng quyền lợi mặc định cho Listener (gói Free)
+                    await _effectiveEntitlementService.BuildFreeTierAsync(session, pendingListener.Id, UserRole.Listener);
+                });
+
+                // Xóa pending registration sau khi tạo thành công
+                if (key != null)
+                {
+                    await _redisCacheService.RemoveAsync(key);
+                }
+
+                // Remove OTP after successful verification
+                await _redisCacheService.RemoveAsync(redisOtpKey);
+
+                return;
+            }
+        }
+
+        
     }
 
     public async Task ResendOtpAsync(string email)
     {
-        User user = await _unitOfWork.GetCollection<User>()
-            .Find(u => u.Email == email.ToLowerInvariant() && u.Status == UserStatus.Inactive)
-            .Project<User>(Builders<User>.Projection
-                .Include(x => x.Email)
-                .Include(x => x.FullName))
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found.");
+        // Tìm kiếm trong pending registrations trước
+        string[] listenerKeys = _redisCacheService.GetAllKeysByPattern("listener:*:pendingRegistration");
+        string[] artistKeys = _redisCacheService.GetAllKeysByPattern("artist:*:pendingRegistration");
+
+        string? fullName = null;
+        string normalizedEmail = email.ToLowerInvariant();
+
+        // Tìm trong pending pendingListener registrations
+        foreach (string key in listenerKeys)
+        {
+            if (_redisCacheService.TryGetGeneric<PendingListenerRegistration>(key, out var listener)
+                && listener != null
+                && listener.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                fullName = listener.FullName;
+                break;
+            }
+        }
+
+        // Nếu không tìm thấy pendingListener, tìm trong pending artist registrations
+        if (fullName == null)
+        {
+            foreach (string key in artistKeys)
+            {
+                if (_redisCacheService.TryGetGeneric<PendingArtistRegistration>(key, out var artist)
+                    && artist != null
+                    && artist.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    fullName = artist.FullName;
+                    break;
+                }
+            }
+        }
+
+        // Nếu không tìm thấy trong pending registrations, tìm trong database
+        if (fullName == null)
+        {
+            User user = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Email == normalizedEmail && u.Status == UserStatus.Inactive)
+                .Project<User>(Builders<User>.Projection
+                    .Include(x => x.Email)
+                    .Include(x => x.FullName))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found.");
+
+            fullName = user.FullName;
+        }
+
+        if (string.IsNullOrEmpty(fullName))
+        {
+            throw new NotFoundCustomException("User registration not found.");
+        }
 
         // Gửi lại mã OTP
-        string otp = await GenerateOtpAsync(user.Email);
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendOtpEmailJob(user.FullName, user.Email, otp));
+        string otp = await GenerateOtpAsync(normalizedEmail);
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+                EmailTemplateType.VerifyOtp,
+                normalizedEmail,
+                fullName,
+                otp
+        ));
     }
 }

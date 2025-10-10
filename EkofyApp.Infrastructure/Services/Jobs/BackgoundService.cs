@@ -4,6 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Hangfire.Server;
@@ -36,11 +37,11 @@ public class BackgoundService : IBackgoundService
 
     [Queue("default")]
     [JobDisplayName("Send Email")]
-    public void SendOtpEmailJob(string fullName, string toEmail, string otp)
+    public void SendEmailJob(EmailTemplateType templateType, string toEmail, params string[] parameters)
     {
         try
         {
-            SmtpClient smtpClient = new SmtpClient(Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST"))
+            SmtpClient smtpClient = new(Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST"))
             {
                 Port = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") != null ? int.Parse(Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT")!) : 587,
 
@@ -49,91 +50,15 @@ public class BackgoundService : IBackgoundService
                 EnableSsl = true,
             };
 
-            var mailMessage = new MailMessage
+            // Lấy template và subject dựa vào enum
+            Func<string[], string> emailTemplate = EmailTemplateFactory.GetTemplate(templateType);
+            string subject = EmailTemplateFactory.GetSubject(templateType);
+
+            MailMessage mailMessage = new()
             {
                 From = new MailAddress(Environment.GetEnvironmentVariable("EMAIL_SMTP_USERNAME")!),
-                Subject = "Verify OTP",
-                Body = @$"<!doctype html>
-<html lang=""en"">
-	<head>
-		<meta charset=""UTF-8"" />
-		<title></title>
-	</head>
-
-	<body
-		style=""
-			margin: 0;
-			padding: 0;
-			font-family: &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif;
-			color: #333;
-			background-color: #fff;
-		""
-	>
-		<div
-			class=""background-ekofy""
-			style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0""
-		>
-			<div
-				class=""container""
-				style=""
-					margin: 0 auto;
-					padding: 64px 56px;
-					width: 100%;
-					max-width: 600px;
-					background-color: #ffffff;
-					border-radius: 32px;
-					line-height: 1.8;
-				""
-			>
-				<div class=""header"" style=""text-align: center"">
-					<img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
-				</div>
-
-				<p
-					class=""separator""
-					style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""
-				></p>
-
-				<strong>Dear {fullName},</strong>
-				<p>
-					We have received a login request for your Ekofy account. For security purposes,
-					please verify your identity by providing the following One-Time Password (OTP).
-					<br />
-					<b>Your One-Time Password (OTP) verification code is:</b>
-				</p>
-				<h2
-					class=""otp""
-					style=""
-						background: linear-gradient(to right, #3b54ea 0%, #ab4ee5 100%);
-						margin: 0 auto;
-						width: max-content;
-						padding: 0 10px;
-						color: #fff;
-						border-radius: 4px;
-					""
-				>
-					{otp}
-				</h2>
-				<p style=""font-size: 0.9em"">
-					<strong>One-Time Password (OTP) is valid for 3 minutes.</strong>
-					<br />
-					<br />
-					If you did not initiate this login request, please disregard this message. Please ensure
-					the confidentiality of your OTP and do not share it with anyone.<br />
-					<strong>Do not forward or give this code to anyone.</strong>
-					<br />
-					<br />
-					<strong>Thank you for using Ekofy.</strong>
-					<br />
-					<br />
-					Best regards,
-					<br />
-					<strong>Beeziniss</strong>
-				</p>
-			</div>
-		</div>
-	</body>
-</html>",
+                Subject = subject,
+                Body = emailTemplate.Invoke(parameters),
                 IsBodyHtml = true,
             };
             mailMessage.To.Add(toEmail);

@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using EkofyApp.Domain.Utils;
+using FluentValidation;
 
 namespace EkofyApp.Application.Models.Artists;
 public sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArtistRequest>
@@ -22,5 +23,18 @@ public sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArtis
             .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute))
             .WithMessage("BannerImage must be a valid URL.")
             .When(x => !string.IsNullOrEmpty(x.BannerImage));
+
+        RuleFor(x => x.Email)
+            .EmailAddress().WithMessage("Email must be a valid email address.")
+            .When(x => !string.IsNullOrEmpty(x.Email));
+
+        RuleFor(x => x.PhoneNumber)
+            .Matches(HelperMethod.RegexPatternPhoneNumber()).WithMessage("PhoneNumber must be a valid phone number.")
+            .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+
+        RuleFor(x => x.FullName)
+            .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("FullName contains invalid characters.")
+            .MaximumLength(200).WithMessage("FullName must not exceed 200 characters.")
+            .When(x => !string.IsNullOrEmpty(x.FullName));
     }
 }

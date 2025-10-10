@@ -15,7 +15,7 @@ public class DataLoaderCustomOneToMany<T>(IBatchScheduler scheduler, DataLoaderO
             .Find(Builders<T>.Filter.In(a => a.Id, keys))
             .ToListAsync(ct);
 
-        // Group the results by Id and convert to a dictionary
+        // Group the results by UserId and convert to a dictionary
         return result
             .GroupBy(a => a.Id)
             .ToDictionary(g => g.Key, g => g.AsEnumerable()); ;

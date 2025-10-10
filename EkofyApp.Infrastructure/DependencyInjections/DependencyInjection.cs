@@ -548,9 +548,8 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.WithOrigins("http://localhost:3000")
-                      .WithOrigins("https://localhost:8888")
-                      .WithOrigins("http://127.0.0.1:5500")
+                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
+                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
@@ -746,6 +745,6 @@ public static class DependencyInjection
 
     private static void AddEmbedGenerator(this IServiceCollection services)
     {
-        services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL")!, Environment.GetEnvironmentVariable("OLLAMA_MODEL")));
+        services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_API_URL is not set in the environment"), Environment.GetEnvironmentVariable("OLLAMA_MODEL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_MODEL is not set in the environment")));
     }
 }

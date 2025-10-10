@@ -21,9 +21,9 @@ public sealed class UserMutation(IUserService userService)
         return true;
     }
 
-    public async Task<bool> DeActiveUserAsync(string targetUserId)
+    public async Task<bool> BanUserAsync(string targetUserId)
     {
-        await _userService.DeActiveUserAsync(targetUserId);
+        await _userService.BanUserAsync(targetUserId);
         return true;
     }
 

@@ -29,7 +29,7 @@ public sealed class ArtistDataLoader(IBatchScheduler scheduler, DataLoaderOption
         //{
         //    // Nếu có cache thì trả về ngay
         //    Console.WriteLine("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        //    return values!.ToDictionary(a => a.Id);
+        //    return values!.ToDictionary(a => a.UserId);
         //}
 
         IEnumerable<Artist> activeArtists = await _unitOfWork.GetCollection<Artist>().Find(filter).ToListAsync(cancellationToken);

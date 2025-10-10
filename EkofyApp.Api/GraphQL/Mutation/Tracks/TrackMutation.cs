@@ -128,7 +128,11 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
             // Xác định mood của track dựa trên đặc trưng âm thanh
-            IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(audioAnalysisResponse);
+            IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+            IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+
+            string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+            float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
 
             TrackTempResponse trackTempResponse = new()
             {
@@ -146,6 +150,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                 ReleaseInfo = trackTempRequest.ReleaseInfo,
                 //AudioFingerprint = audioFingerprint,
                 AudioFeature = audioAnalysisResponse,
+                AlternativeDescription = alternativeDescription,
+                EmbeddingVector = embeddingVector,
+
                 CreatedBy = trackTempRequest.CreatedBy,
             };
 
@@ -279,7 +286,11 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                 AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
                 // Xác định mood của track dựa trên đặc trưng âm thanh
-                IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(audioAnalysisResponse);
+                IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+                IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+
+                string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+                float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
 
                 TrackTempResponse trackTempResponse = new()
                 {
@@ -298,6 +309,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
                     //AudioFingerprint = audioFingerprint,
                     AudioFeature = audioAnalysisResponse,
+                    AlternativeDescription = alternativeDescription,
+                    EmbeddingVector = embeddingVector,
+
                     CreatedBy = trackTempRequest.CreatedBy,
                 };
 

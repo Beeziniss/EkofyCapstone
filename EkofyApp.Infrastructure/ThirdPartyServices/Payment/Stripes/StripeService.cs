@@ -344,7 +344,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .Find(x => x.Code == createCheckoutSessionRequest.SubscriptionCode &&
                 x.Status == SubscriptionStatus.Active)
             //.Project<Subscription>(Builders<Subscription>.Projection
-            //    .Include(x => x.Id))
+            //    .Include(x => x.UserId))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()

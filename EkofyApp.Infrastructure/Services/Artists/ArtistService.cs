@@ -1,18 +1,29 @@
 ﻿using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Artists;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Hangfire;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.Artists;
 
-public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IArtistService
+public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService) : IArtistService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
+    private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
+    private readonly IEffectiveEntitlementService _effectiveEntitlementService = effectiveEntitlementService;
 
     public IQueryable<Artist> GetArtistsQueryable()
     {
@@ -35,52 +46,249 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return true;
     }
 
-    public async Task UpdateArtistAsync(UpdateArtistRequest updateArtistRequest)
+    public async Task UpdateProfileAsync(UpdateArtistRequest updateArtistRequest)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
+            // Check for email conflict if email is being updated
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.Email))
+            {
+                if (await _unitOfWork.GetCollection<Artist>().Find(a => a.Email == updateArtistRequest.Email).AnyAsync() == true)
+                {
+                    throw new ConflictCustomException($"Email {updateArtistRequest.Email} is already in use");
+                }
+            }
+
+            // Get user and artist information
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
             string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("artistId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            List<UpdateDefinition<Artist>> updateDefinitions =
+            User user = _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == userId)
+                .Project<User>(Builders<User>.Projection
+                    .Include(x => x.FullName)
+                    .Include(x => x.StripeCustomerId))
+                .FirstOrDefault() ?? throw new NotFoundCustomException($"Not found user with id {userId}");
+
+            Artist artist = await _unitOfWork.GetCollection<Artist>()
+                .Find(a => a.Id == artistId)
+                .Project<Artist>(Builders<Artist>.Projection
+                    .Include(x => x.Email)
+                    .Include(x => x.StageName))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found artist with id {artistId}");
+
+            // Create list of update definitions for Artist
+            List<UpdateDefinition<Artist>> updates =
             [
                 Builders<Artist>.Update.Set(a => a.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
             ];
 
+            // Create list of update definitions for User
+            List<UpdateDefinition<User>> updatesUser =
+            [
+                Builders<User>.Update.Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            ];
+
+            // Artist-specific updates
             if (!string.IsNullOrWhiteSpace(updateArtistRequest.StageName))
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.StageName, updateArtistRequest.StageName));
+                updates.Add(Builders<Artist>.Update.Set(a => a.StageName, updateArtistRequest.StageName));
             }
 
             if (!string.IsNullOrWhiteSpace(updateArtistRequest.Biography))
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.Biography, updateArtistRequest.Biography));
+                updates.Add(Builders<Artist>.Update.Set(a => a.Biography, updateArtistRequest.Biography));
             }
 
             if (updateArtistRequest.AvatarImage != null)
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.AvatarImage, updateArtistRequest.AvatarImage));
+                updates.Add(Builders<Artist>.Update.Set(a => a.AvatarImage, updateArtistRequest.AvatarImage));
             }
 
             if (updateArtistRequest.BannerImage != null)
             {
-                updateDefinitions.Add(Builders<Artist>.Update.Set(a => a.BannerImage, updateArtistRequest.BannerImage));
+                updates.Add(Builders<Artist>.Update.Set(a => a.BannerImage, updateArtistRequest.BannerImage));
             }
 
-            UpdateDefinition<Artist> update = Builders<Artist>.Update.Combine(updateDefinitions);
-            UpdateResult result = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(
-                session,
-                a => a.Id == artistId,
-                update
-            );
+            // Track which fields are being updated for Stripe
+            bool isEmailUpdated = false;
+            bool isFullNameUpdated = false;
 
-            if (result.MatchedCount == 0)
+            // Email updates (both Artist and User)
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.Email))
             {
-                throw new NotFoundCustomException($"Not found artist with id {artistId}");
+                updates.Add(Builders<Artist>.Update.Set(a => a.Email, updateArtistRequest.Email));
+                updatesUser.Add(Builders<User>.Update.Set(u => u.Email, updateArtistRequest.Email));
+                isEmailUpdated = true;
             }
-            if (result.ModifiedCount < updateDefinitions.Count)
+
+            // User-specific updates
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.PhoneNumber))
             {
-                throw new BadRequestCustomException("No changes were made to the artist profile");
+                updatesUser.Add(Builders<User>.Update.Set(u => u.PhoneNumber, updateArtistRequest.PhoneNumber));
+            }
+
+            if (!string.IsNullOrWhiteSpace(updateArtistRequest.FullName))
+            {
+                updatesUser.Add(Builders<User>.Update.Set(u => u.FullName, updateArtistRequest.FullName));
+                isFullNameUpdated = true;
+            }
+
+            // Update Stripe customer if needed
+            if (!string.IsNullOrWhiteSpace(user.StripeCustomerId))
+            {
+                if (isEmailUpdated && isFullNameUpdated)
+                {
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Email = updateArtistRequest.Email,
+                        Name = updateArtistRequest.FullName,
+                    };
+
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else if (isEmailUpdated)
+                {
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Email = updateArtistRequest.Email,
+                    };
+
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+                else if (isFullNameUpdated)
+                {
+                    CustomerUpdateOptions customerUpdateOptions = new()
+                    {
+                        Name = updateArtistRequest.FullName,
+                    };
+
+                    CustomerService customerService = new();
+                    await customerService.UpdateAsync(user.StripeCustomerId, customerUpdateOptions);
+                }
+            }
+
+            // Combine all updates
+            UpdateDefinition<Artist> updateDefinition = Builders<Artist>.Update.Combine(updates);
+            UpdateDefinition<User> updateDefinitionUser = Builders<User>.Update.Combine(updatesUser);
+
+            // Update the artist and user
+            UpdateResult updateArtist = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(session, x => x.Id == artistId, updateDefinition);
+            UpdateResult updateUser = await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, x => x.Id == userId, updateDefinitionUser);
+
+            if (updateArtist.ModifiedCount < updates.Count && updateUser.ModifiedCount < updatesUser.Count)
+            {
+                throw new UnprocessableEntityCustomException("No changes were made to the artist profile");
             }
         });
+    }
+
+    public async Task<IEnumerable<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        var result = await _redisCacheService.GetPendingArtistRegistrationsAsync(pageNumber, pageSize);
+
+        if (!result.Success || result.Value == null)
+        {
+            return [];
+        }
+
+        return result.Value.Select(pending => new PendingArtistRegistrationResponse
+        {
+            Id = pending.UserId,
+            Email = pending.Email,
+            FullName = pending.FullName,
+            StageName = pending.StageName,
+            ArtistType = pending.ArtistType,
+            Gender = pending.Gender,
+            BirthDate = pending.BirthDate,
+            PhoneNumber = pending.PhoneNumber,
+            RequestedAt = pending.RequestedAt,
+            TimeToLive = result.TimeToLive,
+            IdentityCardNumber = pending.IdentityCard.Number,
+            IdentityCardFullName = pending.IdentityCard.FullName,
+            IdentityCardDateOfBirth = pending.IdentityCard.DateOfBirth,
+            PlaceOfOrigin = pending.IdentityCard.PlaceOfOrigin,
+            PlaceOfResidence = pending.IdentityCard.PlaceOfResidence.AddressLine ?? string.Empty,
+            FrontImageUrl = pending.IdentityCard.FrontImage,
+            BackImageUrl = pending.IdentityCard.BackImage
+        });
+    }
+
+    public async Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
+    {
+        string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
+
+        if (!_redisCacheService.TryGetGeneric<PendingArtistRegistration>(redisKey, out PendingArtistRegistration? pendingRegistration))
+        {
+            throw new NotFoundCustomException("Artist registration request not found or has expired");
+        }
+
+        if (pendingRegistration == null)
+        {
+            throw new NotFoundCustomException("Artist registration request not found");
+        }
+
+        // Create user and artist in database within transaction
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            // Create user
+            User user = new()
+            {
+                Id = pendingRegistration.UserId,
+                Email = pendingRegistration.Email,
+                PasswordHash = pendingRegistration.PasswordHash,
+                FullName = pendingRegistration.FullName,
+                BirthDate = pendingRegistration.BirthDate,
+                Gender = pendingRegistration.Gender,
+                PhoneNumber = pendingRegistration.PhoneNumber,
+                Role = UserRole.Artist,
+                Status = UserStatus.Active, // Approved users are active
+                IsLinkedWithGoogle = false,
+            };
+
+            // Create artist
+            Artist artist = new()
+            {
+                UserId = pendingRegistration.UserId,
+                StageName = pendingRegistration.StageName,
+                Email = pendingRegistration.Email,
+                ArtistType = pendingRegistration.ArtistType,
+                Members = pendingRegistration.Members,
+                IdentityCard = pendingRegistration.IdentityCard,
+            };
+
+            await _unitOfWork.GetCollection<User>().InsertOneAsync(session, user);
+            await _unitOfWork.GetCollection<Artist>().InsertOneAsync(session, artist);
+
+            // Tạo mới UserSubscription với gói Free
+            await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+
+            // Xây dựng quyền lợi mặc định cho Artist (gói Free)
+            await _effectiveEntitlementService.BuildFreeTierAsync(session, user.Id, UserRole.Artist);
+
+            // Remove from Redis after successful creation
+            await _redisCacheService.RemoveAsync(redisKey);
+
+            // Send approval email to user
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, user.Email, user.FullName, user.Email));
+        });
+    }
+
+    public async Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
+    {
+        string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
+
+        if (!await _redisCacheService.ExistsAsync(redisKey))
+        {
+            throw new NotFoundCustomException("Artist registration request not found or has expired");
+        }
+
+        // Simply remove from Redis - rejection means no database record is created
+        await _redisCacheService.RemoveAsync(redisKey);
+
+        // Send rejection email to user
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email));
     }
 }

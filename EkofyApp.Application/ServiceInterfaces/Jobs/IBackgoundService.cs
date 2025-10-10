@@ -1,4 +1,5 @@
-﻿using Hangfire.Server;
+﻿using EkofyApp.Domain.Enums;
+using Hangfire.Server;
 
 namespace EkofyApp.Application.ServiceInterfaces.Jobs
 {
@@ -6,7 +7,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
     {
         void DisplayLogTest(PerformContext context);
         Task MonthlyRoyaltyReportJob();
-        void SendOtpEmailJob(string fullName, string toEmail, string otp);
+        void SendEmailJob(EmailTemplateType templateType, string toEmail, params string[] parameters);
         Task UpdateStreamCountJob();
     }
 }

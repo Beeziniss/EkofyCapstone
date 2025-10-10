@@ -173,7 +173,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
     public async Task<string> GetMasterPlaylistAsync(string trackId, string token)
     {
         // Nhớ thay thành production URL
-        string hostingUrl = Environment.GetEnvironmentVariable("HOSTING_URL") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+        string hostingUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not configured");
 
         string prefixKeyStreaming = _aWSSettings.ResourcePrefixStreaming;
 
@@ -217,7 +217,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
 
         string keyUrlHidden = Environment.GetEnvironmentVariable("HLS_KEY_URL_HIDDEN") ?? throw new UnconfiguredEnvironmentCustomException("HLS_KEY_URL_HIDDEN is not configured");
 
-        string hostingUrl = Environment.GetEnvironmentVariable("HOSTING_URL") ?? throw new UnconfiguredEnvironmentCustomException("LOCAL_HOST_URL is not configured");
+        string hostingUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not configured");
 
         string keyUri = $"{hostingUrl}/api/media-streaming/keys?trackId={trackId}&token={token}";
 

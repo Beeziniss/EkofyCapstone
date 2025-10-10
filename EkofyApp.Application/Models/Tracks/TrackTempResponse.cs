@@ -27,4 +27,7 @@ public sealed record TrackTempResponse
 
     //public AudioFingerprint AudioFingerprint { get; init; } = null!;
     public AudioFeature AudioFeature { get; init; } = null!;
+    public string AlternativeDescription { get; init; } = null!;
+
+    public float[] EmbeddingVector { get; set; } = null!;
 }
