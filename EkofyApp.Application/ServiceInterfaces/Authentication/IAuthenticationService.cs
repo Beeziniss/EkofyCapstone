@@ -20,4 +20,11 @@ public interface IAuthenticationService
     Task RegisterListenerAsync(ListenerRegisterRequest registerRequest);
     Task ResendOtpAsync(string email);
     Task VerifyOtpAsync(string email, string providedOtp);
+    
+    // Password Reset Methods
+    Task ForgotPasswordAsync(ForgotPasswordRequest forgotPasswordRequest);
+    Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest);
+    
+    // Change Password Method
+    Task ChangePasswordAsync(ChangePasswordRequest changePasswordRequest);
 }
