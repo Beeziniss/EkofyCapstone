@@ -5,12 +5,21 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
 {
     private readonly IDatabase _redisDb = redisDb;
     private readonly ILogger<RedisCacheService> _logger = logger;
+
+    // Configure JsonSerializerOptions to serialize enums as strings
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() },
+        WriteIndented = false
+    };
 
     #region Default Methods
     public async Task SetStringAsync(string key, string value, TimeSpan? expiry = null)
@@ -199,7 +208,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     {
         try
         {
-            string json = JsonSerializer.Serialize(value);
+            string json = JsonSerializer.Serialize(value, _jsonOptions);
             await _redisDb.StringSetAsync(key, json, expiry, when: When.Always);
         }
         catch (Exception ex)
@@ -215,7 +224,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
             RedisValue json = await _redisDb.StringGetAsync(key);
             if (json.HasValue)
             {
-                return JsonSerializer.Deserialize<T>(json!);
+                return JsonSerializer.Deserialize<T>(json!, _jsonOptions);
             }
         }
         catch (Exception ex)
@@ -233,7 +242,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
             RedisValue json = _redisDb.StringGet(key);
             if (json.HasValue)
             {
-                value = JsonSerializer.Deserialize<T>(json!);
+                value = JsonSerializer.Deserialize<T>(json!, _jsonOptions);
                 return true;
             }
         }
@@ -254,7 +263,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
             RedisValue json = await _redisDb.StringGetAsync(key);
             if (json.HasValue)
             {
-                T? value = JsonSerializer.Deserialize<T>(json!);
+                T? value = JsonSerializer.Deserialize<T>(json!, _jsonOptions);
                 TimeSpan? ttl = await GetTTLAsync(key);
                 return CacheResult<T>.From(value!, ttl);
             }
@@ -479,7 +488,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
 
                     if (value.HasValue)
                     {
-                        TrackTempRequest? request = JsonSerializer.Deserialize<TrackTempRequest>(value!);
+                        TrackTempRequest? request = JsonSerializer.Deserialize<TrackTempRequest>(value!, _jsonOptions);
                         if (request != null)
                         {
                             allRequests.Add(request);
@@ -506,14 +515,14 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
     }
 
-    public async Task<ICacheResult<IEnumerable<PendingArtistRegistration>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<ICacheResult<IEnumerable<PendingArtistRegistrationRequest>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         try
         {
             IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
             RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "artist:*:pendingRegistration").ToArray();
 
-            List<PendingArtistRegistration> allRequests = [];
+            List<PendingArtistRegistrationRequest> allRequests = [];
 
             foreach (RedisKey key in keys)
             {
@@ -523,7 +532,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
 
                     if (value.HasValue)
                     {
-                        PendingArtistRegistration? request = JsonSerializer.Deserialize<PendingArtistRegistration>(value!);
+                        PendingArtistRegistrationRequest? request = JsonSerializer.Deserialize<PendingArtistRegistrationRequest>(value!, _jsonOptions);
                         if (request != null)
                         {
                             allRequests.Add(request);
@@ -536,17 +545,17 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
                 }
             }
 
-            IEnumerable<PendingArtistRegistration> paged = allRequests.OrderBy(r => r.RequestedAt)
+            IEnumerable<PendingArtistRegistrationRequest> paged = allRequests.OrderBy(r => r.RequestedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            return CacheResult<IEnumerable<PendingArtistRegistration>>.From(paged);
+            return CacheResult<IEnumerable<PendingArtistRegistrationRequest>>.From(paged);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Redis] Failed to get pending artist registrations.");
-            return CacheResult<IEnumerable<PendingArtistRegistration>>.Fail();
+            return CacheResult<IEnumerable<PendingArtistRegistrationRequest>>.Fail();
         }
     }
 
@@ -567,7 +576,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
 
                     if (value.HasValue)
                     {
-                        PendingListenerRegistration? request = JsonSerializer.Deserialize<PendingListenerRegistration>(value!);
+                        PendingListenerRegistration? request = JsonSerializer.Deserialize<PendingListenerRegistration>(value!, _jsonOptions);
                         if (request != null)
                         {
                             allRequests.Add(request);
