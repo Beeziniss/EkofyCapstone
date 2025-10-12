@@ -1,3 +1,4 @@
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.Users;
 
@@ -13,6 +14,11 @@ public sealed record class PendingArtistRegistrationResponse
     public UserGender Gender { get; init; }
     public DateTimeOffset BirthDate { get; init; }
     public string PhoneNumber { get; init; } = null!;
+    
+    // Artist specific information
+    public string? AvatarImage { get; init; }
+    public List<ArtistMember> Members { get; init; } = [];
+    
     public DateTimeOffset RequestedAt { get; init; }
     public TimeSpan? TimeToLive { get; init; } // TTL remaining in Redis
     
