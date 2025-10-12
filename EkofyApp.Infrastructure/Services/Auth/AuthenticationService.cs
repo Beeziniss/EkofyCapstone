@@ -157,7 +157,7 @@ public sealed class AuthenticationService(
         await _redisCacheService.SetGenericAsync(pendingKey, pendingRegistration, TimeSpan.FromHours(24));
 
         // Gửi mã OTP để xác thực email
-        string otp = await GenerateOtpAsync(pendingRegistration.Email);
+        string otp = await GenerateAndSetOtpAsync(pendingRegistration.Email);
         BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
             EmailTemplateType.VerifyOtp,
             pendingRegistration.Email,
@@ -251,7 +251,7 @@ public sealed class AuthenticationService(
 
         foreach (string key in pendingKeys)
         {
-            if (_redisCacheService.TryGetGeneric<PendingArtistRegistration>(key, out var pendingReg)
+            if (_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(key, out var pendingReg)
                 && pendingReg != null
                 && pendingReg.Email.Equals(registerRequest.Email.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
@@ -263,7 +263,7 @@ public sealed class AuthenticationService(
         List<ArtistMember> artistMembers = _mapper.Map<List<ArtistMember>>(registerRequest.Members);
 
         // Tạo đối tượng pending registration
-        PendingArtistRegistration pendingRegistration = new()
+        PendingArtistRegistrationRequest pendingRegistration = new()
         {
             UserId = userId,
             Email = registerRequest.Email.Trim().ToLowerInvariant(),
@@ -525,7 +525,7 @@ public sealed class AuthenticationService(
         await _jsonWebToken.RevokeToken(userId);
     }
 
-    private async Task<string> GenerateOtpAsync(string email)
+    private async Task<string> GenerateAndSetOtpAsync(string email)
     {
         // Tạo mã OTP gồm 6 ký tự chữ và số ngẫu nhiên với timestamp để tránh trùng
         string characters = Environment.GetEnvironmentVariable("OTP_SECRET") ?? throw new UnconfiguredEnvironmentCustomException("OTP_SECRET is not set in the environment");
@@ -669,7 +669,7 @@ public sealed class AuthenticationService(
         {
             foreach (string key in artistKeys)
             {
-                if (_redisCacheService.TryGetGeneric<PendingArtistRegistration>(key, out var artist)
+                if (_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(key, out var artist)
                     && artist != null
                     && artist.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
                 {
@@ -698,7 +698,7 @@ public sealed class AuthenticationService(
         }
 
         // Gửi lại mã OTP
-        string otp = await GenerateOtpAsync(normalizedEmail);
+        string otp = await GenerateAndSetOtpAsync(normalizedEmail);
         BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
                 EmailTemplateType.VerifyOtp,
                 normalizedEmail,

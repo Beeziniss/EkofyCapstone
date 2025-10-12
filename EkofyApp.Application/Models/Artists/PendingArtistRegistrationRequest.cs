@@ -4,7 +4,7 @@ using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Application.Models.Artists;
 
-public sealed record class PendingArtistRegistration
+public sealed record class PendingArtistRegistrationRequest
 {
     public string UserId { get; init; } = null!;
     public string Email { get; init; } = null!;

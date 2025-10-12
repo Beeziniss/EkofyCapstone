@@ -506,14 +506,14 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         }
     }
 
-    public async Task<ICacheResult<IEnumerable<PendingArtistRegistration>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<ICacheResult<IEnumerable<PendingArtistRegistrationRequest>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         try
         {
             IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
             RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "artist:*:pendingRegistration").ToArray();
 
-            List<PendingArtistRegistration> allRequests = [];
+            List<PendingArtistRegistrationRequest> allRequests = [];
 
             foreach (RedisKey key in keys)
             {
@@ -523,7 +523,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
 
                     if (value.HasValue)
                     {
-                        PendingArtistRegistration? request = JsonSerializer.Deserialize<PendingArtistRegistration>(value!);
+                        PendingArtistRegistrationRequest? request = JsonSerializer.Deserialize<PendingArtistRegistrationRequest>(value!);
                         if (request != null)
                         {
                             allRequests.Add(request);
@@ -536,17 +536,17 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
                 }
             }
 
-            IEnumerable<PendingArtistRegistration> paged = allRequests.OrderBy(r => r.RequestedAt)
+            IEnumerable<PendingArtistRegistrationRequest> paged = allRequests.OrderBy(r => r.RequestedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            return CacheResult<IEnumerable<PendingArtistRegistration>>.From(paged);
+            return CacheResult<IEnumerable<PendingArtistRegistrationRequest>>.From(paged);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Redis] Failed to get pending artist registrations.");
-            return CacheResult<IEnumerable<PendingArtistRegistration>>.Fail();
+            return CacheResult<IEnumerable<PendingArtistRegistrationRequest>>.Fail();
         }
     }
 

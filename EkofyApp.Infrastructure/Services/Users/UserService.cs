@@ -96,7 +96,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("adminId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             UpdateDefinition<User> update = Builders<User>.Update
             .Set(u => u.Status, UserStatus.Active)
@@ -119,7 +119,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("adminId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             UpdateDefinition <User> update = Builders<User>.Update
             .Set(u => u.Status, UserStatus.Banned)

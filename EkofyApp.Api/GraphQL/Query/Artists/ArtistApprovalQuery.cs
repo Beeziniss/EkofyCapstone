@@ -12,6 +12,7 @@ public sealed class ArtistApprovalQuery(IArtistService artistService)
     private readonly IArtistService _artistService = artistService;
 
     [AuthorizeRoles(HelperRoleBase.ModeratorRoles)]
+    [UseFiltering]
     public async Task<IEnumerable<PendingArtistRegistrationResponse>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         return await _artistService.GetPendingRegistrationsAsync(pageNumber, pageSize);

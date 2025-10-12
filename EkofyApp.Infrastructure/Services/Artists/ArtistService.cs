@@ -204,6 +204,8 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Gender = pending.Gender,
             BirthDate = pending.BirthDate,
             PhoneNumber = pending.PhoneNumber,
+            AvatarImage = pending.AvatarImage,
+            Members = pending.Members,
             RequestedAt = pending.RequestedAt,
             TimeToLive = result.TimeToLive,
             IdentityCardNumber = pending.IdentityCard.Number,
@@ -220,7 +222,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     {
         string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
 
-        if (!_redisCacheService.TryGetGeneric<PendingArtistRegistration>(redisKey, out PendingArtistRegistration? pendingRegistration))
+        if (!_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(redisKey, out PendingArtistRegistrationRequest? pendingRegistration))
         {
             throw new NotFoundCustomException("Artist registration request not found or has expired");
         }
