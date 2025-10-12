@@ -262,6 +262,19 @@ public sealed class AuthenticationService(
         string userId = ObjectId.GenerateNewId().ToString();
         List<ArtistMember> artistMembers = _mapper.Map<List<ArtistMember>>(registerRequest.Members);
 
+        // Automatically add the registering user as the leader
+        ArtistMember leaderMember = new()
+        {
+            FullName = registerRequest.FullName,
+            Email = registerRequest.Email.Trim().ToLowerInvariant(),
+            PhoneNumber = registerRequest.PhoneNumber,
+            Gender = registerRequest.Gender,
+            IsLeader = true
+        };
+
+        // Add leader to the beginning of the members list
+        artistMembers.Insert(0, leaderMember);
+
         // Tạo đối tượng pending registration
         PendingArtistRegistrationRequest pendingRegistration = new()
         {
