@@ -22,7 +22,7 @@ public sealed class Artist : TimeStamped, IEntityCustom
     public List<string> CategoryIds { get; set; } = []; // Genre of the artist, e.g., "Pop", "Rock", etc.
 
     public string? Biography { get; set; } // Biography of the artist, e.g., "John Doe is a singer-songwriter from..."
-    public long Followers { get; set; } = default; // Number of followers the artist has
+    public long FollowerCount { get; set; } = default; // Number of followers the artist has
     public long Popularity { get; set; } = default; // Popularity score of the artist
     public string? AvatarImage { get; set; } // URL to the artist's avatar image
     public string? BannerImage { get; set; } // URL to the artist's banner image

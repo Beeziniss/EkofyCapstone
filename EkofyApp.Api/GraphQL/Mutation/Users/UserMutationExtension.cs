@@ -14,6 +14,12 @@ public sealed class UserMutationExtension : ObjectTypeExtension<UserMutation>
             //.AllowAnonymous();
         .Authorize(HelperRoleBase.AdminRolesArray);
 
+        descriptor.Field(x => x.FollowUserAsync(default!))
+            .Authorize(HelperRoleBase.FullRolesArray);
+
+        descriptor.Field(x => x.UnfollowUserAsync(default!))
+            .Authorize(HelperRoleBase.FullRolesArray);
+
         descriptor.Field(x => x.BanUserAsync(default!))
             .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
 

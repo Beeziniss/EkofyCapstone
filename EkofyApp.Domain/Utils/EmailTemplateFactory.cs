@@ -25,8 +25,9 @@ public sealed class EmailTemplateFactory
             //EmailTemplateType.Welcome => "Welcome to Ekofy!",
             //EmailTemplateType.ResetPassword => "Reset your password",
             EmailTemplateType.RegisterNotification => HelperEmailTemplate.SubjectRegisterNotification(),
-            EmailTemplateType.RegisterApprove => HelperEmailTemplate.SubjectRegisterReject(),
+            EmailTemplateType.RegisterApprove => HelperEmailTemplate.SubjectRegisterApprove(),
             EmailTemplateType.RegisterReject => HelperEmailTemplate.SubjectRegisterReject(),
+            EmailTemplateType.ResetPasswordOtp => HelperEmailTemplate.SubjectResetPassword(),
             _ => "Ekofy Notification"
         };
     }

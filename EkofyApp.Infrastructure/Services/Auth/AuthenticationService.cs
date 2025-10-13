@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.Auth;
 using EkofyApp.Application.Models.Auth.Admins;
 using EkofyApp.Application.Models.Auth.Artists;
 using EkofyApp.Application.Models.Auth.Listeners;
@@ -718,5 +719,145 @@ public sealed class AuthenticationService(
                 fullName,
                 otp
         ));
+    }
+
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest forgotPasswordRequest)
+    {
+        string normalizedEmail = forgotPasswordRequest.Email.Trim().ToLowerInvariant();
+
+        // Tìm user trong database với email và status Active
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Email == normalizedEmail && u.Status == UserStatus.Active)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User with this email not found or account is not active.");
+
+        // Tạo OTP đặc biệt cho reset password với thời hạn 10 phút
+        string otpCode = await GenerateResetPasswordOtpAsync(normalizedEmail);
+
+        // Gửi email với OTP reset password
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+            EmailTemplateType.ResetPasswordOtp,
+            user.Email,
+            user.FullName,
+            otpCode
+        ));
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest)
+    {
+        string normalizedEmail = resetPasswordRequest.Email.Trim().ToLowerInvariant();
+
+        // Verify OTP for password reset
+        string resetOtpKey = $"reset_password_otp:{normalizedEmail}";
+        string? storedOtp = await _redisCacheService.GetStringAsync(resetOtpKey);
+
+        if (string.IsNullOrEmpty(storedOtp))
+        {
+            throw new NotFoundCustomException("Reset password OTP is expired or not found");
+        }
+
+        if (!storedOtp.Equals(resetPasswordRequest.OtpCode, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictCustomException("Invalid OTP code provided.");
+        }
+
+        // Tìm user và cập nhật password
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Email == normalizedEmail && u.Status == UserStatus.Active)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User with this email not found or account is not active.");
+
+        // Cập nhật password
+        string newPasswordHash = HashPassword(resetPasswordRequest.NewPassword);
+        
+        UpdateDefinition<User> updateDefinition = Builders<User>.Update
+            .Set(u => u.PasswordHash, newPasswordHash)
+            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        await _unitOfWork.GetCollection<User>().UpdateOneAsync(
+            u => u.Id == user.Id, 
+            updateDefinition
+        );
+
+        // Xóa OTP sau khi reset thành công
+        await _redisCacheService.RemoveAsync(resetOtpKey);
+
+        // Có thể gửi email xác nhận reset password thành công (optional)
+        // BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(...));
+    }
+
+    private async Task<string> GenerateResetPasswordOtpAsync(string email)
+    {
+        // Tạo mã OTP gồm 6 ký tự chữ và số ngẫu nhiên với timestamp để tránh trùng
+        string characters = Environment.GetEnvironmentVariable("OTP_SECRET") ?? throw new UnconfiguredEnvironmentCustomException("OTP_SECRET is not set in the environment");
+
+        // Sử dụng timestamp để tạo seed và đảm bảo tính duy nhất
+        long timestamp = HelperMethod.GetUtcPlus7TimeOffset().ToUnixTimeMilliseconds();
+        Random random = new((int)(timestamp % int.MaxValue));
+        StringBuilder otpBuilder = new(6);
+
+        // 2 ký tự đầu dựa trên timestamp
+        string timestampString = timestamp.ToString();
+        int timestampLength = timestampString.Length;
+        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 2].ToString()) % characters.Length]);
+        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 1].ToString()) % characters.Length]);
+
+        // 4 ký tự còn lại ngẫu nhiên
+        for (int i = 2; i < 6; i++)
+        {
+            otpBuilder.Append(characters[random.Next(characters.Length)]);
+        }
+
+        string otpCode = otpBuilder.ToString();
+
+        // Tạo Redis key riêng cho reset password OTP
+        string redisKey = $"reset_password_otp:{email}";
+
+        // Lưu mã OTP vào Redis với thời hạn 10 phút (dài hơn OTP thông thường)
+        await _redisCacheService.SetStringAsync(redisKey, otpCode, TimeSpan.FromMinutes(10));
+
+        return otpCode;
+    }
+
+    public async Task ChangePasswordAsync(ChangePasswordRequest changePasswordRequest)
+    {
+        // Lấy thông tin user hiện tại từ token
+        string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
+            ?? throw new UnauthorizedCustomException("User is not authenticated.");
+
+        // Tìm user trong database
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId && u.Status == UserStatus.Active)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email)
+                .Include(x => x.PasswordHash))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found or account is not active.");
+
+        // Verify current password
+        if (!VerifyPassword(changePasswordRequest.CurrentPassword, user.PasswordHash!))
+        {
+            throw new BadRequestCustomException("Current password is incorrect.");
+        }
+
+        // Hash new password
+        string newPasswordHash = HashPassword(changePasswordRequest.NewPassword);
+
+        // Update password in database
+        UpdateDefinition<User> updateDefinition = Builders<User>.Update
+            .Set(u => u.PasswordHash, newPasswordHash)
+            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        await _unitOfWork.GetCollection<User>().UpdateOneAsync(
+            u => u.Id == userId,
+            updateDefinition
+        );
+
+        // Optional: Send email notification about password change
+        // BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(...));
     }
 }
