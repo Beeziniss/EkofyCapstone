@@ -30,6 +30,7 @@ using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace EkofyApp.Api.REST;
 [Route("api/[controller]")]
@@ -443,4 +444,90 @@ public class TestController : ControllerBase
             Message = "Generate embed code successfully",
         });
     }
+
+    //[AllowAnonymous, HttpPost("run-migration-add-unsigned-fields")]
+    //public async Task<IActionResult> RunMigrationAddUnsignedFields([FromServices] IUnitOfWork unitOfWork)
+    //{
+    //    // --- 1. Cập nhật Collection 'artists' ---
+    //    var artistCollection = unitOfWork.GetCollection<Artist>();
+    //    var artists = await artistCollection.Find(_ => true).ToListAsync();
+    //    var artistWriteModels = new List<WriteModel<Artist>>();
+
+    //    foreach (var artist in artists)
+    //    {
+    //        var filter = Builders<Artist>.Filter.Eq(a => a.Id, artist.Id);
+    //        var update = Builders<Artist>.Update.Set(a => a.StageNameUnsigned, HelperMethod.ToUnsigned(artist.StageName));
+    //        artistWriteModels.Add(new UpdateOneModel<Artist>(filter, update));
+    //    }
+
+    //    if (artistWriteModels.Any())
+    //    {
+    //        await artistCollection.BulkWriteAsync(artistWriteModels);
+    //    }
+
+
+    //    // --- 2. Cập nhật Collection 'listeners' ---
+    //    var listenerCollection = unitOfWork.GetCollection<Listener>();
+    //    var listeners = await listenerCollection.Find(_ => true).ToListAsync();
+    //    var listenerWriteModels = new List<WriteModel<Listener>>();
+
+    //    foreach (var listener in listeners)
+    //    {
+    //        var filter = Builders<Listener>.Filter.Eq(l => l.Id, listener.Id);
+    //        var update = Builders<Listener>.Update.Set(l => l.DisplayNameUnsigned, HelperMethod.ToUnsigned(listener.DisplayName));
+    //        listenerWriteModels.Add(new UpdateOneModel<Listener>(filter, update));
+    //    }
+
+    //    if (listenerWriteModels.Any())
+    //    {
+    //        await listenerCollection.BulkWriteAsync(listenerWriteModels);
+    //    }
+
+
+    //    // --- 3. Cập nhật Collection 'tracks' ---
+    //    var trackCollection = unitOfWork.GetCollection<Track>();
+    //    var tracks = await trackCollection.Find(_ => true).ToListAsync();
+    //    var trackWriteModels = new List<WriteModel<Track>>();
+
+    //    foreach (var track in tracks)
+    //    {
+    //        var filter = Builders<Track>.Filter.Eq(t => t.Id, track.Id);
+    //        var update = Builders<Track>.Update.Set(t => t.NameUnsigned, HelperMethod.ToUnsigned(track.Name));
+    //        trackWriteModels.Add(new UpdateOneModel<Track>(filter, update));
+    //    }
+
+    //    if (trackWriteModels.Any())
+    //    {
+    //        await trackCollection.BulkWriteAsync(trackWriteModels);
+    //    }
+
+
+    //    //// --- 4. Cập nhật Collection 'playlists' ---
+    //    //var playlistCollection = unitOfWork.GetCollection<Playlist>();
+    //    //var playlists = await playlistCollection.Find(_ => true).ToListAsync();
+    //    //var playlistWriteModels = new List<WriteModel<Playlist>>();
+
+    //    //foreach (var playlist in playlists)
+    //    //{
+    //    //    var filter = Builders<Playlist>.Filter.Eq(p => p.Id, playlist.Id);
+    //    //    var update = Builders<Playlist>.Update.Set(p => p.NameUnsigned, HelperMethod.ToUnsigned(playlist.Name));
+    //    //    playlistWriteModels.Add(new UpdateOneModel<Playlist>(filter, update));
+    //    //}
+
+    //    //if (playlistWriteModels.Any())
+    //    //{
+    //    //    await playlistCollection.BulkWriteAsync(playlistWriteModels);
+    //    //}
+
+
+    //    // --- Trả về kết quả ---
+    //    return Ok(new
+    //    {
+    //        Message = "Migration to add unsigned fields completed successfully!",
+    //        ArtistsUpdated = artistWriteModels.Count,
+    //        ListenersUpdated = listenerWriteModels.Count,
+    //        TracksUpdated = trackWriteModels.Count,
+    //        //PlaylistsUpdated = playlistWriteModels.Count
+    //    });
+    //}
 }

@@ -32,6 +32,16 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
         return _trackService.GetTracksQueryable();
     }
 
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Track>]
+    public IQueryable<Track> SearchTracks(string name)
+    {
+        return _trackService.SearchTracks(name);
+    }
+
     // TODO: Sorting for requests?
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]

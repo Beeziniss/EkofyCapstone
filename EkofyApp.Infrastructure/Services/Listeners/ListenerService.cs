@@ -19,6 +19,21 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
         return _unitOfWork.GetCollection<Listener>().AsQueryable();
     }
 
+    public IQueryable<Listener> SearchListeners(string displayName)
+    {
+        IQueryable<Listener> query = _unitOfWork.GetCollection<Listener>().AsQueryable();
+
+        if (string.IsNullOrEmpty(displayName))
+        {
+            return query;
+        }
+
+        string unsignedSearchTerm = HelperMethod.ToUnsigned(displayName);
+        query = query.Where(t => t.DisplayNameUnsigned.Contains(unsignedSearchTerm));
+
+        return query;
+    }
+
     // TODO: Thêm xác nhận OTP khi thay đổi email
     public async Task UpdateProfileAsync(UpdateListenerRequest updateListenerRequest)
     {
@@ -59,6 +74,7 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
             if (!string.IsNullOrWhiteSpace(updateListenerRequest.DisplayName))
             {
                 updates.Add(Builders<Listener>.Update.Set(l => l.DisplayName, updateListenerRequest.DisplayName));
+                updates.Add(Builders<Listener>.Update.Set(l => l.DisplayNameUnsigned, HelperMethod.ToUnsigned(updateListenerRequest.DisplayName)));
             }
 
             if (updateListenerRequest.AvatarImage != null)

@@ -22,4 +22,14 @@ public sealed class ListenerQuery(IListenerService listenerService)
     {
         return _listenerService.GetListeners();
     }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Listener>]
+    public IQueryable<Listener> SearchListeners(string displayName)
+    {
+        return _listenerService.SearchListeners(displayName);
+    }
 }

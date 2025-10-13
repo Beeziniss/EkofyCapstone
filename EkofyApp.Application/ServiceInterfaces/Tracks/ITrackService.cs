@@ -15,6 +15,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracksQueryable();
+        IQueryable<Track> SearchTracks(string searchTerm);
         Task UpdateStreamCount(string trackId);
     }
 }
