@@ -25,9 +25,9 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
         // Verify track exists
-        Track? track = await _unitOfWork.GetCollection<Track>()
+        bool isTrackExisted = await _unitOfWork.GetCollection<Track>()
             .Find(t => t.Id == request.TrackId)
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Track not found");
+            .AnyAsync() ? true : throw new NotFoundCustomException("Track not found");
 
         TrackComment comment = new()
         {
@@ -36,7 +36,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
             Content = request.Content,
             CreatedAt = HelperMethod.GetUtcPlus7TimeOffset(),
             UpdatedAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            ThreadUpdatedAt = HelperMethod.GetUtcPlus7TimeOffset().DateTime
+            ThreadUpdatedAt = HelperMethod.GetUtcPlus7TimeOffset()
         };
 
         // Handle hierarchical structure

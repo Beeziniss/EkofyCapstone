@@ -541,24 +541,15 @@ public sealed class AuthenticationService(
 
     private async Task<string> GenerateAndSetOtpAsync(string email)
     {
-        // Tạo mã OTP gồm 6 ký tự chữ và số ngẫu nhiên với timestamp để tránh trùng
-        string characters = Environment.GetEnvironmentVariable("OTP_SECRET") ?? throw new UnconfiguredEnvironmentCustomException("OTP_SECRET is not set in the environment");
-
-        // Sử dụng timestamp để tạo seed và đảm bảo tính duy nhất
-        long timestamp = HelperMethod.GetUtcPlus7TimeOffset().ToUnixTimeMilliseconds();
-        Random random = new((int)(timestamp % int.MaxValue));
+        // Tạo mã OTP gồm 6 chữ số ngẫu nhiên
+        const string DIGITS = "0123456789";
+        Random random = new();
         StringBuilder otpBuilder = new(6);
 
-        // 2 ký tự đầu dựa trên timestamp
-        string timestampString = timestamp.ToString();
-        int timestampLength = timestampString.Length;
-        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 2].ToString()) % characters.Length]);
-        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 1].ToString()) % characters.Length]);
-
-        // 4 ký tự còn lại ngẫu nhiên
-        for (int i = 2; i < 6; i++)
+        // Tạo 6 chữ số ngẫu nhiên
+        for (int i = 0; i < 6; i++)
         {
-            otpBuilder.Append(characters[random.Next(characters.Length)]);
+            otpBuilder.Append(DIGITS[random.Next(DIGITS.Length)]);
         }
 
         string otpCode = otpBuilder.ToString();
@@ -792,24 +783,15 @@ public sealed class AuthenticationService(
 
     private async Task<string> GenerateResetPasswordOtpAsync(string email)
     {
-        // Tạo mã OTP gồm 6 ký tự chữ và số ngẫu nhiên với timestamp để tránh trùng
-        string characters = Environment.GetEnvironmentVariable("OTP_SECRET") ?? throw new UnconfiguredEnvironmentCustomException("OTP_SECRET is not set in the environment");
-
-        // Sử dụng timestamp để tạo seed và đảm bảo tính duy nhất
-        long timestamp = HelperMethod.GetUtcPlus7TimeOffset().ToUnixTimeMilliseconds();
-        Random random = new((int)(timestamp % int.MaxValue));
+        // Tạo mã OTP gồm 6 chữ số ngẫu nhiên
+        const string DIGITS = "0123456789";
+        Random random = new();
         StringBuilder otpBuilder = new(6);
 
-        // 2 ký tự đầu dựa trên timestamp
-        string timestampString = timestamp.ToString();
-        int timestampLength = timestampString.Length;
-        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 2].ToString()) % characters.Length]);
-        otpBuilder.Append(characters[int.Parse(timestampString[timestampLength - 1].ToString()) % characters.Length]);
-
-        // 4 ký tự còn lại ngẫu nhiên
-        for (int i = 2; i < 6; i++)
+        // Tạo 6 chữ số ngẫu nhiên
+        for (int i = 0; i < 6; i++)
         {
-            otpBuilder.Append(characters[random.Next(characters.Length)]);
+            otpBuilder.Append(DIGITS[random.Next(DIGITS.Length)]);
         }
 
         string otpCode = otpBuilder.ToString();

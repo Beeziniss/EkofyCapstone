@@ -1,9 +1,10 @@
 ﻿using EkofyApp.Domain.Base;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class TrackComment : Auditable, IEntityCustom
+public sealed class TrackComment : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -35,7 +36,7 @@ public sealed class TrackComment : Auditable, IEntityCustom
 
     // Display order properties for proper threading
     public int SortOrder { get; set; } = 0; // Order within the same level
-    public DateTime ThreadUpdatedAt { get; set; } // Last activity in this thread branch
+    public DateTimeOffset ThreadUpdatedAt { get; set; } // Last activity in this thread branch
 
     public bool IsEdited { get; set; } = false;
     public bool IsDeleted { get; set; } = false;

@@ -25,6 +25,7 @@ using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Transactions;
 using EkofyApp.Application.ServiceInterfaces.Users;
@@ -66,6 +67,7 @@ using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
+using EkofyApp.Infrastructure.Services.TrackComments;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Transactions;
 using EkofyApp.Infrastructure.Services.Users;
@@ -384,6 +386,7 @@ public static class DependencyInjection
         services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
+        services.AddScoped<ITrackCommentService, TrackCommentService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services

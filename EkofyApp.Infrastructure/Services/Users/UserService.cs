@@ -123,7 +123,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             // Check if already following
             bool existingFollow = await _unitOfWork.GetCollection<Follows>()
                 .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
-                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
+                .AnyAsync() ? true:  throw new ConflictCustomException("Already following this user"); // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
 
             // Create follow relationship
             Follows follow = new()
@@ -176,6 +176,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             // Find the follow relationship
             Follows? follow = await _unitOfWork.GetCollection<Follows>()
                 .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
+                .Project<Follows>(Builders<Follows>.Projection.Include(f => f.Id))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Follow relationship not found");
 
             // Delete the follow relationship
@@ -183,12 +184,13 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 .DeleteOneAsync(session, f => f.Id == follow.Id);
 
             // Get user info for updating counts
-            User? currentUser = await _unitOfWork.GetCollection<User>()
+            bool currentUserExisted = await _unitOfWork.GetCollection<User>()
                 .Find(u => u.Id == currentUserId)
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found current user {currentUserId}");
+                .AnyAsync() ? true : throw new NotFoundCustomException($"Not found current user {currentUserId}");
 
             User? targetUser = await _unitOfWork.GetCollection<User>()
                 .Find(u => u.Id == request.TargetUserId)
+                .Project<User>(Builders<User>.Projection.Include(x => x.Role))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found target user {currentUserId}");
 
             // Update follower counts based on user types
