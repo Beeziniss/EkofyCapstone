@@ -18,9 +18,9 @@ public sealed record TrackCommentResponse
     // Metadata
     public bool IsEdited { get; init; }
     public bool IsDeleted { get; init; }
-    public DateTime CreatedAt { get; init; }
-    public DateTime? UpdatedAt { get; init; }
-    public DateTime ThreadUpdatedAt { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
+    public DateTimeOffset ThreadUpdatedAt { get; init; }
     
     // Helper properties
     public bool IsRootComment => string.IsNullOrEmpty(ParentCommentId);

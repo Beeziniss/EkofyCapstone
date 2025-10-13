@@ -15,7 +15,7 @@ public sealed record CommentThread
     public List<TrackCommentResponse> Replies { get; init; } = [];
     public int TotalReplies { get; init; }
     public bool HasMoreReplies { get; init; }
-    public DateTime LastActivity { get; init; }
+    public DateTimeOffset LastActivity { get; init; }
 }
 
 public sealed record CommentRepliesResponse
