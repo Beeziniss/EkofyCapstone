@@ -287,6 +287,7 @@ public sealed class AuthenticationService(
             Gender = registerRequest.Gender,
             PhoneNumber = registerRequest.PhoneNumber,
             StageName = registerRequest.StageName,
+            StageNameUnsigned = HelperMethod.ToUnsigned(registerRequest.StageName),
             ArtistType = registerRequest.ArtistType,
             AvatarImage = registerRequest.AvatarImage,
             Members = artistMembers,
@@ -613,6 +614,7 @@ public sealed class AuthenticationService(
                     {
                         UserId = pendingListener.Id,
                         DisplayName = pendingListener.DisplayName,
+                        DisplayNameUnsigned = pendingListener.DisplayNameUnsigned,
                         AvatarImage = pendingListener.AvatarImage,
                         Email = pendingListener.Email,
                         Restriction = new Restriction

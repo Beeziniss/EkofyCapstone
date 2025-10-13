@@ -12,6 +12,7 @@ public sealed class Track : Auditable, IEntityCustom
     public string Id { get; set; } = null!; // Unique identifier for the track
 
     public string Name { get; set; } = null!; // DisplayName of the track, e.g., "Song Title"
+    public string NameUnsigned { get; set; } = null!; // Unsign version of the track name for search optimization
     public string? Description { get; set; }
 
     public TrackType Type { get; set; } // Original, Cover, Remix, Live, etc.

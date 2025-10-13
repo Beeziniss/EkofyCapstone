@@ -16,6 +16,7 @@ public sealed record class PendingArtistRegistrationRequest
     
     // Artist specific information
     public string StageName { get; init; } = null!;
+    public string StageNameUnsigned { get; init; } = null!;
     public ArtistType ArtistType { get; init; }
     public string? AvatarImage { get; init; }
     public List<ArtistMember> Members { get; init; } = [];

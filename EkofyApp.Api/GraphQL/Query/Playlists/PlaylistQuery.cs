@@ -22,4 +22,14 @@ public sealed class PlaylistQuery(IPlaylistService playlistService)
     {
         return _playlistService.GetPlaylists();
     }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Playlist>]
+    public IQueryable<Playlist> SearchPlaylists(string name)
+    {
+        return _playlistService.SearchPlaylists(name);
+    }
 }

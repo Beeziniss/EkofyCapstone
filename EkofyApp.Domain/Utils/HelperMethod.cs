@@ -1,6 +1,8 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using System.Globalization;
+using System.Text;
 using TimeZoneConverter;
 
 namespace EkofyApp.Domain.Utils;
@@ -231,5 +233,30 @@ public sealed class HelperMethod
     // 52|56|58|92 |                          # Vietnamobile
     // 059|099 |                              # Beeline/Gmobile
     // 095                                   # S‑Fone (WTF)
+    #endregion
+
+    #region Normalize Strings
+    // Giữ lại hàm ToUnsigned để chuẩn hóa input của người dùng
+    public static string ToUnsigned(string term)
+    {
+        if (string.IsNullOrEmpty(term))
+        {
+            return string.Empty;
+        }
+
+        string normalizedString = term.Normalize(NormalizationForm.FormD);
+
+        StringBuilder stringBuilder = new();
+        foreach (char character in normalizedString)
+        {
+            UnicodeCategory unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(character);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(character);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace('đ', 'd');
+    }
     #endregion
 }

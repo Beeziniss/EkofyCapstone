@@ -10,6 +10,7 @@ public sealed record class PendingArtistRegistrationResponse
     public string Email { get; init; } = null!;
     public string FullName { get; init; } = null!;
     public string StageName { get; init; } = null!;
+    public string StageNameUnsigned { get; init; } = null!;
     public ArtistType ArtistType { get; init; }
     public UserGender Gender { get; init; }
     public DateTimeOffset BirthDate { get; init; }

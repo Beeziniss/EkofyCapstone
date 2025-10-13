@@ -19,6 +19,21 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         return _unitOfWork.GetCollection<Playlist>().AsQueryable();
     }
 
+    public IQueryable<Playlist> SearchPlaylists(string name)
+    {
+        IQueryable<Playlist> query = _unitOfWork.GetCollection<Playlist>().AsQueryable();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            return query;
+        }
+
+        string unsignedSearchTerm = HelperMethod.ToUnsigned(name);
+        query = query.Where(t => t.NameUnsigned.Contains(unsignedSearchTerm));
+
+        return query;
+    }
+
     public async Task CreatePlaylistAsync(CreatePlaylistRequest createPlaylistRequest)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -27,6 +42,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         {
             UserId = userId,
             Name = createPlaylistRequest.Name,
+            NameUnsigned = HelperMethod.ToUnsigned(createPlaylistRequest.Name),
             Description = createPlaylistRequest.Description,
             CoverImage = createPlaylistRequest.CoverImage,
             IsPublic = createPlaylistRequest.IsPublic,
@@ -47,6 +63,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             {
                 UserId = listenerId,
                 Name = addToPlaylistRequest.PlaylistName!,
+                NameUnsigned = HelperMethod.ToUnsigned(addToPlaylistRequest.PlaylistName!),
                 TracksInfo =
                 [
                     new PlaylistTracksInfo
@@ -89,6 +106,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             {
                 UserId = userId,
                 Name = "Favorite Songs",
+                NameUnsigned = HelperMethod.ToUnsigned("Favorite Songs"),
                 TracksInfo =
                 [
                     new PlaylistTracksInfo

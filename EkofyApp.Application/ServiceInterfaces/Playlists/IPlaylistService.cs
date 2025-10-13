@@ -10,4 +10,5 @@ public interface IPlaylistService
     Task DeletePlaylistAsync(string playlistId);
     IQueryable<Playlist> GetPlaylists();
     Task RemoveFromPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest);
+    IQueryable<Playlist> SearchPlaylists(string name);
 }

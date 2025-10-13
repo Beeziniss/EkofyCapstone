@@ -13,6 +13,7 @@ public sealed record class PendingListenerRegistration
     
     // Listener specific information
     public string DisplayName { get; init; } = null!;
+    public string DisplayNameUnsigned { get; init; } = null!;
     public string? AvatarImage { get; init; }
     
     public DateTimeOffset RequestedAt { get; init; }

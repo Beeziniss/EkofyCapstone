@@ -10,6 +10,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
@@ -31,6 +32,21 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return _unitOfWork.GetCollection<Track>().AsQueryable();
     }
 
+    public IQueryable<Track> SearchTracks(string name)
+    {
+        IQueryable<Track> query = _unitOfWork.GetCollection<Track>().AsQueryable();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            return query;
+        }
+
+        string unsignedSearchTerm = HelperMethod.ToUnsigned(name);
+        query = query.Where(t => t.NameUnsigned.Contains(unsignedSearchTerm));
+
+        return query;
+    }
+
     public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
     {
         Track track = await _unitOfWork.GetCollection<Track>()
@@ -49,6 +65,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             {
                 Id = trackResponse.Id,
                 Name = trackResponse.Name,
+                NameUnsigned = HelperMethod.ToUnsigned(trackResponse.Name),
                 Description = trackResponse.Description,
 
                 Type = trackResponse.Type,
