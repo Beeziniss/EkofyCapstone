@@ -126,9 +126,21 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         return Ok(new { Message = "Retrieved current user profile successfully", result });
     }
 
-    // [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
+    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("change-password")]
+    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest changePasswordRequest)
+    {
+        var validationResult = new ChangePasswordRequestValidator().Validate(changePasswordRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+            return BadRequest(problemDetails);
+        }
 
-    // [AllowAnonymous, HttpPost("forgot-password")]
+        await _authenticationService.ChangePasswordAsync(changePasswordRequest);
+
+        return Ok(new { Message = "Password changed successfully" });
+    }
 
     [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshTokenAsync() 
@@ -159,5 +171,37 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         await _authenticationService.VerifyOtpAsync(email, providedOtp);
 
         return Ok(new { Message = "Verify OTP Successfully" });
+    }
+
+    [AllowAnonymous, HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequest forgotPasswordRequest)
+    {
+        var validationResult = new ForgotPasswordRequestValidator().Validate(forgotPasswordRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+            return BadRequest(problemDetails);
+        }
+
+        await _authenticationService.ForgotPasswordAsync(forgotPasswordRequest);
+
+        return Ok(new { Message = "Reset password OTP sent to your email successfully" });
+    }
+
+    [AllowAnonymous, HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest resetPasswordRequest)
+    {
+        var validationResult = new ResetPasswordRequestValidator().Validate(resetPasswordRequest);
+        if (!validationResult.IsValid)
+        {
+            string instance = HttpContext.Request.Path;
+            var problemDetails = FluentValidationFilter.ToProblemDetails(validationResult, instance);
+            return BadRequest(problemDetails);
+        }
+
+        await _authenticationService.ResetPasswordAsync(resetPasswordRequest);
+
+        return Ok(new { Message = "Password reset successfully" });
     }
 }

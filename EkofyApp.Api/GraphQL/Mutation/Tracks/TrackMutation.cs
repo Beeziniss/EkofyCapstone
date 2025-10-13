@@ -1,10 +1,12 @@
 ﻿using EkofyApp.Application.Models.AudioFingerprints;
 using EkofyApp.Application.Models.Recordings;
+using EkofyApp.Application.Models.TrackComments;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
+using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
@@ -23,7 +25,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IAudioFingerprintService audioFingerprintService, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService)
+public sealed class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IAudioFingerprintService audioFingerprintService, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, ITrackCommentService trackCommentService)
 {
     private readonly ITrackService _trackService = trackService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
@@ -35,6 +37,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     private readonly IWorkService _workService = workService;
     private readonly IRecordingService _recordingService = recordingService;
     private readonly IEmySoundService _emySoundService = emySoundService;
+    private readonly ITrackCommentService _trackCommentService = trackCommentService;
 
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {
@@ -353,4 +356,42 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
         return false;
     }
+
+    #region Track Comment
+
+    public async Task<bool> CreateTrackCommentAsync(CreateTrackCommentRequest request)
+    {
+        await _trackCommentService.CreateCommentAsync(request);
+        return true;
+    }
+
+    public async Task<bool> UpdateTrackCommentAsync(UpdateTrackCommentRequest request)
+    {
+        await _trackCommentService.UpdateCommentAsync(request);
+        return true;
+    }
+
+    public async Task<bool> DeleteTrackCommentAsync(DeleteTrackCommentRequest request)
+    {
+        await _trackCommentService.DeleteCommentAsync(request);
+        return true;
+    }
+
+    // New hierarchical comment methods
+    public async Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request)
+    {
+        return await _trackCommentService.GetThreadedCommentsAsync(request);
+    }
+
+    public async Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request)
+    {
+        return await _trackCommentService.GetCommentRepliesAsync(request);
+    }
+
+    public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
+    {
+        return await _trackCommentService.GetCommentThreadAsync(request);
+    }
+
+    #endregion
 }

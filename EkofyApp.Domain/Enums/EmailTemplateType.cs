@@ -6,5 +6,7 @@ public enum EmailTemplateType
     RegisterReject,
     Welcome,
     ResetPassword,
-    RegisterNotification
+    RegisterNotification,
+    ResetPasswordOtp,
+    PasswordChangedNotification
 }
