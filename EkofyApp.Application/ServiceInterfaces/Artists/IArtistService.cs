@@ -12,4 +12,5 @@ public interface IArtistService
     Task<IEnumerable<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
+    IQueryable<Artist> SearchArtists(string stageName);
 }

@@ -5,5 +5,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Listeners;
 public interface IListenerService
 {
     IQueryable<Listener> GetListeners();
+    IQueryable<Listener> SearchListeners(string displayName);
     Task UpdateProfileAsync(UpdateListenerRequest updateListenerRequest);
 }

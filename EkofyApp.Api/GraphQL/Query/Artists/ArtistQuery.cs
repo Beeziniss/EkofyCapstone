@@ -22,4 +22,14 @@ public sealed class ArtistQuery(IArtistService artistService)
     {
         return _artistService.GetArtistsQueryable();
     }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Artist>]
+    public IQueryable<Artist> SearchArtists(string stageName)
+    {
+        return _artistService.SearchArtists(stageName);
+    }
 }

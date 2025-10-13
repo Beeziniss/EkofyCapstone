@@ -31,6 +31,21 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return _unitOfWork.GetCollection<Artist>().AsQueryable();
     }
 
+    public IQueryable<Artist> SearchArtists(string stageName)
+    {
+        IQueryable<Artist> query = _unitOfWork.GetCollection<Artist>().AsQueryable();
+
+        if (string.IsNullOrEmpty(stageName))
+        {
+            return query;
+        }
+
+        string unsignedSearchTerm = HelperMethod.ToUnsigned(stageName);
+        query = query.Where(t => t.StageNameUnsigned.Contains(unsignedSearchTerm));
+
+        return query;
+    }
+
     public async Task<bool> CreateArtistAsync(CreateArtistRequest createArtistRequest)
     {
         Artist artist = new()
@@ -70,12 +85,12 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                     .Include(x => x.StripeCustomerId))
                 .FirstOrDefault() ?? throw new NotFoundCustomException($"Not found user with id {userId}");
 
-            Artist artist = await _unitOfWork.GetCollection<Artist>()
+            bool isArtistExisted = await _unitOfWork.GetCollection<Artist>()
                 .Find(a => a.Id == artistId)
                 .Project<Artist>(Builders<Artist>.Projection
                     .Include(x => x.Email)
                     .Include(x => x.StageName))
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found artist with id {artistId}");
+                .AnyAsync() ? true : throw new NotFoundCustomException($"Not found artist with id {artistId}");
 
             // Create list of update definitions for Artist
             List<UpdateDefinition<Artist>> updates =
@@ -93,6 +108,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             if (!string.IsNullOrWhiteSpace(updateArtistRequest.StageName))
             {
                 updates.Add(Builders<Artist>.Update.Set(a => a.StageName, updateArtistRequest.StageName));
+                updates.Add(Builders<Artist>.Update.Set(a => a.StageNameUnsigned, HelperMethod.ToUnsigned(updateArtistRequest.StageName)));
             }
 
             if (!string.IsNullOrWhiteSpace(updateArtistRequest.Biography))
@@ -200,6 +216,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Email = pending.Email,
             FullName = pending.FullName,
             StageName = pending.StageName,
+            StageNameUnsigned = pending.StageNameUnsigned,
             ArtistType = pending.ArtistType,
             Gender = pending.Gender,
             BirthDate = pending.BirthDate,
@@ -255,6 +272,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             {
                 UserId = pendingRegistration.UserId,
                 StageName = pendingRegistration.StageName,
+                StageNameUnsigned = pendingRegistration.StageNameUnsigned,
                 Email = pendingRegistration.Email,
                 ArtistType = pendingRegistration.ArtistType,
                 Members = pendingRegistration.Members,
