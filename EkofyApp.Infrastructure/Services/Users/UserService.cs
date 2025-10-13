@@ -1,4 +1,5 @@
 ﻿using BCrypt.Net;
+using EkofyApp.Application.Models.UserFollows;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Users;
@@ -90,6 +91,133 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             .Find(u => u.Email == email.ToLowerInvariant())
             .Project(u => u.Email)
             .AnyAsync();
+    }
+
+    public IQueryable<Follows> GetUserFollows()
+    {
+        return _unitOfWork.GetCollection<Follows>().AsQueryable();
+    }
+
+    public async Task FollowUserAsync(FollowUserRequest request)
+    {
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
+            ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        if (currentUserId == request.TargetUserId)
+        {
+            throw new BadRequestCustomException("You cannot follow yourself");
+        }
+
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            // Check if target user exists
+            User? targetUser = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == request.TargetUserId)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found target user {currentUserId}");
+
+            // Get current user info
+            User? currentUser = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == currentUserId)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found current user {currentUserId}");
+
+            // Check if already following
+            bool existingFollow = await _unitOfWork.GetCollection<Follows>()
+                .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
+                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này có thật sự hiệu quả so với micro-optimization?
+
+            // Create follow relationship
+            Follows follow = new()
+            {
+                FollowerId = currentUserId,
+                FollowerType = currentUser.Role,
+                FollowedId = request.TargetUserId,
+                FollowedType = targetUser.Role,
+                CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
+            };
+
+            await _unitOfWork.GetCollection<Follows>().InsertOneAsync(session, follow);
+
+            // Update follower counts based on user types
+            switch (targetUser.Role)
+            {
+                case UserRole.Artist:
+                    {
+                        // Update artist's follower count
+                        await _unitOfWork.GetCollection<Artist>()
+                            .UpdateOneAsync(session,
+                                a => a.UserId == request.TargetUserId,
+                                Builders<Artist>.Update
+                                    .Inc(a => a.FollowerCount, 1));
+                        break;
+                    }
+
+                case UserRole.Listener:
+                    {
+                        // Update listener's follower count
+                        await _unitOfWork.GetCollection<Listener>()
+                            .UpdateOneAsync(session,
+                                l => l.UserId == request.TargetUserId,
+                                Builders<Listener>.Update
+                                    .Inc(l => l.FollowerCount, 1)
+                                    .Push(l => l.LastFollowers, currentUserId));
+                        break;
+                    }
+            }
+        });
+    }
+
+    public async Task UnfollowUserAsync(UnfollowUserRequest request)
+    {
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
+            ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            // Find the follow relationship
+            Follows? follow = await _unitOfWork.GetCollection<Follows>()
+                .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Follow relationship not found");
+
+            // Delete the follow relationship
+            await _unitOfWork.GetCollection<Follows>()
+                .DeleteOneAsync(session, f => f.Id == follow.Id);
+
+            // Get user info for updating counts
+            User? currentUser = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == currentUserId)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found current user {currentUserId}");
+
+            User? targetUser = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == request.TargetUserId)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found target user {currentUserId}");
+
+            // Update follower counts based on user types
+            switch (targetUser.Role)
+            {
+                case UserRole.Artist:
+                    {
+                        // Update artist's follower count
+                        await _unitOfWork.GetCollection<Artist>()
+                            .UpdateOneAsync(session,
+                                a => a.UserId == request.TargetUserId,
+                                Builders<Artist>.Update
+                                    .Inc(a => a.FollowerCount, -1));
+                        break;
+                    }
+
+                case UserRole.Listener:
+                    {
+                        // Update listener's follower count
+                        await _unitOfWork.GetCollection<Listener>()
+                            .UpdateOneAsync(session,
+                                l => l.UserId == request.TargetUserId,
+                                Builders<Listener>.Update
+                                    .Inc(l => l.FollowerCount, -1)
+                                    .Pull(l => l.LastFollowers, currentUserId));
+                        break;
+                    }
+            }
+        });
     }
 
     public async Task ReActiveUserAsync(string targetUserId)

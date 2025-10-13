@@ -1,4 +1,6 @@
-﻿using EkofyApp.Application.Models.Tracks;
+﻿using EkofyApp.Application.Models.TrackComments;
+using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
@@ -12,9 +14,10 @@ namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class TrackQuery(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonCloudFrontService amazonCloudFrontService)
+public class TrackQuery(ITrackService trackService, ITrackCommentService trackCommentService, IRedisCacheService redisCacheService, IAmazonCloudFrontService amazonCloudFrontService)
 {
     private readonly ITrackService _trackService = trackService;
+    private readonly ITrackCommentService _trackCommentService = trackCommentService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
@@ -70,6 +73,51 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     public async Task<IEnumerable<Track>> GetTrackBySemanticSearch(string term)
     {
         return await _trackService.GetAllTracksBySemanticAsync(term);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<TrackComment>]
+    public IQueryable<TrackComment> GetTrackComments()
+    {
+        return _trackCommentService.GetTrackComments();
+    }
+
+    // New hierarchical comment queries
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseProjection]
+    public async Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request)
+    {
+        return await _trackCommentService.GetThreadedCommentsAsync(request);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseProjection]
+    public async Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request)
+    {
+        return await _trackCommentService.GetCommentRepliesAsync(request);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
+    {
+        return await _trackCommentService.GetCommentThreadAsync(request);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    public async Task<int> GetCommentDepthAsync(string commentId)
+    {
+        return await _trackCommentService.GetCommentDepthAsync(commentId);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    public async Task<bool> IsCommentInThreadAsync(string commentId, string threadRootId)
+    {
+        return await _trackCommentService.IsCommentInThreadAsync(commentId, threadRootId);
     }
 
     #region Original
