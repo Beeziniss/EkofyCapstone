@@ -1,5 +1,4 @@
-﻿using BCrypt.Net;
-using EkofyApp.Application.Models.UserFollows;
+﻿using EkofyApp.Application.Models.UserFollows;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Users;
@@ -9,7 +8,6 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
-using MongoDB.Bson.Serialization.IdGenerators;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Users;
@@ -113,17 +111,19 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             // Check if target user exists
             User? targetUser = await _unitOfWork.GetCollection<User>()
                 .Find(u => u.Id == request.TargetUserId)
+                .Project<User>(Builders<User>.Projection.Include(x => x.Role))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found target user {currentUserId}");
 
             // Get current user info
             User? currentUser = await _unitOfWork.GetCollection<User>()
                 .Find(u => u.Id == currentUserId)
+                .Project<User>(Builders<User>.Projection.Include(x => x.Role))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found current user {currentUserId}");
 
             // Check if already following
             bool existingFollow = await _unitOfWork.GetCollection<Follows>()
                 .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
-                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này có thật sự hiệu quả so với micro-optimization?
+                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
 
             // Create follow relationship
             Follows follow = new()

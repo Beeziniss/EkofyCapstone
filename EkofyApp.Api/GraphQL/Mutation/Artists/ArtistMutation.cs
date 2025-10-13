@@ -1,16 +1,13 @@
 ﻿using EkofyApp.Application.Models.Artists;
-using EkofyApp.Application.Models.UserFollows;
 using EkofyApp.Application.ServiceInterfaces.Artists;
-using EkofyApp.Application.ServiceInterfaces.Users;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Artists;
 
 [ExtendObjectType<MutationInitialization>]
 [MutationType]
-public class ArtistMutation(IArtistService artistService, IUserService userService)
+public class ArtistMutation(IArtistService artistService)
 {
     private readonly IArtistService _artistService = artistService;
-    private readonly IUserService _userService = userService;
 
     public async Task<bool> RegisterArtistManualAsync(CreateArtistRequest createArtistRequest)
     {
@@ -33,20 +30,6 @@ public class ArtistMutation(IArtistService artistService, IUserService userServi
     public async Task<bool> RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest request)
     {
         await _artistService.RejectArtistRegistrationAsync(request);
-        return true;
-    }
-    #endregion
-
-    #region Follows
-    public async Task<bool> FollowUserAsync(FollowUserRequest request)
-    {
-        await _userService.FollowUserAsync(request);
-        return true;
-    }
-
-    public async Task<bool> UnfollowUserAsync(UnfollowUserRequest request)
-    {
-        await _userService.UnfollowUserAsync(request);
         return true;
     }
     #endregion
