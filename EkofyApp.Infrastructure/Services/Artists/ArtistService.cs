@@ -210,7 +210,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             return [];
         }
 
-        return result.Value.Select(pending => new PendingArtistRegistrationResponse
+        return result.Value.Items.Select(pending => new PendingArtistRegistrationResponse
         {
             Id = pending.UserId,
             Email = pending.Email,
@@ -231,7 +231,8 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             PlaceOfOrigin = pending.IdentityCard.PlaceOfOrigin,
             PlaceOfResidence = pending.IdentityCard.PlaceOfResidence.AddressLine ?? string.Empty,
             FrontImageUrl = pending.IdentityCard.FrontImage,
-            BackImageUrl = pending.IdentityCard.BackImage
+            BackImageUrl = pending.IdentityCard.BackImage,
+            TotalCount = result.Value.TotalCount
         });
     }
 
