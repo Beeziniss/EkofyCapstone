@@ -547,7 +547,8 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
+                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_LOCAL_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
+                    .WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
                       .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
