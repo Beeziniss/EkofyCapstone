@@ -23,7 +23,6 @@ using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
-using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
@@ -43,7 +42,6 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.BillingPortalConfig;
 using EkofyApp.Domain.Enums.Coupons;
-using EkofyApp.Domain.Enums.Reports;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
@@ -67,7 +65,6 @@ using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
-using EkofyApp.Infrastructure.Services.Reports;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
@@ -389,7 +386,6 @@ public static class DependencyInjection
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ITrackCommentService, TrackCommentService>();
-        services.AddScoped<IUserReportService, UserReportService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -397,9 +393,6 @@ public static class DependencyInjection
 
         // Third Party Services
         services.AddScoped<IFfmpegService, FfmpegService>();
-        
-        // Background Jobs
-        services.AddScoped<RestrictionExpirationJob>();
     }
 
     public static void AddCloudinary(this IServiceCollection services)
@@ -554,8 +547,7 @@ public static class DependencyInjection
         {
             options.AddPolicy("AllowAll", policy =>
             {
-                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_LOCAL_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
-                    .WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
+                policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
                       .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
@@ -707,12 +699,6 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
-        
-        // Report enums
-        BsonSerializer.RegisterSerializer(typeof(ReportStatus), new EnumMemberSerializer<ReportStatus>());
-        BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());
-        BsonSerializer.RegisterSerializer(typeof(ReportAction), new EnumMemberSerializer<ReportAction>());
-        BsonSerializer.RegisterSerializer(typeof(ReportPriority), new EnumMemberSerializer<ReportPriority>());
     }
 
     public static void AddHangfire(this IServiceCollection service)
