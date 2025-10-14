@@ -7,7 +7,7 @@ using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
-namespace EkofyApp.Infrastructure.Services.TrackComments;
+namespace EkofyApp.Infrastructure.Services.Tracks;
 
 public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : ITrackCommentService
 {
@@ -169,7 +169,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
             TotalThreads = (int)totalThreads,
             Page = request.Page,
             PageSize = request.PageSize,
-            HasNextPage = (request.Page * request.PageSize) < totalThreads
+            HasNextPage = request.Page * request.PageSize < totalThreads
         };
     }
 
@@ -197,7 +197,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
             TotalReplies = (int)totalReplies,
             Page = request.Page,
             PageSize = request.PageSize,
-            HasNextPage = (request.Page * request.PageSize) < totalReplies,
+            HasNextPage = request.Page * request.PageSize < totalReplies,
             ParentCommentId = request.CommentId
         };
     }
@@ -335,8 +335,8 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
             TotalRepliesCount = comment.TotalRepliesCount,
             IsEdited = comment.IsEdited,
             IsDeleted = comment.IsDeleted,
-            CreatedAt = comment.CreatedAt.DateTime,
-            UpdatedAt = comment.UpdatedAt?.DateTime,
+            CreatedAt = comment.CreatedAt,
+            UpdatedAt = comment.UpdatedAt,
             ThreadUpdatedAt = comment.ThreadUpdatedAt
         };
     }
