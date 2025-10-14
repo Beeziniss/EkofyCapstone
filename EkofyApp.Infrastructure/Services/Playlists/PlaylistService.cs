@@ -55,6 +55,9 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
         Playlist? playlist = await _unitOfWork.GetCollection<Playlist>()
             .Find(x => x.Id == addToPlaylistRequest.PlaylistId)
+            .Project<Playlist>(Builders<Playlist>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.TracksInfo))
             .FirstOrDefaultAsync();
 
         if (playlist == null)
@@ -98,6 +101,9 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
         Playlist? favoritePlaylist = await _unitOfWork.GetCollection<Playlist>()
             .Find(x => x.UserId == userId && x.Name == "Favorite Songs")
+            .Project<Playlist>(Builders<Playlist>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.TracksInfo))
             .FirstOrDefaultAsync();
 
         if (favoritePlaylist == null)

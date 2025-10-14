@@ -129,7 +129,7 @@ public sealed class AuthenticationService(
 
         foreach (string key in pendingKeys)
         {
-            if (_redisCacheService.TryGetGeneric<PendingListenerRegistration>(key, out var pendingReg)
+            if (_redisCacheService.TryGetGeneric<PendingListenerRegistrationResponse>(key, out var pendingReg)
                 && pendingReg != null
                 && pendingReg.Email.Equals(registerRequest.Email.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
@@ -140,7 +140,7 @@ public sealed class AuthenticationService(
         string userId = ObjectId.GenerateNewId().ToString();
 
         // Tạo đối tượng pending registration
-        PendingListenerRegistration pendingRegistration = new()
+        PendingListenerRegistrationResponse pendingRegistration = new()
         {
             Id = userId,
             Email = registerRequest.Email.Trim().ToLowerInvariant(),
@@ -588,7 +588,7 @@ public sealed class AuthenticationService(
         // Tìm pending pendingListener registration
         foreach (string key in listenerKeys)
         {
-            if (_redisCacheService.TryGetGeneric<PendingListenerRegistration>(key, out PendingListenerRegistration? pendingListener)
+            if (_redisCacheService.TryGetGeneric<PendingListenerRegistrationResponse>(key, out PendingListenerRegistrationResponse? pendingListener)
                 && pendingListener != null
                 && pendingListener.Email.Equals(email.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
@@ -662,7 +662,7 @@ public sealed class AuthenticationService(
         // Tìm trong pending pendingListener registrations
         foreach (string key in listenerKeys)
         {
-            if (_redisCacheService.TryGetGeneric<PendingListenerRegistration>(key, out var listener)
+            if (_redisCacheService.TryGetGeneric<PendingListenerRegistrationResponse>(key, out var listener)
                 && listener != null
                 && listener.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
             {

@@ -471,7 +471,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     }
     #endregion
 
-    public async Task<ICacheResult<IEnumerable<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<ICacheResult<PaginatedData<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20)
     {
         try
         {
@@ -501,21 +501,23 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
                 }
             }
 
+            int totalCount = allRequests.Count;
+
             IEnumerable<TrackTempRequest> paged = allRequests.OrderBy(r => r.RequestedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            return CacheResult<IEnumerable<TrackTempRequest>>.From(paged);
+            return PaginatedCacheResult<TrackTempRequest>.From(paged, totalCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Redis] Failed to get pending track uploads.");
-            return CacheResult<IEnumerable<TrackTempRequest>>.Fail();
+            return PaginatedCacheResult<TrackTempRequest>.Fail();
         }
     }
 
-    public async Task<ICacheResult<IEnumerable<PendingArtistRegistrationRequest>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<ICacheResult<PaginatedData<PendingArtistRegistrationRequest>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         try
         {
@@ -545,28 +547,30 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
                 }
             }
 
+            int totalCount = allRequests.Count;
+
             IEnumerable<PendingArtistRegistrationRequest> paged = allRequests.OrderBy(r => r.RequestedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            return CacheResult<IEnumerable<PendingArtistRegistrationRequest>>.From(paged);
+            return PaginatedCacheResult<PendingArtistRegistrationRequest>.From(paged, totalCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Redis] Failed to get pending artist registrations.");
-            return CacheResult<IEnumerable<PendingArtistRegistrationRequest>>.Fail();
+            return PaginatedCacheResult<PendingArtistRegistrationRequest>.Fail();
         }
     }
 
-    public async Task<ICacheResult<IEnumerable<PendingListenerRegistration>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<ICacheResult<PaginatedData<PendingListenerRegistrationResponse>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         try
         {
             IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
             RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "listener:*:pendingRegistration").ToArray();
 
-            List<PendingListenerRegistration> allRequests = [];
+            List<PendingListenerRegistrationResponse> allRequests = [];
 
             foreach (RedisKey key in keys)
             {
@@ -576,7 +580,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
 
                     if (value.HasValue)
                     {
-                        PendingListenerRegistration? request = JsonSerializer.Deserialize<PendingListenerRegistration>(value!, _jsonOptions);
+                        PendingListenerRegistrationResponse? request = JsonSerializer.Deserialize<PendingListenerRegistrationResponse>(value!, _jsonOptions);
                         if (request != null)
                         {
                             allRequests.Add(request);
@@ -589,17 +593,19 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
                 }
             }
 
-            IEnumerable<PendingListenerRegistration> paged = allRequests.OrderBy(r => r.RequestedAt)
+            int totalCount = allRequests.Count;
+
+            IEnumerable<PendingListenerRegistrationResponse> paged = allRequests.OrderBy(r => r.RequestedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            return CacheResult<IEnumerable<PendingListenerRegistration>>.From(paged);
+            return PaginatedCacheResult<PendingListenerRegistrationResponse>.From(paged, totalCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Redis] Failed to get pending listener registrations.");
-            return CacheResult<IEnumerable<PendingListenerRegistration>>.Fail();
+            return PaginatedCacheResult<PendingListenerRegistrationResponse>.Fail();
         }
     }
 }

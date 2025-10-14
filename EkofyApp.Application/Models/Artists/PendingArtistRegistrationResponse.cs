@@ -31,4 +31,7 @@ public sealed record class PendingArtistRegistrationResponse
     public string PlaceOfResidence { get; init; } = null!;
     public string? FrontImageUrl { get; init; }
     public string? BackImageUrl { get; init; }
+    
+    // Pagination information
+    public int TotalCount { get; init; }
 }

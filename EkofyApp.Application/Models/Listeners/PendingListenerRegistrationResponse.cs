@@ -2,7 +2,7 @@ using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Application.Models.Listeners;
 
-public sealed record class PendingListenerRegistration
+public sealed record class PendingListenerRegistrationResponse
 {
     public string Id { get; init; } = null!;
     public string Email { get; init; } = null!;
