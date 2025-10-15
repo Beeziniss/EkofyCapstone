@@ -231,7 +231,6 @@ public static class DependencyInjection
                 Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
                 AbortOnConnectFail = false
             };
-            Console.WriteLine("Production=====================================================");
         }
         //else
         //{

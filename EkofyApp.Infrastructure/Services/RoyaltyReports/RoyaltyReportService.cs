@@ -297,7 +297,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     x => processedMonthlyStreamCountIds.Contains(x.Id),
                     updateDefinition,
                     cancellationToken: ct);
-            if (updateResult.ModifiedCount < processedMonthlyStreamCountIds.Count)
+            if (updateResult.ModifiedCount == 0)
             {
                 throw new UnprocessableEntityCustomException($"Failed to update MonthlyStreamCount as processed.");
             }

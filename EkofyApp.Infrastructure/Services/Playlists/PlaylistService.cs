@@ -96,7 +96,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             throw new NotFoundCustomException("Playlist not found");
         }
 
-        if (updateResult.ModifiedCount < updates.Count)
+        if (updateResult.ModifiedCount == 0)
         {
             throw new UnprocessableEntityCustomException("Cannot update playlist");
         }

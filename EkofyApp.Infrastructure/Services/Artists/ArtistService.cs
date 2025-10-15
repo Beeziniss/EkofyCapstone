@@ -194,7 +194,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             UpdateResult updateArtist = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(session, x => x.Id == artistId, updateDefinition);
             UpdateResult updateUser = await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, x => x.Id == userId, updateDefinitionUser);
 
-            if (updateArtist.ModifiedCount < updates.Count && updateUser.ModifiedCount < updatesUser.Count)
+            if (updateArtist.ModifiedCount == 0 && updateUser.ModifiedCount == 0)
             {
                 throw new UnprocessableEntityCustomException("No changes were made to the artist profile");
             }
@@ -275,6 +275,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 StageName = pendingRegistration.StageName,
                 StageNameUnsigned = pendingRegistration.StageNameUnsigned,
                 Email = pendingRegistration.Email,
+                AvatarImage = pendingRegistration.AvatarImage,
                 ArtistType = pendingRegistration.ArtistType,
                 Members = pendingRegistration.Members,
                 IdentityCard = pendingRegistration.IdentityCard,
