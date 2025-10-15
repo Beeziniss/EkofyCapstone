@@ -42,9 +42,6 @@ public sealed class ReportService(
             ?? throw new UnauthorizedCustomException("Your session is limited");
     }
 
-    /// <summary>
-    /// T?o báo cáo vi ph?m m?i
-    /// </summary>
     public async Task CreateReportAsync(CreateReportRequest request)
     {
         string reporterId = GetCurrentUserId();
@@ -108,9 +105,6 @@ public sealed class ReportService(
         return;
     }
 
-    /// <summary>
-    /// Assign báo cáo cho moderator
-    /// </summary>
     public async Task AssignReportToModeratorAsync(string reportId, string moderatorId)
     {
         string currentUserId = GetCurrentUserId();
@@ -142,9 +136,6 @@ public sealed class ReportService(
         }
     }
 
-    /// <summary>
-    /// Moderator x? lý báo cáo
-    /// </summary>
     public async Task ProcessReportAsync(ProcessReportRequest request)
     {
         string moderatorId = GetCurrentUserId();
@@ -193,9 +184,6 @@ public sealed class ReportService(
         });
     }
 
-    /// <summary>
-    /// Th?c hi?n hành ??ng x? ph?t user
-    /// </summary>
     private async Task ApplyActionToUserAsync(string userId, ProcessReportRequest request)
     {
         switch (request.ActionTaken)

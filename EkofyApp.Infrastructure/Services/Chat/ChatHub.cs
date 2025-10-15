@@ -151,7 +151,7 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
     {
         UpdateResult result = await _unitOfWork.GetCollection<Message>().UpdateOneAsync(Builders<Message>.Filter.Eq(m => m.Id, messageId), Builders<Message>.Update.AddToSet(m => m.DeletedFor, userId));
 
-        if (result.ModifiedCount <= 0)
+        if (result.ModifiedCount == 0)
         {
             // Không tìm thấy message hoặc không có quyền xóa
             await Clients.Caller.SendAsync("ReceiveException", "Message not found or you don't have permission to delete this message.");
