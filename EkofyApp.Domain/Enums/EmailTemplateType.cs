@@ -8,5 +8,8 @@ public enum EmailTemplateType
     ResetPassword,
     RegisterNotification,
     ResetPasswordOtp,
-    PasswordChangedNotification
+    PasswordChanged,
+    WarningReport,
+    TemporarySuspension,
+    PermanentBan,
 }

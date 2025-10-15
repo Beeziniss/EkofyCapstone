@@ -617,10 +617,6 @@ public sealed class AuthenticationService(
                         DisplayNameUnsigned = pendingListener.DisplayNameUnsigned,
                         AvatarImage = pendingListener.AvatarImage,
                         Email = pendingListener.Email,
-                        Restriction = new Restriction
-                        {
-                            Type = RestrictionType.None,
-                        },
                         CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
                     };
 

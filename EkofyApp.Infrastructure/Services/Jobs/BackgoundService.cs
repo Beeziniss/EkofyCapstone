@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
@@ -86,7 +87,6 @@ public class BackgoundService : IBackgoundService
         await royaltyReportService.GenerateMonthlyRoyaltyReportsAsync(HelperMethod.GetUtcPlus7TimeOffset().Month, HelperMethod.GetUtcPlus7TimeOffset().Year);
     }
 
-
     #region Stream Count Job
     [Queue("track_count")]
     [JobDisplayName("Update Stream Count")]
@@ -151,4 +151,13 @@ public class BackgoundService : IBackgoundService
         }
     }
     #endregion
+
+    [Queue("expired_restriction")]
+    [JobDisplayName("Update Restriction User's Status")]
+    public async Task RemoveExpiredRestrictionAsync(string userId)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
+        await reportService.RemoveExpiredRestrictionAsync(userId);
+    }
 }
