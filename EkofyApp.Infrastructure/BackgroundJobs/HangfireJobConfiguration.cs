@@ -18,9 +18,6 @@ namespace EkofyApp.Infrastructure.BackgroundJobs
 
             // ở đây hangfire lấy theo giờ của mongo nên để chạy vào 23:59 ngày cuối tháng thì phải trừ 7 tiếng (giờ VN là GMT+7)
             RecurringJob.AddOrUpdate("monthly-royalty-report", () => app.Services.GetService<IBackgoundService>()!.MonthlyRoyaltyReportJob(), "59 16 L * ?");
-            
-            // Check expired restrictions every hour
-            RecurringJob.AddOrUpdate("check-expired-restrictions", () => app.Services.GetService<RestrictionExpirationJob>()!.CheckAndRemoveExpiredRestrictionsAsync(), Cron.Hourly);
         }
     }
 }

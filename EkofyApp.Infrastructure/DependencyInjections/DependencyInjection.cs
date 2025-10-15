@@ -228,9 +228,10 @@ public static class DependencyInjection
                 EndPoints = { publicEndpoint },
                 User = username,
                 Password = password,
-                Ssl = true, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
+                Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
                 AbortOnConnectFail = false
             };
+            Console.WriteLine("Production=====================================================");
         }
         //else
         //{
@@ -389,7 +390,7 @@ public static class DependencyInjection
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ITrackCommentService, TrackCommentService>();
-        services.AddScoped<IUserReportService, UserReportService>();
+        services.AddScoped<IReportService, ReportService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -397,9 +398,6 @@ public static class DependencyInjection
 
         // Third Party Services
         services.AddScoped<IFfmpegService, FfmpegService>();
-        
-        // Background Jobs
-        services.AddScoped<RestrictionExpirationJob>();
     }
 
     public static void AddCloudinary(this IServiceCollection services)
@@ -708,7 +706,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
         
-        // Report enums
+        // Report
         BsonSerializer.RegisterSerializer(typeof(ReportStatus), new EnumMemberSerializer<ReportStatus>());
         BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());
         BsonSerializer.RegisterSerializer(typeof(ReportAction), new EnumMemberSerializer<ReportAction>());
@@ -749,7 +747,7 @@ public static class DependencyInjection
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
-            ServerOptions.Queues = new[] { "scheduled", "email", "track_upload", "track_count" };
+            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction"];
         });
 
         // Background Jobs Services

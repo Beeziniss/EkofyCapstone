@@ -1,4 +1,5 @@
 using EkofyApp.Application.Models.Reports;
+using EkofyApp.Domain.Enums.Reports;
 using FluentValidation;
 
 namespace EkofyApp.Application.Validators.Reports;
@@ -17,13 +18,18 @@ public sealed class ProcessReportRequestValidator : AbstractValidator<ProcessRep
         RuleFor(x => x.ActionTaken)
             .IsInEnum().WithMessage("Invalid action type");
 
+        RuleFor(x => x.RestrictionActionDetails)
+            .NotEmpty().WithMessage("At least one restriction action must be specified")
+            .When(x => x.ActionTaken == ReportAction.EntitlementRestriction);
+
         RuleFor(x => x.SuspensionDays)
             .GreaterThan(0).WithMessage("Suspension days must be greater than 0")
             .LessThanOrEqualTo(365).WithMessage("Suspension days cannot exceed 365 days")
             .When(x => x.SuspensionDays.HasValue);
 
-        RuleFor(x => x.ModeratorNotes)
-            .MaximumLength(2000).WithMessage("Moderator notes cannot exceed 2000 characters")
-            .When(x => !string.IsNullOrEmpty(x.ModeratorNotes));
+        RuleFor(x => x.Note)
+            .NotEmpty().WithMessage("Note is required")
+            .Unless(x => x.ActionTaken == ReportAction.NoAction || x.ActionTaken == ReportAction.EntitlementRestriction);
+
     }
 }

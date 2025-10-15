@@ -5,55 +5,49 @@ namespace EkofyApp.Api.GraphQL.Mutation.Reports;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class ReportMutation(IUserReportService reportService)
+public sealed class ReportMutation(IReportService reportService)
 {
-    private readonly IUserReportService _reportService = reportService;
+    private readonly IReportService _reportService = reportService;
 
-    /// <summary>
-    /// T?o báo cáo vi ph?m m?i
-    /// </summary>
-    public async Task<ReportResponse> CreateReportAsync(CreateReportRequest request)
+    public async Task<bool> CreateReportAsync(CreateReportRequest request)
     {
-        return await _reportService.CreateReportAsync(request);
+        await _reportService.CreateReportAsync(request);
+        return true;
     }
 
-    /// <summary>
-    /// Assign báo cáo cho moderator
-    /// </summary>
     public async Task<bool> AssignReportToModeratorAsync(string reportId, string moderatorId)
     {
-        return await _reportService.AssignReportToModeratorAsync(reportId, moderatorId);
+        await _reportService.AssignReportToModeratorAsync(reportId, moderatorId);
+        return true;
     }
 
-    /// <summary>
-    /// Moderator x? lý báo cáo
-    /// </summary>
-    public async Task<ReportResponse> ProcessReportAsync(ProcessReportRequest request)
+    public async Task<bool> ProcessReportAsync(ProcessReportRequest request)
     {
-        return await _reportService.ProcessReportAsync(request);
+        await _reportService.ProcessReportAsync(request);
+        return true;
     }
 
-    /// <summary>
-    /// Update priority c?a báo cáo
-    /// </summary>
-    public async Task<bool> UpdateReportPriorityAsync(string reportId, string priority)
-    {
-        return await _reportService.UpdateReportPriorityAsync(reportId, priority);
-    }
+    ///// <summary>
+    ///// Update priority c?a báo cáo
+    ///// </summary>
+    //public async Task<bool> UpdateReportPriorityAsync(string reportId, string priority)
+    //{
+    //    return await _reportService.UpdateReportPriorityAsync(reportId, priority);
+    //}
 
-    /// <summary>
-    /// Xóa báo cáo (soft delete)
-    /// </summary>
-    public async Task<bool> DeleteReportAsync(string reportId)
-    {
-        return await _reportService.DeleteReportAsync(reportId);
-    }
+    ///// <summary>
+    ///// Xóa báo cáo (soft delete)
+    ///// </summary>
+    //public async Task<bool> DeleteReportAsync(string reportId)
+    //{
+    //    return await _reportService.DeleteReportAsync(reportId);
+    //}
 
-    /// <summary>
-    /// Escalate báo cáo lên admin
-    /// </summary>
-    public async Task<bool> EscalateReportAsync(string reportId)
-    {
-        return await _reportService.EscalateReportAsync(reportId);
-    }
+    ///// <summary>
+    ///// Escalate báo cáo lên admin
+    ///// </summary>
+    //public async Task<bool> EscalateReportAsync(string reportId)
+    //{
+    //    return await _reportService.EscalateReportAsync(reportId);
+    //}
 }

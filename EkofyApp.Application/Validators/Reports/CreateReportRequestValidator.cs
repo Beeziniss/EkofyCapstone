@@ -27,7 +27,7 @@ public sealed class CreateReportRequestValidator : AbstractValidator<CreateRepor
             .MaximumLength(50).WithMessage("Content type cannot exceed 50 characters")
             .When(x => !string.IsNullOrEmpty(x.RelatedContentType));
 
-        RuleFor(x => x.EvidenceUrls)
+        RuleFor(x => x.Evidences)
             .Must(urls => urls == null || urls.Count <= 5)
             .WithMessage("Cannot upload more than 5 evidence URLs");
     }

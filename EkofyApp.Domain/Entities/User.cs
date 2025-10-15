@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums.Users;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -31,6 +32,8 @@ public sealed class User : Auditable, IEntityCustom
     public string? FCMToken { get; set; } // Firebase Cloud Messaging token for push notifications
 
     public DateTimeOffset? LastLoginAt { get; set; }
+
+    public List<Restriction> Restrictions { get; set; } = []; // Optional restriction details for user
 
     // TODO: Giả định nếu user không muốn dùng app để nghe nhạc
     // Mà chỉ muốn dùng app để mua gói của nghệ sĩ để yêu cầu nghệ sĩ viết / sáng tác / remix / ... thì sao

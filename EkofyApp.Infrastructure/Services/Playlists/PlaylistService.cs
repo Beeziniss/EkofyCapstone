@@ -49,6 +49,59 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         });
     }
 
+    public async Task UpdatePlaylistAsync(UpdatePlaylistRequest updatePlaylistRequest)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        // Build update definition based on provided fields
+        UpdateDefinitionBuilder<Playlist> updateDefinitionBuilder = Builders<Playlist>.Update;
+        List<UpdateDefinition<Playlist>> updates = [];
+
+        if (!string.IsNullOrEmpty(updatePlaylistRequest.Name))
+        {
+            updates.Add(updateDefinitionBuilder.Set(x => x.Name, updatePlaylistRequest.Name));
+            updates.Add(updateDefinitionBuilder.Set(x => x.NameUnsigned, HelperMethod.ToUnsigned(updatePlaylistRequest.Name)));
+        }
+
+        if (updatePlaylistRequest.Description != null)
+        {
+            updates.Add(updateDefinitionBuilder.Set(x => x.Description, updatePlaylistRequest.Description));
+        }
+
+        if (updatePlaylistRequest.CoverImage != null)
+        {
+            updates.Add(updateDefinitionBuilder.Set(x => x.CoverImage, updatePlaylistRequest.CoverImage));
+        }
+
+        if (updatePlaylistRequest.IsPublic.HasValue)
+        {
+            updates.Add(updateDefinitionBuilder.Set(x => x.IsPublic, updatePlaylistRequest.IsPublic.Value));
+        }
+
+        updates.Add(updateDefinitionBuilder.Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+
+        if (updates.Count == 1) // Only UpdatedAt
+        {
+            throw new BadRequestCustomException("No fields to update.");
+        }
+
+        UpdateDefinition<Playlist> updateDefinition = updateDefinitionBuilder.Combine(updates);
+
+        // Update only if the playlist belongs to the user
+        UpdateResult updateResult = await _unitOfWork.GetCollection<Playlist>()
+            .UpdateOneAsync(x => x.Id == updatePlaylistRequest.PlaylistId && x.UserId == userId, updateDefinition);
+
+        if (updateResult.MatchedCount == 0)
+        {
+            throw new NotFoundCustomException("Playlist not found");
+        }
+
+        if (updateResult.ModifiedCount < updates.Count)
+        {
+            throw new UnprocessableEntityCustomException("Cannot update playlist");
+        }
+    }
+
     public async Task AddToPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest)
     {
         string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");

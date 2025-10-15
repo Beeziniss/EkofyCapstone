@@ -1,43 +1,30 @@
 using EkofyApp.Application.Models.Reports;
 using EkofyApp.Application.ServiceInterfaces.Reports;
+using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
+using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Reports;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public sealed class ReportQuery(IUserReportService reportService)
+public sealed class ReportQuery(IReportService reportService)
 {
-    private readonly IUserReportService _reportService = reportService;
+    private readonly IReportService _reportService = reportService;
 
-    /// <summary>
-    /// L?y danh sách báo cáo (v?i filter và pagination)
-    /// </summary>
-    public async Task<ReportListResponse> GetReportsAsync(GetReportsRequest request)
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Report>]
+    public IQueryable<Report> GetReports()
     {
-        return await _reportService.GetReportsAsync(request);
+        return _reportService.GetReports();
     }
 
-    /// <summary>
-    /// L?y chi ti?t m?t báo cáo
-    /// </summary>
-    public async Task<ReportResponse> GetReportByIdAsync(string reportId)
-    {
-        return await _reportService.GetReportByIdAsync(reportId);
-    }
-
-    /// <summary>
-    /// L?y t?t c? báo cáo v? m?t user
-    /// </summary>
-    public async Task<List<ReportResponse>> GetReportsByUserIdAsync(string userId)
-    {
-        return await _reportService.GetReportsByUserIdAsync(userId);
-    }
-
-    /// <summary>
-    /// L?y statistics v? reports
-    /// </summary>
-    public async Task<ReportStatisticsResponse> GetReportStatisticsAsync()
-    {
-        return await _reportService.GetReportStatisticsAsync();
-    }
+    //public async Task<ReportStatisticsResponse> GetReportStatisticsAsync()
+    //{
+    //    return await _reportService.GetReportStatisticsAsync();
+    //}
 }

@@ -36,6 +36,4 @@ public sealed class Artist : TimeStamped, IEntityCustom
     // Resolve the legal documents and restrictions for the artist
     public IdentityCard IdentityCard { get; set; } = null!;
     public List<LegalDocument> LegalDocuments { get; set; } = []; // List of legal documents associated with the artist, e.g., contracts, agreements, etc.
-
-    public Restriction Restriction { get; set; } = null!;
 }

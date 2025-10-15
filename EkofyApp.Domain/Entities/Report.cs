@@ -8,7 +8,7 @@ namespace EkofyApp.Domain.Entities;
 /// <summary>
 /// Báo cáo vi ph?m c?a user
 /// </summary>
-public sealed class UserReport : Auditable, IEntityCustom
+public sealed class Report : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -60,18 +60,13 @@ public sealed class UserReport : Auditable, IEntityCustom
     /// <summary>
     /// URL ho?c screenshot b?ng ch?ng
     /// </summary>
-    public List<string> EvidenceUrls { get; set; } = [];
+    public List<string> Evidences { get; set; } = [];
 
     /// <summary>
     /// Moderator ?ang x? lý
     /// </summary>
     [BsonRepresentation(BsonType.ObjectId)]
     public string? AssignedModeratorId { get; set; }
-
-    /// <summary>
-    /// Th?i gian moderator b?t ??u x? lý
-    /// </summary>
-    public DateTimeOffset? ReviewedAt { get; set; }
 
     /// <summary>
     /// Hành ??ng ?ã th?c hi?n
@@ -81,7 +76,7 @@ public sealed class UserReport : Auditable, IEntityCustom
     /// <summary>
     /// Ghi chú c?a moderator
     /// </summary>
-    public string? ModeratorNotes { get; set; }
+    public string? Note { get; set; }
 
     /// <summary>
     /// Th?i gian hoàn thành x? lý
@@ -97,9 +92,4 @@ public sealed class UserReport : Auditable, IEntityCustom
     /// ?ánh d?u ?ã xóa (soft delete)
     /// </summary>
     public bool IsDeleted { get; set; } = false;
-
-    /// <summary>
-    /// Metadata b? sung (flexible)
-    /// </summary>
-    public Dictionary<string, string>? Metadata { get; set; }
 }

@@ -35,5 +35,5 @@ public sealed class CreateReportRequest
     /// <summary>
     /// URL b?ng ch?ng
     /// </summary>
-    public List<string>? EvidenceUrls { get; set; }
+    public List<string>? Evidences { get; set; }
 }

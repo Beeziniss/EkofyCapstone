@@ -13,12 +13,12 @@ public enum ReportAction
     [EnumMember(Value = "ContentRemoval")]
     ContentRemoval,         // Xóa n?i dung vi ph?m
     
-    [EnumMember(Value = "TemporarySuspension")]
-    TemporarySuspension,    // ?ình ch? t?m th?i (n days)
+    [EnumMember(Value = "Suspended")]
+    Suspended,    // ?ình ch? t?m th?i (n days)
     
     [EnumMember(Value = "PermanentBan")]
     PermanentBan,           // C?m v?nh vi?n
     
-    [EnumMember(Value = "AccountRestriction")]
-    AccountRestriction      // H?n ch? tính n?ng tài kho?n
+    [EnumMember(Value = "EntitlementRestriction")]
+    EntitlementRestriction      // H?n ch? tính n?ng tài kho?n
 }

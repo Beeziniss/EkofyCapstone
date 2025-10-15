@@ -1,34 +1,34 @@
+Ôªøusing EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Reports;
 
 namespace EkofyApp.Application.Models.Reports;
 
 /// <summary>
-/// Request ?? moderator x? l˝ b·o c·o
+/// Request ?? moderator x? l√Ω b√°o c√°o
 /// </summary>
-public sealed class ProcessReportRequest
+public sealed record class ProcessReportRequest
 {
     /// <summary>
-    /// ID b·o c·o
+    /// ID b√°o c√°o
     /// </summary>
-    public string ReportId { get; set; } = null!;
+    public string ReportId { get; init; } = null!;
 
     /// <summary>
-    /// Tr?ng th·i m?i
+    /// Tr?ng th√°i m?i
     /// </summary>
-    public ReportStatus Status { get; set; }
+    public ReportStatus Status { get; init; }
 
     /// <summary>
-    /// H‡nh ??ng th?c hi?n
+    /// H√†nh ??ng th?c hi?n
     /// </summary>
-    public ReportAction ActionTaken { get; set; }
+    public ReportAction ActionTaken { get; init; }
+
+    public List<RestrictionActionDetail> RestrictionActionDetails { get; init; } = [];
 
     /// <summary>
-    /// S? ng‡y suspend (n?u l‡ TemporarySuspension)
+    /// S? ng√†y suspend (n?u l√† Suspended)
     /// </summary>
-    public int? SuspensionDays { get; set; }
+    public int? SuspensionDays { get; init; }
 
-    /// <summary>
-    /// Ghi ch˙ c?a moderator
-    /// </summary>
-    public string? ModeratorNotes { get; set; }
+    public string? Note { get; init; }
 }

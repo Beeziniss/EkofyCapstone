@@ -16,6 +16,12 @@ public sealed class PlaylistMutation(IPlaylistService playlistService)
         return true;
     }
 
+    public async Task<bool> UpdatePlaylistAsync(UpdatePlaylistRequest updatePlaylistRequest)
+    {
+        await _playlistService.UpdatePlaylistAsync(updatePlaylistRequest);
+        return true;
+    }
+
     public async Task<bool> AddToFavoriteAsync(AddToPlaylistRequest addToPlaylistRequest)
     {
         await _playlistService.AddToFavoriteAsync(addToPlaylistRequest);
