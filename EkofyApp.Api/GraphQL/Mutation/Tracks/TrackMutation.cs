@@ -17,7 +17,7 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using EkofyApp.Infrastructure.ThirdPartyServices.EmySound;
+using HotChocolate.Subscriptions;
 using MongoDB.Bson;
 using Refit;
 
@@ -355,6 +355,14 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         }
 
         return false;
+    }
+
+    public async Task<bool> UpdateFavoriteCountAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
+    {
+        long incrementValue = isAdding ? 1 : -1;
+        long favoriteCountUpdated = await _trackService.UpdateFavoriteCountAsync(trackId, incrementValue);
+        await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
+        return true;
     }
 
     #region Track Comment

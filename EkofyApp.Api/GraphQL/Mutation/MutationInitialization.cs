@@ -1,7 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Mutation
+﻿namespace EkofyApp.Api.GraphQL.Mutation;
+
+public sealed class MutationInitialization
 {
-    public class MutationInitialization
-    {
-        public string Hello() => "GraphQL Mutation is ready!";
-    }
+    public string Initialize() => "GraphQL Mutation is ready!";
 }

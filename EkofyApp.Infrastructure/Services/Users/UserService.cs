@@ -123,7 +123,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             // Check if already following
             bool existingFollow = await _unitOfWork.GetCollection<Follows>()
                 .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
-                .AnyAsync() ? true:  throw new ConflictCustomException("Already following this user"); // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
+                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false ; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
 
             // Create follow relationship
             Follows follow = new()

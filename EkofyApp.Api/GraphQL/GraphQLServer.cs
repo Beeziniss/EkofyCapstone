@@ -2,12 +2,14 @@
 using EkofyApp.Api.GraphQL.Mutation;
 using EkofyApp.Api.GraphQL.Query;
 using EkofyApp.Api.GraphQL.Scalars;
+using EkofyApp.Api.GraphQL.SubscriptionQL;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.BillingPortalConfig;
 using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
+using EkofyApp.Domain.Exceptions;
 using HotChocolate.Types.Pagination;
 using StackExchange.Redis;
 
@@ -45,6 +47,18 @@ public static class GraphQLServer
             .AddCostAnalyzer()  // Analyze query cost
 
             // Caching
+            .AddRedisSubscriptions(sp =>
+            {
+                var config = new ConfigurationOptions
+                {
+                    EndPoints = { Environment.GetEnvironmentVariable("REDIS_PUBLIC_ENDPOINT")! },
+                    User = Environment.GetEnvironmentVariable("REDIS_USERNAME"),
+                    Password = Environment.GetEnvironmentVariable("REDIS_PASSWORD"),
+                    Ssl = false,
+                    AbortOnConnectFail = false
+                };
+                return ConnectionMultiplexer.Connect(config);
+            })
             //.UsePersistedQueryPipeline()
             //.AddRedisQueryStorage(sp =>
             //{
@@ -115,6 +129,7 @@ public static class GraphQLServer
             // Schema
             .AddQueryType<QueryInitialization>()
             .AddMutationType<MutationInitialization>()
+            .AddSubscriptionType<SubscriptionInitialization>()
             .AddTypes()
 
             // Default Scalar Types

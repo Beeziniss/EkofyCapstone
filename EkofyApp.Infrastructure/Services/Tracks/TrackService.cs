@@ -47,6 +47,23 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return query;
     }
 
+    public async Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue)
+    {
+        Track trackUpdated = await _unitOfWork.GetCollection<Track>()
+            .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, incrementValue),
+            new FindOneAndUpdateOptions<Track>
+            {
+                // Trả về tài liệu sau khi cập nhật
+                ReturnDocument = ReturnDocument.After,
+                Projection = Builders<Track>.Projection
+                    .Include(t => t.Id)
+                    .Include(t => t.FavoriteCount)
+            });
+
+        // Trả về số lượt yêu thích mới của bài hát
+        return trackUpdated.FavoriteCount;
+    }
+
     public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
     {
         Track track = await _unitOfWork.GetCollection<Track>()
@@ -229,7 +246,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     }
 
     //NOTE: Hàm tìm kiếm track theo semantic
-    public async Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text,int limit = 20)
+    public async Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20)
     {
         //nếu text rỗng thì trả về track nhu bình thường
         if (string.IsNullOrEmpty(text))

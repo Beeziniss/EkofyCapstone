@@ -16,6 +16,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracksQueryable();
         IQueryable<Track> SearchTracks(string searchTerm);
+        Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue);
         Task UpdateStreamCount(string trackId);
     }
 }
