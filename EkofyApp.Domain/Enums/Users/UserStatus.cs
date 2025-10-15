@@ -9,4 +9,6 @@ public enum UserStatus
     Inactive,
     [EnumMember(Value = "Banned")]
     Banned,
+    [EnumMember(Value = "Suspended")]
+    Suspended,
 }

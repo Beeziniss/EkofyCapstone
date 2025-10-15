@@ -9,6 +9,9 @@ public sealed class PlaylistMutationExtension : ObjectTypeExtension<PlaylistMuta
         descriptor.Field(x => x.CreatePlaylistAsync(default!))
             .Authorize(HelperRoleBase.ListenerArtistRolesArray);
 
+        descriptor.Field(x => x.UpdatePlaylistAsync(default!))
+            .Authorize(HelperRoleBase.ListenerArtistRolesArray);
+
         descriptor.Field(x => x.AddToFavoriteAsync(default!))
             .Authorize(HelperRoleBase.ListenerArtistRolesArray);
 

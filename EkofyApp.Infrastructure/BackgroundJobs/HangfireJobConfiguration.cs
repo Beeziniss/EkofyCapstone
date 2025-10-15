@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Infrastructure.Services.Jobs;
 using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;

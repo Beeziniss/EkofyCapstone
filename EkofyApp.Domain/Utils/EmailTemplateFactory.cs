@@ -13,6 +13,11 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.RegisterNotification => HelperEmailTemplate.RegisterNotification,
             EmailTemplateType.RegisterApprove => HelperEmailTemplate.RegisterApprove,
             EmailTemplateType.RegisterReject => HelperEmailTemplate.RegisterReject,
+            EmailTemplateType.ResetPasswordOtp => HelperEmailTemplate.ResetPasswordOtp,
+            EmailTemplateType.PasswordChanged => HelperEmailTemplate.PasswordChanged,
+            EmailTemplateType.WarningReport => HelperEmailTemplate.ReportWarning,
+            EmailTemplateType.TemporarySuspension => HelperEmailTemplate.TemporarySuspension,
+            EmailTemplateType.PermanentBan => HelperEmailTemplate.PermanentBan,
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -28,6 +33,10 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.RegisterApprove => HelperEmailTemplate.SubjectRegisterApprove(),
             EmailTemplateType.RegisterReject => HelperEmailTemplate.SubjectRegisterReject(),
             EmailTemplateType.ResetPasswordOtp => HelperEmailTemplate.SubjectResetPassword(),
+            EmailTemplateType.PasswordChanged => HelperEmailTemplate.SubjectPasswordChanged(),
+            EmailTemplateType.WarningReport => HelperEmailTemplate.SubjectReportWarning(),
+            EmailTemplateType.TemporarySuspension => HelperEmailTemplate.SubjectTemporarySuspension(),
+            EmailTemplateType.PermanentBan => HelperEmailTemplate.SubjectPermanentBan(),
             _ => "Ekofy Notification"
         };
     }

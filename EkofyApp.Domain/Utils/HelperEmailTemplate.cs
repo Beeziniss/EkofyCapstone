@@ -1,14 +1,17 @@
 ﻿namespace EkofyApp.Domain.Utils;
 public sealed class HelperEmailTemplate
 {
-    public static string SubjectVerifyOtp() => "Ekofy - Verify OTP Code";
+	public static string SubjectVerifyOtp() => "Ekofy - Verify OTP Code";
 	public static string SubjectRegisterNotification() => "Ekofy - Registration Notification";
-    public static string SubjectRegisterApprove() => "Ekofy - Registration Approved";
-    public static string SubjectRegisterReject() => "Ekofy - Registration Rejected";
-    public static string SubjectResetPassword() => "Ekofy - Reset Password OTP";
-    public static string SubjectPasswordChanged() => "Ekofy - Password Changed";
+	public static string SubjectRegisterApprove() => "Ekofy - Registration Approved";
+	public static string SubjectRegisterReject() => "Ekofy - Registration Rejected";
+	public static string SubjectResetPassword() => "Ekofy - Reset Password OTP";
+	public static string SubjectPasswordChanged() => "Ekofy - Password Changed";
+	public static string SubjectReportWarning() => "Ekofy - Warning Report";
+	public static string SubjectTemporarySuspension() => "Ekofy - Temporary Suspension";
+	public static string SubjectPermanentBan() => "Ekofy - Permanent Ban";
 
-	public static string RegisterNotification(string[] paramaters)
+    public static string RegisterNotification(string[] paramaters)
 	{
 		// Định nghĩa parameters
 		string fullName = paramaters[0];
@@ -55,13 +58,13 @@ public sealed class HelperEmailTemplate
 ";
 	}
 
-    public static string RegisterApprove(string[] paramaters)
-    {
-        // Định nghĩa parameters
-        string fullName = paramaters[0];
-        string email = paramaters[1];
+	public static string RegisterApprove(string[] paramaters)
+	{
+		// Định nghĩa parameters
+		string fullName = paramaters[0];
+		string email = paramaters[1];
 
-        return @$"<!doctype html>
+		return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
@@ -96,16 +99,16 @@ public sealed class HelperEmailTemplate
   
   </body>
 </html>";
-    }
+	}
 
-    public static string RegisterReject(string[] paramaters)
-    {
-        // Định nghĩa parameters
-        string fullName = paramaters[0];
-        string email = paramaters[1];
-        string reason = paramaters[2];
+	public static string RegisterReject(string[] paramaters)
+	{
+		// Định nghĩa parameters
+		string fullName = paramaters[0];
+		string email = paramaters[1];
+		string reason = paramaters[2];
 
-        return @$"<!doctype html>
+		return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <!-- REJECT ARTIST -->
@@ -136,23 +139,23 @@ public sealed class HelperEmailTemplate
 
 </body>
 </html>";
-    }
+	}
 
-    /// <summary>
-    /// Email template for verifying OTP.
-    /// Expected parameters:
-    /// 0 - Full Name
-    /// 1 - OTP Code
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns></returns>
-    public static string VerifyOtp(string[] parameters)
-    {
-        // Định nghĩa parameters
-        string fullName = parameters[0];
-        string otp = parameters[1];
+	/// <summary>
+	/// Email template for verifying OTP.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - OTP Code
+	/// </summary>
+	/// <param name="parameters"></param>
+	/// <returns></returns>
+	public static string VerifyOtp(string[] parameters)
+	{
+		// Định nghĩa parameters
+		string fullName = parameters[0];
+		string otp = parameters[1];
 
-        return @$"<!doctype html>
+		return @$"<!doctype html>
 			<html lang=""en"">
 				<head>
 					<meta charset=""UTF-8"" />
@@ -233,23 +236,23 @@ public sealed class HelperEmailTemplate
 					</div>
 				</body>
 			</html>";
-    }
+	}
 
-    /// <summary>
-    /// Email template for reset password OTP.
-    /// Expected parameters:
-    /// 0 - Full Name
-    /// 1 - OTP Code
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns></returns>
-    public static string ResetPasswordOtp(string[] parameters)
-    {
-        // Định nghĩa parameters
-        string fullName = parameters[0];
-        string otp = parameters[1];
+	/// <summary>
+	/// Email template for reset password OTP.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - OTP Code
+	/// </summary>
+	/// <param name="parameters"></param>
+	/// <returns></returns>
+	public static string ResetPasswordOtp(string[] parameters)
+	{
+		// Định nghĩa parameters
+		string fullName = parameters[0];
+		string otp = parameters[1];
 
-        return @$"<!doctype html>
+		return @$"<!doctype html>
 			<html lang=""en"">
 				<head>
 					<meta charset=""UTF-8"" />
@@ -330,23 +333,23 @@ public sealed class HelperEmailTemplate
 					</div>
 				</body>
 			</html>";
-    }
+	}
 
-    /// <summary>
-    /// Email template for password changed notification.
-    /// Expected parameters:
-    /// 0 - Full Name
-    /// 1 - Email
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns></returns>
-    public static string PasswordChangedNotification(string[] parameters)
-    {
-        // Định nghĩa parameters
-        string fullName = parameters[0];
-        string email = parameters[1];
+	/// <summary>
+	/// Email template for password changed notification.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// </summary>
+	/// <param name="parameters"></param>
+	/// <returns></returns>
+	public static string PasswordChanged(string[] parameters)
+	{
+		// Định nghĩa parameters
+		string fullName = parameters[0];
+		string email = parameters[1];
 
-        return @$"<!doctype html>
+		return @$"<!doctype html>
 			<html lang=""en"">
 				<head>
 					<meta charset=""UTF-8"" />
@@ -418,5 +421,179 @@ public sealed class HelperEmailTemplate
 					</div>
 				</body>
 			</html>";
-    }
+	}
+
+    /// <summary>
+    /// Report warning email template.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Reason
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string ReportWarning(string[] parameters)
+	{
+		// Định nghĩa các tham số
+		string fullName = parameters[0];
+		string email = parameters[1];
+		string reason = parameters[2];
+
+		return @$"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Warning Report</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+  
+  <!-- WARNING REPORT -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+      <strong>Dear {fullName},</strong>
+      <p>
+        We would like to inform you that a warning has been issued to your artist account associated with the email <strong>{email}</strong> based on a recent report.
+      </p>
+      <p>
+        <strong>Reason:</strong><br>
+        {reason}
+      </p>
+      <p>
+        Please take this matter seriously. Continued violations may lead to further action, including temporary or permanent restrictions on your account.
+      </p>
+      <p>
+        If you believe this warning was issued in error or have any questions, feel free to contact our support team for clarification.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Thank you for being part of <strong>Ekofy</strong>.<br><br>
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>
+";
+	}
+
+    /// <summary>
+    /// Temporary suspension email template.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Reason
+	/// 3 - Suspended Until (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string TemporarySuspension(string[] parameters)
+	{
+		// Định nghĩa các tham số
+		string fullName = parameters[0];
+		string email = parameters[1];
+		string reason = parameters[2];
+		string suspendedUntil = parameters[3];
+
+		return @$"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Temporary Suspension</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- TEMPORARY SUSPENSION -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+      <strong>Dear {fullName},</strong>
+      <p>
+        We regret to inform you that your artist account registered with the email <strong>{email}</strong> has been <strong>temporarily suspended</strong> due to the following reason:
+      </p>
+      <p>
+        <strong>Reason:</strong><br>
+        {reason}
+      </p>
+      <p>
+        This suspension will remain in effect until <strong>{suspendedUntil}</strong>. You will be notified once your account is eligible for reinstatement.
+      </p>
+      <p>
+        If you would like to appeal this decision, please contact our support team.
+      </p>
+      <p style=""font-size: 0.9em"">
+        We appreciate your understanding.<br><br>
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+  
+  </body>
+</html>";
+	}
+
+    /// <summary>
+    /// Permanent ban email template.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Reason
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string PermanentBan(string[] parameters)
+	{
+		// Định nghĩa các tham số
+		string fullName = parameters[0];
+		string email = parameters[1];
+		string reason = parameters[2];
+
+		return @$"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Permanent Ban</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+  
+  <!-- PERMANENT BAN -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+      <strong>Dear {fullName},</strong>
+      <p>
+        We regret to inform you that your artist account associated with the email <strong>{email}</strong> has been <strong>permanently banned</strong> due to the following violation:
+      </p>
+      <p>
+        <strong>Reason:</strong><br>
+        {reason}
+      </p>
+      <p>
+        This decision has been made after careful review and is final. You will no longer be able to access or recover your account.
+      </p>
+      <p>
+        If you believe this ban was applied in error, you may contact our support team, though further appeal options may be limited.
+      </p>
+      <p style=""font-size: 0.9em"">
+        We appreciate your time with <strong>Ekofy</strong> and thank you for your past contributions.<br><br>
+        Sincerely,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>";
+	}
 }

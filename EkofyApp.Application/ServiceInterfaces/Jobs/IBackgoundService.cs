@@ -9,5 +9,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         void SendEmailJob(EmailTemplateType templateType, string toEmail, params string[] parameters);
         Task MonthlyRoyaltyReportJob();
         Task UpdateStreamCountJob();
+        Task RemoveExpiredRestrictionAsync(string userId);
     }
 }

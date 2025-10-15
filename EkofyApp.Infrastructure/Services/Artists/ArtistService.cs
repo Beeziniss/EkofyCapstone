@@ -310,6 +310,6 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         await _redisCacheService.RemoveAsync(redisKey);
 
         // Send rejection email to user
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email));
+        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterReject, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email, approvalRequest.RejectionReason ?? string.Empty));
     }
 }

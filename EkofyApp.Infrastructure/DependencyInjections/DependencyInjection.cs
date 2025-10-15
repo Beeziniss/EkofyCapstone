@@ -23,6 +23,7 @@ using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
@@ -42,6 +43,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.BillingPortalConfig;
 using EkofyApp.Domain.Enums.Coupons;
+using EkofyApp.Domain.Enums.Reports;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
@@ -65,6 +67,7 @@ using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.RequestHubs;
+using EkofyApp.Infrastructure.Services.Reports;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
@@ -225,9 +228,10 @@ public static class DependencyInjection
                 EndPoints = { publicEndpoint },
                 User = username,
                 Password = password,
-                Ssl = true, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
+                Ssl = false, // Set true nếu dùng trong môi trường Production hoặc an toàn như SSL/TLS
                 AbortOnConnectFail = false
             };
+            Console.WriteLine("Production=====================================================");
         }
         //else
         //{
@@ -386,6 +390,7 @@ public static class DependencyInjection
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ITrackCommentService, TrackCommentService>();
+        services.AddScoped<IReportService, ReportService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -700,6 +705,12 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
+        
+        // Report
+        BsonSerializer.RegisterSerializer(typeof(ReportStatus), new EnumMemberSerializer<ReportStatus>());
+        BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());
+        BsonSerializer.RegisterSerializer(typeof(ReportAction), new EnumMemberSerializer<ReportAction>());
+        BsonSerializer.RegisterSerializer(typeof(ReportPriority), new EnumMemberSerializer<ReportPriority>());
     }
 
     public static void AddHangfire(this IServiceCollection service)
@@ -736,7 +747,7 @@ public static class DependencyInjection
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
-            ServerOptions.Queues = new[] { "scheduled", "email", "track_upload", "track_count" };
+            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction"];
         });
 
         // Background Jobs Services
