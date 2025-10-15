@@ -154,7 +154,7 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
             UpdateResult update = await _unitOfWork.GetCollection<Listener>().UpdateOneAsync(session, x => x.Id == listenerId, updateDefinition);
             UpdateResult updateUser = await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, x => x.Id == userId, updateDefinitionUser);
 
-            if (update.ModifiedCount < updates.Count && updateUser.ModifiedCount < updatesUser.Count)
+            if (update.ModifiedCount == 0 && updateUser.ModifiedCount == 0)
             {
                 throw new UnprocessableEntityCustomException("No changes were made to the listener profile");
             }
