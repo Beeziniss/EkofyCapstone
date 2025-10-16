@@ -25,9 +25,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     {
         ProjectionDefinition<User> projection = Builders<User>.Projection
             .Exclude(x => x.FCMToken)
-            .Exclude(x => x.PasswordHash)
-            .Exclude(x => x.RefreshToken)
-            .Exclude(x => x.RefreshTokenExpiryTime);
+            .Exclude(x => x.PasswordHash);
 
         return await _unitOfWork.GetCollection<User>()
             .Find(x => x.Id == id)

@@ -366,9 +366,10 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     }
 
     #region Track Comment
-
     public async Task<bool> CreateTrackCommentAsync(CreateTrackCommentRequest request)
     {
+        // Set CommentType to Track for backward compatibility
+        request = request with { CommentType = CommentType.Track };
         await _trackCommentService.CreateCommentAsync(request);
         return true;
     }
@@ -384,22 +385,5 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         await _trackCommentService.DeleteCommentAsync(request);
         return true;
     }
-
-    // New hierarchical comment methods
-    public async Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request)
-    {
-        return await _trackCommentService.GetThreadedCommentsAsync(request);
-    }
-
-    public async Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request)
-    {
-        return await _trackCommentService.GetCommentRepliesAsync(request);
-    }
-
-    public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
-    {
-        return await _trackCommentService.GetCommentThreadAsync(request);
-    }
-
     #endregion
 }

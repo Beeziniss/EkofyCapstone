@@ -89,8 +89,8 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    [UseSorting<TrackComment>]
-    public IQueryable<TrackComment> GetTrackComments()
+    [UseSorting<Comment>]
+    public IQueryable<Comment> GetTrackComments()
     {
         return _trackCommentService.GetTrackComments();
     }

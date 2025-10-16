@@ -18,7 +18,7 @@ public sealed class PayoutTransaction : TimeStamped, IEntityCustom
     public string RoyaltyReportId { get; set; } = null!; // Liên kết tới report đã generate
 
     #region Stripe
-    public string StripeTransferId { get; set; } = null!; // Transfer.Id từ Stripe
+    public string StripeTransferId { get; set; } = null!; // Transfer.EntitlementId từ Stripe
     public string DestinationAccountId { get; set; } = null!; // Stripe Connected Account
     #endregion
 

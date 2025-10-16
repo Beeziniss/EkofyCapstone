@@ -9,7 +9,7 @@ public sealed class Coupon : TimeStamped, IEntityCustom
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!;
-    public string StripeCouponId { get; set; } = null!; // coupon.Id từ Stripe
+    public string StripeCouponId { get; set; } = null!; // coupon.EntitlementId từ Stripe
 
     public string Name { get; set; } = null!;
     public string? Description { get; set; }

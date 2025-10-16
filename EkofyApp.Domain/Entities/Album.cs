@@ -11,6 +11,7 @@ public sealed class Album : TimeStamped, IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!; // Unique identifier for the album
     public string Name { get; set; } = null!; // DisplayName of the album, e.g., "Album Title"
+    public string NameUnsigned { get; set; } = null!; // Unsign version of the album name for search optimization
     public string? Description { get; set; } // Description of the album
 
     public AlbumType Type { get; set; } // Type of the album, e.g., Album, Single, EP, etc.

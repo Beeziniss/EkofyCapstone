@@ -1,17 +1,20 @@
-﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class TrackComment : TimeStamped, IEntityCustom
+public sealed class Comment : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!;
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string TrackId { get; set; } = null!;
+    public string TargetId { get; set; } = null!;
+
+    public CommentType CommentType { get; set; }
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string CommenterId { get; set; } = null!;
