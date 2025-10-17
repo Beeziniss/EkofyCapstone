@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL.Mutation;
 using EkofyApp.Api.GraphQL.Query;
+using EkofyApp.Api.GraphQL.Query.ApprovalHistories;
 using EkofyApp.Api.GraphQL.Scalars;
 using EkofyApp.Api.GraphQL.SubscriptionQL;
 using EkofyApp.Domain.Enums;

@@ -28,7 +28,7 @@ public sealed class Report : TimeStamped, IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public string? RelatedContentId { get; set; }
 
-    public string? RelatedContentType { get; set; }
+    public ReportRelatedContentType? RelatedContentType { get; set; }
 
     public List<string> Evidences { get; set; } = [];
 
@@ -41,7 +41,7 @@ public sealed class Report : TimeStamped, IEntityCustom
 
     public DateTimeOffset? ResolvedAt { get; set; }
 
-    public int TotalReportsCount { get; set; } = 1;
+    public long TotalReportsCount { get; set; } = 1;
 
     public bool IsDeleted { get; set; } = false;
 }

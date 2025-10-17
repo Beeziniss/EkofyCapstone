@@ -30,7 +30,7 @@ public sealed class CreateReportRequest
     /// <summary>
     /// Lo?i n?i dung (Track, Comment, Playlist, Profile, etc.)
     /// </summary>
-    public string? RelatedContentType { get; set; }
+    public ReportRelatedContentType? RelatedContentType { get; set; }
 
     /// <summary>
     /// URL b?ng ch?ng

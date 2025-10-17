@@ -108,6 +108,8 @@ using Stripe;
 using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
+using EkofyApp.Infrastructure.Services.ApprovalHistories;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
 public static class DependencyInjection
@@ -390,6 +392,7 @@ public static class DependencyInjection
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ITrackCommentService, TrackCommentService>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -710,6 +713,14 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());
         BsonSerializer.RegisterSerializer(typeof(ReportAction), new EnumMemberSerializer<ReportAction>());
         BsonSerializer.RegisterSerializer(typeof(ReportPriority), new EnumMemberSerializer<ReportPriority>());
+        BsonSerializer.RegisterSerializer(typeof(ReportRelatedContentType), new EnumMemberSerializer<ReportRelatedContentType>());
+
+        // Comment
+        BsonSerializer.RegisterSerializer(typeof(CommentType), new EnumMemberSerializer<CommentType>());
+
+        // Approval History
+        BsonSerializer.RegisterSerializer(typeof(ApprovalType), new EnumMemberSerializer<ApprovalType>());
+
     }
 
     public static void AddHangfire(this IServiceCollection service)
