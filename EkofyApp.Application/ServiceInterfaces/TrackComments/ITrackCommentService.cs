@@ -5,15 +5,15 @@ namespace EkofyApp.Application.ServiceInterfaces.TrackComments;
 
 public interface ITrackCommentService
 {
-    IQueryable<TrackComment> GetTrackComments();
-    Task CreateCommentAsync(CreateTrackCommentRequest request);
+    IQueryable<Comment> GetTrackComments();
+    Task CreateCommentAsync(CreateCommentRequest request);
     Task UpdateCommentAsync(UpdateTrackCommentRequest request);
-    Task DeleteCommentAsync(DeleteTrackCommentRequest request);
+    Task DeleteCommentAsync(DeleteCommentRequest request);
     
     // Enhanced hierarchical commenting methods
     Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request);
     Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request);
-    Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request);
+    Task<List<CommentResponse>> GetCommentThreadAsync(CommentThreadRequest request);
     
     // Utility methods
     Task<int> GetCommentDepthAsync(string commentId);

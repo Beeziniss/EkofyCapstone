@@ -1,27 +1,37 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using HotChocolate.Data;
+using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(Listener))]
 public sealed class ListenerResolver
 {
-    public async Task<User?> GetUserAsync(
-        [Parent] Listener listener,
-        DataLoaderCustomOneToOne<User> userByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetUser([Parent] Listener listener, [Service] IUnitOfWork unitOfWork)
     {
-        return await userByIdDataLoader.LoadAsync(listener.UserId, cancellationToken);
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(x => x.Id == listener.UserId);
     }
 
-    // TODO: Cần test kỹ hàm này
-    public async Task<IEnumerable<User>> GetFollowingUserAsync(
-        [Parent] Listener listener,
-        DataLoaderCustomOneToMany<User> userByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetFollowingsUser([Parent] Listener listener, [Service] IUnitOfWork unitOfWork)
     {
-        IReadOnlyList<IEnumerable<User>?> result = await userByIdDataLoader.LoadAsync(listener.LastFollowing, cancellationToken);
-        // result is IReadOnlyList<IEnumerable<User>?>, flatten and filter nulls
-        return result.Where(x => x != null).SelectMany(x => x!) ?? [];
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(x => listener.LastFollowings.Contains(x.Id));
+    }
+
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetFollowersUser([Parent] Listener listener, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(x => listener.LastFollowers.Contains(x.Id));
     }
 }

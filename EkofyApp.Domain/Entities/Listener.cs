@@ -26,5 +26,5 @@ public sealed class Listener : TimeStamped, IEntityCustom
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> LastFollowers { get; set; } = []; // List of last followers, storing their IDs
     [BsonRepresentation(BsonType.ObjectId)]
-    public List<string> LastFollowing { get; set; } = []; // List of last following artists, storing their IDs
+    public List<string> LastFollowings { get; set; } = []; // List of last following artists, storing their IDs
 }

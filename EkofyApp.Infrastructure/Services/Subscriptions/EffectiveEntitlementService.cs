@@ -178,7 +178,7 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
             {
                 results.Add(new AppliedEntitlement
                 {
-                    Id = entitlement.Id,
+                    EntitlementId = entitlement.Id,
                     Code = entitlement.Code,
                     ValueType = entitlement.ValueType,
                     Value = finalValue

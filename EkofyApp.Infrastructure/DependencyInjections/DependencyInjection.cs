@@ -108,6 +108,8 @@ using Stripe;
 using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
+using EkofyApp.Infrastructure.Services.ApprovalHistories;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
 public static class DependencyInjection
@@ -390,6 +392,7 @@ public static class DependencyInjection
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ITrackCommentService, TrackCommentService>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -467,11 +470,11 @@ public static class DependencyInjection
                     string? origin = context.Request.Headers.Origin;
 
                     // Các origin được phép truy cập
-                    IEnumerable<string?> securedOrigins = new[]
+                    IEnumerable<string> securedOrigins = new[]
                     {
-                        Environment.GetEnvironmentVariable("SPOTIFY_HUB_CORS_ORIGIN_FE_PRODUCTION"),
-                        Environment.GetEnvironmentVariable("SPOTIFY_HUB_CORS_ORIGIN_FE_01_DEVELOPMENT"),
-                        Environment.GetEnvironmentVariable("PAY_OS_CORE_ORIGIN")
+                        Environment.GetEnvironmentVariable("FRONTEND_LOCAL_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_LOCAL_URL is not set in the environment"),
+                        Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"),
+                        Environment.GetEnvironmentVariable("BACKEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment")
                     }.Where(origin => !string.IsNullOrWhiteSpace(origin));
 
                     // Kiểm tra xem origin có trong danh sách được phép không
@@ -710,6 +713,15 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());
         BsonSerializer.RegisterSerializer(typeof(ReportAction), new EnumMemberSerializer<ReportAction>());
         BsonSerializer.RegisterSerializer(typeof(ReportPriority), new EnumMemberSerializer<ReportPriority>());
+        BsonSerializer.RegisterSerializer(typeof(ReportRelatedContentType), new EnumMemberSerializer<ReportRelatedContentType>());
+
+        // Comment
+        BsonSerializer.RegisterSerializer(typeof(CommentType), new EnumMemberSerializer<CommentType>());
+
+        // Approval History
+        BsonSerializer.RegisterSerializer(typeof(ApprovalType), new EnumMemberSerializer<ApprovalType>());
+        BsonSerializer.RegisterSerializer(typeof(HistoryActionType), new EnumMemberSerializer<HistoryActionType>());
+
     }
 
     public static void AddHangfire(this IServiceCollection service)

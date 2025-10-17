@@ -1,17 +1,19 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using HotChocolate.Data;
+using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(PaymentTransaction))]
-public sealed class TransactionResolver
+public sealed class PaymentTransactionResolver
 {
-    public async Task<User?> GetUserAsync(
-        [Parent] PaymentTransaction transaction,
-        DataLoaderCustomOneToOne<User> userByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetUser([Parent] PaymentTransaction transaction, [Service] IUnitOfWork unitOfWork)
     {
-        ArgumentNullException.ThrowIfNull(userByIdDataLoader);
-        return await userByIdDataLoader.LoadAsync(transaction.UserId, cancellationToken);
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(u => u.Id == transaction.UserId);
     }
 }

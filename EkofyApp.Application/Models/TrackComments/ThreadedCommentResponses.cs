@@ -11,8 +11,8 @@ public sealed record ThreadedCommentsResponse
 
 public sealed record CommentThread
 {
-    public TrackCommentResponse RootComment { get; init; } = null!;
-    public List<TrackCommentResponse> Replies { get; init; } = [];
+    public CommentResponse RootComment { get; init; } = null!;
+    public List<CommentResponse> Replies { get; init; } = [];
     public int TotalReplies { get; init; }
     public bool HasMoreReplies { get; init; }
     public DateTimeOffset LastActivity { get; init; }
@@ -20,7 +20,7 @@ public sealed record CommentThread
 
 public sealed record CommentRepliesResponse
 {
-    public List<TrackCommentResponse> Replies { get; init; } = [];
+    public List<CommentResponse> Replies { get; init; } = [];
     public int TotalReplies { get; init; }
     public int Page { get; init; }
     public int PageSize { get; init; }

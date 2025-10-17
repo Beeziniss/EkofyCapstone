@@ -1,7 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Query
+﻿namespace EkofyApp.Api.GraphQL.Query;
+
+public sealed class QueryInitialization
 {
-    public class QueryInitialization
-    {
-        public string Hello() => "GraphQL Query is ready!";
-    }
+    public string Initialize() => "GraphQL Query is ready!";
 }

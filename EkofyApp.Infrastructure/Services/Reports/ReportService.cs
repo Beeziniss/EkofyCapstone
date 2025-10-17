@@ -97,7 +97,7 @@ public sealed class ReportService(
             RelatedContentId = request.RelatedContentId,
             RelatedContentType = request.RelatedContentType,
             Evidences = request.Evidences ?? [],
-            TotalReportsCount = (int)totalReportsCount + 1,
+            TotalReportsCount = totalReportsCount + 1,
         };
 
         await _unitOfWork.GetCollection<Report>().InsertOneAsync(report);
@@ -189,7 +189,7 @@ public sealed class ReportService(
         switch (request.ActionTaken)
         {
             case ReportAction.Warning:
-                User user = await _unitOfWork.GetCollection<User>()
+                User userWarning = await _unitOfWork.GetCollection<User>()
                     .Find(u => u.Id == userId)
                     .Project<User>(Builders<User>.Projection
                         .Include(u => u.Id)
@@ -198,7 +198,7 @@ public sealed class ReportService(
                     .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found");
 
                 // Gửi email
-                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.WarningReport, user.Email, user.FullName, user.Email, request.Note!));
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.WarningReport, userWarning.Email, userWarning.FullName, userWarning.Email, request.Note!));
                 break;
 
             case ReportAction.Suspended:
@@ -208,8 +208,8 @@ public sealed class ReportService(
                 }
 
                 // Update user status
-                await _unitOfWork.GetCollection<User>()
-                    .UpdateOneAsync(
+                User userSuspended = await _unitOfWork.GetCollection<User>()
+                    .FindOneAndUpdateAsync(
                         u => u.Id == userId,
                         Builders<User>.Update
                             .Set(u => u.Status, UserStatus.Suspended)
@@ -223,11 +223,22 @@ public sealed class ReportService(
                                             ? HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value)
                                             : null
                             })
-                            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                        new FindOneAndUpdateOptions<User, User>
+                        {
+                            ReturnDocument = ReturnDocument.Before,
+                            Projection = Builders<User>.Projection
+                                .Include(u => u.Id)
+                                .Include(u => u.Email)
+                                .Include(u => u.FullName)
+                        }
                     );
 
                 // Xóa restriction sau khi hết hạn
                 BackgroundJob.Enqueue<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(userId));
+
+                // Gửi email
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.TemporarySuspension, userSuspended.Email, userSuspended.FullName, userSuspended.Email, request.Note!, HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value).ToString("dd/MM/yyyy HH:mm:ss")));
 
                 break;
 
@@ -248,16 +259,28 @@ public sealed class ReportService(
                     });
                 }
 
-                await _unitOfWork.GetCollection<User>()
-                    .UpdateOneAsync(
+                User userRestrictedEntitlement = await _unitOfWork.GetCollection<User>()
+                    .FindOneAndUpdateAsync(
                         u => u.Id == userId,
                         Builders<User>.Update
                             .AddToSetEach(u => u.Restrictions, accountRestrictions)
-                            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                        new FindOneAndUpdateOptions<User, User>
+                        {
+                            ReturnDocument = ReturnDocument.Before,
+                            Projection = Builders<User>.Projection
+                                .Include(u => u.Id)
+                                .Include(u => u.Email)
+                                .Include(u => u.FullName)
+                        }
                     );
 
                 // Xóa restriction sau khi hết hạn
                 BackgroundJob.Enqueue<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(userId));
+
+                // Gửi email
+                // TODO: Thêm email template riêng cho restriction
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.WarningReport, userRestrictedEntitlement.Email, userRestrictedEntitlement.FullName, userRestrictedEntitlement.Email, request.Note!));
 
                 break;
 
@@ -268,8 +291,8 @@ public sealed class ReportService(
 
             case ReportAction.PermanentBan:
                 // Update user status
-                await _unitOfWork.GetCollection<User>()
-                    .UpdateOneAsync(
+                User userPermanentBan = await _unitOfWork.GetCollection<User>()
+                    .FindOneAndUpdateAsync(
                         u => u.Id == userId,
                         Builders<User>.Update
                             .Set(u => u.Status, UserStatus.Banned)
@@ -281,8 +304,19 @@ public sealed class ReportService(
                                 RestrictedAt = HelperMethod.GetUtcPlus7TimeOffset(),
                                 Expired = null // Permanent
                             })
-                            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                        new FindOneAndUpdateOptions<User, User>
+                        {
+                            ReturnDocument = ReturnDocument.Before,
+                            Projection = Builders<User>.Projection
+                                .Include(u => u.Id)
+                                .Include(u => u.Email)
+                                .Include(u => u.FullName)
+                        }
                     );
+
+                // Gửi email
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.PermanentBan, userPermanentBan.Email, userPermanentBan.FullName, userPermanentBan.Email, request.Note!));
 
                 break;
 

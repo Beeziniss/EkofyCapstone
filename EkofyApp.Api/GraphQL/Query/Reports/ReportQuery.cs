@@ -1,8 +1,6 @@
-using EkofyApp.Application.Models.Reports;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
-using HotChocolate.Authorization;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Reports;

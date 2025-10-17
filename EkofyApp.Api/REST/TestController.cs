@@ -455,7 +455,7 @@ public class TestController : ControllerBase
 
     //    foreach (var artist in artists)
     //    {
-    //        var filter = Builders<Artist>.Filter.Eq(a => a.Id, artist.Id);
+    //        var filter = Builders<Artist>.Filter.Eq(a => a.EntitlementId, artist.EntitlementId);
     //        var update = Builders<Artist>.Update.Set(a => a.StageNameUnsigned, HelperMethod.ToUnsigned(artist.StageName));
     //        artistWriteModels.Add(new UpdateOneModel<Artist>(filter, update));
     //    }
@@ -473,7 +473,7 @@ public class TestController : ControllerBase
 
     //    foreach (var listener in listeners)
     //    {
-    //        var filter = Builders<Listener>.Filter.Eq(l => l.Id, listener.Id);
+    //        var filter = Builders<Listener>.Filter.Eq(l => l.EntitlementId, listener.EntitlementId);
     //        var update = Builders<Listener>.Update.Set(l => l.DisplayNameUnsigned, HelperMethod.ToUnsigned(listener.DisplayName));
     //        listenerWriteModels.Add(new UpdateOneModel<Listener>(filter, update));
     //    }
@@ -491,7 +491,7 @@ public class TestController : ControllerBase
 
     //    foreach (var track in tracks)
     //    {
-    //        var filter = Builders<Track>.Filter.Eq(t => t.Id, track.Id);
+    //        var filter = Builders<Track>.Filter.Eq(t => t.EntitlementId, track.EntitlementId);
     //        var update = Builders<Track>.Update.Set(t => t.NameUnsigned, HelperMethod.ToUnsigned(track.Name));
     //        trackWriteModels.Add(new UpdateOneModel<Track>(filter, update));
     //    }
@@ -509,7 +509,7 @@ public class TestController : ControllerBase
 
     //    //foreach (var playlist in playlists)
     //    //{
-    //    //    var filter = Builders<Playlist>.Filter.Eq(p => p.Id, playlist.Id);
+    //    //    var filter = Builders<Playlist>.Filter.Eq(p => p.EntitlementId, playlist.EntitlementId);
     //    //    var update = Builders<Playlist>.Update.Set(p => p.NameUnsigned, HelperMethod.ToUnsigned(playlist.Name));
     //    //    playlistWriteModels.Add(new UpdateOneModel<Playlist>(filter, update));
     //    //}

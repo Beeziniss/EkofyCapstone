@@ -1,25 +1,29 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using HotChocolate.Data;
+using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(Work))]
 public sealed class WorkResolver
 {
-    public async Task<Track?> GetTrackAsync(
-        [Parent] Work work,
-        DataLoaderCustomOneToOne<Track> trackByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Track> GetTrack([Parent] Work work, [Service] IUnitOfWork unitOfWork)
     {
-        return await trackByIdDataLoader.LoadAsync(work.TrackId, cancellationToken);
+        return unitOfWork.GetCollection<Track>().AsQueryable().Where(t => t.Id == work.TrackId);
     }
 
-    public async Task<IEnumerable<User?>> GetUsersAsync(
-        [Parent] Work work,
-        DataLoaderCustomOneToOne<User> userByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetUsers([Parent] Work work, [Service] IUnitOfWork unitOfWork)
     {
-        List<string> userIds = work.WorkSplits.Select(ws => ws.UserId).ToList();
-        return await userByIdDataLoader.LoadAsync(userIds, cancellationToken) ?? [];
+        IEnumerable<string> userIds = work.WorkSplits.Select(ws => ws.UserId).ToList();
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(u => userIds.Contains(u.Id));
     }
 }

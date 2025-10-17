@@ -124,6 +124,7 @@ public sealed class Program
 
         app.MapControllers();
 
+        app.UseWebSockets();
         app.MapGraphQL("/graphql");
 
         app.MapHub<ChatHub>("/chat");
