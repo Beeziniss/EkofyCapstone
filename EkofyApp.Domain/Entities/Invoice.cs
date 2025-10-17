@@ -13,7 +13,7 @@ public sealed class Invoice : IEntityCustom // Snapshot
     public string UserId { get; set; } = null!;
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string TransactionId { get; set; } = null!;
+    public string PaymentTransactionId { get; set; } = null!;
 
     public OneOffSnapshot? OneOffSnapshot { get; set; } // Snapshot of the one-off purchase
     public SubscriptionSnapshot? SubscriptionSnapshot { get; set; } // Snapshot of the subscription

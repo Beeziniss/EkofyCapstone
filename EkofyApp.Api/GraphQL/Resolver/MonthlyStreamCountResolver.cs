@@ -1,16 +1,19 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using HotChocolate.Data;
+using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(MonthlyStreamCount))]
 public sealed class MonthlyStreamCountResolver
 {
-    public async Task<Track?> GetTrackAsync(
-        [Parent] MonthlyStreamCount monthlyStreamCount,
-        DataLoaderCustomOneToOne<Track> trackByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Track> GetTrack([Parent] MonthlyStreamCount monthlyStreamCount, [Service] IUnitOfWork unitOfWork)
     {
-        return await trackByIdDataLoader.LoadAsync(monthlyStreamCount.TrackId, cancellationToken);
+        return unitOfWork.GetCollection<Track>().AsQueryable().Where(t => t.Id == monthlyStreamCount.TrackId);
     }
 }

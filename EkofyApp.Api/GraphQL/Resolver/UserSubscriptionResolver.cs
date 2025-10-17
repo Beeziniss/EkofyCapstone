@@ -1,24 +1,27 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using HotChocolate.Data;
+using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(UserSubscription))]
 public sealed class UserSubscriptionResolver
 {
-    public async Task<User?> GetUserAsync(
-        [Parent] UserSubscription userSubscription,
-        DataLoaderCustomOneToOne<User> userByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetUser([Parent] UserSubscription userSubscription, [Service] IUnitOfWork unitOfWork)
     {
-        return await userByIdDataLoader.LoadAsync(userSubscription.UserId, cancellationToken);
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(u => u.Id == userSubscription.UserId);
     }
 
-    public async Task<Subscription?> GetSubscriptionAsync(
-        [Parent] UserSubscription userSubscription,
-        DataLoaderCustomOneToOne<Subscription> subscriptionByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Subscription> GetSubscription([Parent] UserSubscription userSubscription, [Service] IUnitOfWork unitOfWork)
     {
-        return await subscriptionByIdDataLoader.LoadAsync(userSubscription.SubscriptionId, cancellationToken);
+        return unitOfWork.GetCollection<Subscription>().AsQueryable().Where(u => u.Id == userSubscription.SubscriptionId);
     }
 }

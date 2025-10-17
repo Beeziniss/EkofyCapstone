@@ -1,8 +1,11 @@
+using EkofyApp.Domain.Enums;
+
 namespace EkofyApp.Application.Models.TrackComments;
 
 public sealed record ThreadedCommentsRequest
 {
-    public string TrackId { get; init; } = null!;
+    public string TargetId { get; init; } = null!;
+    public CommentType CommentType { get; init; }
     public int Page { get; init; } = 1;
     public int PageSize { get; init; } = 20;
     public CommentSortOrder SortOrder { get; init; } = CommentSortOrder.ThreadActivity;

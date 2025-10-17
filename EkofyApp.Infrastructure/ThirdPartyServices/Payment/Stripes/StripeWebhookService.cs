@@ -439,7 +439,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
                     {
                         UserId = transaction.UserId,
-                        TransactionId = transaction.Id,
+                        PaymentTransactionId = transaction.Id,
 
                         OneOffSnapshot = oneOffSnapshot,
                         SubscriptionSnapshot = subscriptionSnapshot,

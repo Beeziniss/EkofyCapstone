@@ -467,11 +467,11 @@ public static class DependencyInjection
                     string? origin = context.Request.Headers.Origin;
 
                     // Các origin được phép truy cập
-                    IEnumerable<string?> securedOrigins = new[]
+                    IEnumerable<string> securedOrigins = new[]
                     {
-                        Environment.GetEnvironmentVariable("SPOTIFY_HUB_CORS_ORIGIN_FE_PRODUCTION"),
-                        Environment.GetEnvironmentVariable("SPOTIFY_HUB_CORS_ORIGIN_FE_01_DEVELOPMENT"),
-                        Environment.GetEnvironmentVariable("PAY_OS_CORE_ORIGIN")
+                        Environment.GetEnvironmentVariable("FRONTEND_LOCAL_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_LOCAL_URL is not set in the environment"),
+                        Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"),
+                        Environment.GetEnvironmentVariable("BACKEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment")
                     }.Where(origin => !string.IsNullOrWhiteSpace(origin));
 
                     // Kiểm tra xem origin có trong danh sách được phép không

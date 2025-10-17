@@ -2,6 +2,7 @@ using EkofyApp.Application.Models.TrackComments;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
@@ -14,9 +15,9 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public IQueryable<TrackComment> GetTrackComments()
+    public IQueryable<Comment> GetTrackComments()
     {
-        return _unitOfWork.GetCollection<TrackComment>().AsQueryable();
+        return _unitOfWork.GetCollection<Comment>().AsQueryable().Where(x => x.CommentType == CommentType.Track);
     }
 
     public async Task CreateCommentAsync(CreateTrackCommentRequest request)
@@ -24,14 +25,13 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value 
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        // Verify track exists
-        bool isTrackExisted = await _unitOfWork.GetCollection<Track>()
-            .Find(t => t.Id == request.TrackId)
-            .AnyAsync() ? true : throw new NotFoundCustomException("Track not found");
+        // Verify target exists based on comment type
+        await VerifyTargetExists(request.TargetId, request.CommentType);
 
-        TrackComment comment = new()
+        Comment comment = new()
         {
-            TrackId = request.TrackId,
+            TargetId = request.TargetId,
+            CommentType = request.CommentType,
             CommenterId = userId,
             Content = request.Content,
             CreatedAt = HelperMethod.GetUtcPlus7TimeOffset(),
@@ -53,7 +53,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             // Insert the new comment
-            await _unitOfWork.GetCollection<TrackComment>().InsertOneAsync(session, comment);
+            await _unitOfWork.GetCollection<Comment>().InsertOneAsync(session, comment);
 
             // Update parent comment reply counts if this is a reply
             if (!string.IsNullOrEmpty(comment.ParentCommentId))
@@ -68,7 +68,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value 
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        TrackComment? comment = await _unitOfWork.GetCollection<TrackComment>()
+        Comment? comment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == request.CommentId && !c.IsDeleted)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Comment not found");
         
@@ -77,12 +77,12 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
             throw new UnauthorizedCustomException("You can only edit your own comments");
         }
 
-        UpdateDefinition<TrackComment> update = Builders<TrackComment>.Update
+        UpdateDefinition<Comment> update = Builders<Comment>.Update
             .Set(c => c.Content, request.Content)
             .Set(c => c.IsEdited, true)
             .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-        UpdateResult result = await _unitOfWork.GetCollection<TrackComment>()
+        UpdateResult result = await _unitOfWork.GetCollection<Comment>()
             .UpdateOneAsync(c => c.Id == request.CommentId, update);
 
         if (result.ModifiedCount == 0)
@@ -96,7 +96,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value 
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        TrackComment? comment = await _unitOfWork.GetCollection<TrackComment>()
+        Comment? comment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == request.CommentId && !c.IsDeleted)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Comment not found");
         
@@ -108,11 +108,11 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             // Mark comment as deleted
-            UpdateDefinition<TrackComment> update = Builders<TrackComment>.Update
+            UpdateDefinition<Comment> update = Builders<Comment>.Update
                 .Set(c => c.IsDeleted, true)
                 .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            await _unitOfWork.GetCollection<TrackComment>()
+            await _unitOfWork.GetCollection<Comment>()
                 .UpdateOneAsync(session, c => c.Id == request.CommentId, update);
 
             // Update parent reply counts
@@ -126,15 +126,15 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     public async Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request)
     {
         // Get total thread count
-        var totalThreads = await _unitOfWork.GetCollection<TrackComment>()
-            .CountDocumentsAsync(c => c.TrackId == request.TrackId && c.Depth == 0 && !c.IsDeleted);
+        var totalThreads = await _unitOfWork.GetCollection<Comment>()
+            .CountDocumentsAsync(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted);
 
         // Build sort definition based on request
         var sortDefinition = GetSortDefinition(request.SortOrder);
 
         // Get root comments
-        var rootComments = await _unitOfWork.GetCollection<TrackComment>()
-            .Find(c => c.TrackId == request.TrackId && c.Depth == 0 && !c.IsDeleted)
+        var rootComments = await _unitOfWork.GetCollection<Comment>()
+            .Find(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted)
             .Sort(sortDefinition)
             .Skip((request.Page - 1) * request.PageSize)
             .Limit(request.PageSize)
@@ -145,7 +145,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         foreach (var rootComment in rootComments)
         {
             // Get a few top-level replies for preview (e.g., first 3)
-            var previewReplies = await _unitOfWork.GetCollection<TrackComment>()
+            var previewReplies = await _unitOfWork.GetCollection<Comment>()
                 .Find(c => c.ParentCommentId == rootComment.Id && !c.IsDeleted)
                 .SortBy(c => c.CreatedAt)
                 .Limit(3)
@@ -175,16 +175,16 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
 
     public async Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request)
     {
-        var parentComment = await _unitOfWork.GetCollection<TrackComment>()
+        var parentComment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == request.CommentId && !c.IsDeleted)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Parent comment not found");
 
-        var totalReplies = await _unitOfWork.GetCollection<TrackComment>()
+        var totalReplies = await _unitOfWork.GetCollection<Comment>()
             .CountDocumentsAsync(c => c.ParentCommentId == request.CommentId && !c.IsDeleted);
 
         var sortDefinition = GetSortDefinition(request.SortOrder);
 
-        var replies = await _unitOfWork.GetCollection<TrackComment>()
+        var replies = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.ParentCommentId == request.CommentId && !c.IsDeleted)
             .Sort(sortDefinition)
             .Skip((request.Page - 1) * request.PageSize)
@@ -204,26 +204,26 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
 
     public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
     {
-        var comment = await _unitOfWork.GetCollection<TrackComment>()
+        var comment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == request.CommentId)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Comment not found");
 
         var rootId = comment.RootCommentId ?? comment.Id;
 
-        var filter = Builders<TrackComment>.Filter.And(
-            Builders<TrackComment>.Filter.Or(
-                Builders<TrackComment>.Filter.Eq(c => c.Id, rootId),
-                Builders<TrackComment>.Filter.Eq(c => c.RootCommentId, rootId)
+        var filter = Builders<Comment>.Filter.And(
+            Builders<Comment>.Filter.Or(
+                Builders<Comment>.Filter.Eq(c => c.Id, rootId),
+                Builders<Comment>.Filter.Eq(c => c.RootCommentId, rootId)
             )
         );
 
         if (!request.IncludeDeleted)
         {
-            filter = Builders<TrackComment>.Filter.And(filter, 
-                Builders<TrackComment>.Filter.Eq(c => c.IsDeleted, false));
+            filter = Builders<Comment>.Filter.And(filter, 
+                Builders<Comment>.Filter.Eq(c => c.IsDeleted, false));
         }
 
-        var threadComments = await _unitOfWork.GetCollection<TrackComment>()
+        var threadComments = await _unitOfWork.GetCollection<Comment>()
             .Find(filter)
             .SortBy(c => c.Depth)
             .ThenBy(c => c.CreatedAt)
@@ -234,7 +234,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
 
     public async Task<int> GetCommentDepthAsync(string commentId)
     {
-        var comment = await _unitOfWork.GetCollection<TrackComment>()
+        var comment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == commentId)
             .Project(c => new { c.Depth })
             .FirstOrDefaultAsync();
@@ -244,7 +244,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
 
     public async Task<bool> IsCommentInThreadAsync(string commentId, string threadRootId)
     {
-        var comment = await _unitOfWork.GetCollection<TrackComment>()
+        var comment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == commentId)
             .Project(c => new { c.RootCommentId, c.Id })
             .FirstOrDefaultAsync();
@@ -255,10 +255,36 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         return rootId == threadRootId;
     }
 
-    // Helper method to setup reply hierarchy
-    private async Task SetupReplyHierarchy(TrackComment comment, string parentCommentId)
+    // Helper method to verify target exists based on comment type
+    private async Task VerifyTargetExists(string targetId, CommentType commentType)
     {
-        TrackComment? parentComment = await _unitOfWork.GetCollection<TrackComment>()
+        bool exists = commentType switch
+        {
+            CommentType.Track => await _unitOfWork.GetCollection<Track>()
+                .Find(t => t.Id == targetId)
+                .AnyAsync(),
+            CommentType.Playlist => await _unitOfWork.GetCollection<Playlist>()
+                .Find(p => p.Id == targetId)
+                .AnyAsync(),
+            CommentType.Album => await _unitOfWork.GetCollection<Album>()
+                .Find(a => a.Id == targetId)
+                .AnyAsync(),
+            CommentType.RequestHub => await _unitOfWork.GetCollection<RequestHub>()
+                .Find(r => r.Id == targetId)
+                .AnyAsync(),
+            _ => false
+        };
+
+        if (!exists)
+        {
+            throw new NotFoundCustomException($"{commentType} not found");
+        }
+    }
+
+    // Helper method to setup reply hierarchy
+    private async Task SetupReplyHierarchy(Comment comment, string parentCommentId)
+    {
+        Comment? parentComment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == parentCommentId && !c.IsDeleted)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Parent comment not found");
 
@@ -274,7 +300,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     }
 
     // Helper method to setup root comment
-    private static void SetupRootComment(TrackComment comment)
+    private static void SetupRootComment(Comment comment)
     {
         comment.ParentCommentId = null;
         comment.RootCommentId = null; // Will be set to its own ID after insertion if needed
@@ -287,31 +313,31 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     private async Task UpdateParentReplyCounts(IClientSessionHandle session, string parentCommentId, string rootCommentId, int increment)
     {
         // Update direct parent reply count
-        var parentUpdate = Builders<TrackComment>.Update
+        var parentUpdate = Builders<Comment>.Update
             .Inc(c => c.ReplyCount, increment)
             .Set(c => c.ThreadUpdatedAt, HelperMethod.GetUtcPlus7TimeOffset().DateTime);
 
-        await _unitOfWork.GetCollection<TrackComment>()
+        await _unitOfWork.GetCollection<Comment>()
             .UpdateOneAsync(session, c => c.Id == parentCommentId, parentUpdate);
 
         // Update all ancestors' total reply counts
-        var ancestorUpdate = Builders<TrackComment>.Update
+        var ancestorUpdate = Builders<Comment>.Update
             .Inc(c => c.TotalRepliesCount, increment)
             .Set(c => c.ThreadUpdatedAt, HelperMethod.GetUtcPlus7TimeOffset().DateTime);
 
         // Update root comment total count
-        await _unitOfWork.GetCollection<TrackComment>()
+        await _unitOfWork.GetCollection<Comment>()
             .UpdateOneAsync(session, c => c.Id == rootCommentId, ancestorUpdate);
 
         // Update all comments in the thread path (ancestors)
-        TrackComment? parentComment = await _unitOfWork.GetCollection<TrackComment>()
+        Comment? parentComment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == parentCommentId)
             .FirstOrDefaultAsync();
 
         if (parentComment?.ThreadPath?.Count > 0)
         {
             var ancestorIds = parentComment.ThreadPath;
-            await _unitOfWork.GetCollection<TrackComment>()
+            await _unitOfWork.GetCollection<Comment>()
                 .UpdateManyAsync(session, 
                     c => ancestorIds.Contains(c.Id), 
                     ancestorUpdate);
@@ -319,12 +345,13 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     }
 
     // Helper method to map entity to response
-    private static TrackCommentResponse MapToResponse(TrackComment comment)
+    private static TrackCommentResponse MapToResponse(Comment comment)
     {
         return new TrackCommentResponse
         {
             Id = comment.Id,
-            TrackId = comment.TrackId,
+            TargetId = comment.TargetId,
+            CommentType = comment.CommentType,
             CommenterId = comment.CommenterId,
             Content = comment.Content,
             ParentCommentId = comment.ParentCommentId,
@@ -342,21 +369,21 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     }
 
     // Helper method to get sort definition based on sort order
-    private static SortDefinition<TrackComment> GetSortDefinition(CommentSortOrder sortOrder)
+    private static SortDefinition<Comment> GetSortDefinition(CommentSortOrder sortOrder)
     {
         return sortOrder switch
         {
-            CommentSortOrder.ThreadActivity => Builders<TrackComment>.Sort
+            CommentSortOrder.ThreadActivity => Builders<Comment>.Sort
                 .Descending(c => c.ThreadUpdatedAt)
                 .Descending(c => c.CreatedAt),
-            CommentSortOrder.PopularityBased => Builders<TrackComment>.Sort
+            CommentSortOrder.PopularityBased => Builders<Comment>.Sort
                 .Descending(c => c.TotalRepliesCount)
                 .Descending(c => c.CreatedAt),
-            CommentSortOrder.ReverseChronological => Builders<TrackComment>.Sort
+            CommentSortOrder.ReverseChronological => Builders<Comment>.Sort
                 .Descending(c => c.CreatedAt),
-            CommentSortOrder.Chronological => Builders<TrackComment>.Sort
+            CommentSortOrder.Chronological => Builders<Comment>.Sort
                 .Ascending(c => c.CreatedAt),
-            _ => Builders<TrackComment>.Sort
+            _ => Builders<Comment>.Sort
                 .Descending(c => c.ThreadUpdatedAt)
                 .Descending(c => c.CreatedAt)
         };

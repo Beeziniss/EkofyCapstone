@@ -5,7 +5,7 @@ namespace EkofyApp.Application.ServiceInterfaces.TrackComments;
 
 public interface ITrackCommentService
 {
-    IQueryable<TrackComment> GetTrackComments();
+    IQueryable<Comment> GetTrackComments();
     Task CreateCommentAsync(CreateTrackCommentRequest request);
     Task UpdateCommentAsync(UpdateTrackCommentRequest request);
     Task DeleteCommentAsync(DeleteTrackCommentRequest request);

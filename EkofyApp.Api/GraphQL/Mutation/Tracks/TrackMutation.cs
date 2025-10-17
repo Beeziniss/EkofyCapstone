@@ -17,7 +17,7 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using EkofyApp.Infrastructure.ThirdPartyServices.EmySound;
+using HotChocolate.Subscriptions;
 using MongoDB.Bson;
 using Refit;
 
@@ -357,41 +357,11 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         return false;
     }
 
-    #region Track Comment
-
-    public async Task<bool> CreateTrackCommentAsync(CreateTrackCommentRequest request)
+    public async Task<bool> UpdateFavoriteCountAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
     {
-        await _trackCommentService.CreateCommentAsync(request);
+        long incrementValue = isAdding ? 1 : -1;
+        long favoriteCountUpdated = await _trackService.UpdateFavoriteCountAsync(trackId, incrementValue);
+        await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
         return true;
     }
-
-    public async Task<bool> UpdateTrackCommentAsync(UpdateTrackCommentRequest request)
-    {
-        await _trackCommentService.UpdateCommentAsync(request);
-        return true;
-    }
-
-    public async Task<bool> DeleteTrackCommentAsync(DeleteTrackCommentRequest request)
-    {
-        await _trackCommentService.DeleteCommentAsync(request);
-        return true;
-    }
-
-    // New hierarchical comment methods
-    public async Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request)
-    {
-        return await _trackCommentService.GetThreadedCommentsAsync(request);
-    }
-
-    public async Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request)
-    {
-        return await _trackCommentService.GetCommentRepliesAsync(request);
-    }
-
-    public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
-    {
-        return await _trackCommentService.GetCommentThreadAsync(request);
-    }
-
-    #endregion
 }
