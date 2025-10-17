@@ -1,7 +1,6 @@
 ﻿namespace EkofyApp.Api.GraphQL.SubscriptionQL.Tracks;
 
 [ExtendObjectType(typeof(SubscriptionInitialization))]
-//[SubscriptionType]
 public sealed class TrackSubscription
 {
     //public ValueTask<ISourceStream<long>> SubscribeToFavoriteCount(ITopicEventReceiver receiver)

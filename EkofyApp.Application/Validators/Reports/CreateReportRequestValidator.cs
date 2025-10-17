@@ -24,8 +24,8 @@ public sealed class CreateReportRequestValidator : AbstractValidator<CreateRepor
             .When(x => !string.IsNullOrEmpty(x.RelatedContentId));
 
         RuleFor(x => x.RelatedContentType)
-            .MaximumLength(50).WithMessage("Content type cannot exceed 50 characters")
-            .When(x => !string.IsNullOrEmpty(x.RelatedContentType));
+            .IsInEnum().WithMessage("Invalid related content type")
+            .When(x => !string.IsNullOrEmpty(x.RelatedContentType.ToString()));
 
         RuleFor(x => x.Evidences)
             .Must(urls => urls == null || urls.Count <= 5)

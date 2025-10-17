@@ -238,6 +238,12 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
     public async Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
     {
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string currentFullName = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == currentUserId)
+            .Project(x => x.FullName)
+            .FirstAsync();
+
         string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
 
         if (!_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(redisKey, out PendingArtistRegistrationRequest? pendingRegistration))
@@ -293,6 +299,19 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             // Remove from Redis after successful creation
             await _redisCacheService.RemoveAsync(redisKey);
 
+            // Lưu snapshot
+            await _unitOfWork.GetCollection<ApprovalHistory>().InsertOneAsync(session, new ApprovalHistory
+            {
+                TargetId = user.Id,
+                ApprovalType = ApprovalType.ArtistRegistration,
+                ApprovedByUserId = currentUserId,
+                ApprovedByName = currentFullName,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = "Approved",
+                Notes = null, // Dùng trường Notes để lưu lý do từ chối nếu có
+                Snapshot = pendingRegistration
+            });
+
             // Send approval email to user
             BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, user.Email, user.FullName, user.Email));
         });
@@ -300,15 +319,39 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
     public async Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
     {
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string currentFullName = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == currentUserId)
+            .Project(x => x.FullName)
+            .FirstAsync();
+
         string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
 
-        if (!await _redisCacheService.ExistsAsync(redisKey))
+        if (!_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(redisKey, out PendingArtistRegistrationRequest? pendingRegistration))
         {
             throw new NotFoundCustomException("Artist registration request not found or has expired");
         }
 
+        if (pendingRegistration == null)
+        {
+            throw new NotFoundCustomException("Artist registration request not found");
+        }
+
         // Simply remove from Redis - rejection means no database record is created
         await _redisCacheService.RemoveAsync(redisKey);
+
+        // Lưu snapshot
+        await _unitOfWork.GetCollection<ApprovalHistory>().InsertOneAsync(new ApprovalHistory
+        {
+            TargetId = approvalRequest.UserId,
+            ApprovalType = ApprovalType.ArtistRegistration,
+            ApprovedByUserId = currentUserId,
+            ApprovedByName = currentFullName,
+            ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+            Action = "Rejected",
+            Notes = approvalRequest.RejectionReason,
+            Snapshot = pendingRegistration
+        });
 
         // Send rejection email to user
         BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterReject, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email, approvalRequest.RejectionReason ?? string.Empty));
