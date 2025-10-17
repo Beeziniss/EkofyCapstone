@@ -2,7 +2,7 @@ using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Application.Models.TrackComments;
 
-public sealed record TrackCommentResponse
+public sealed record CommentResponse
 {
     public string Id { get; init; } = null!;
     public string TargetId { get; init; } = null!;

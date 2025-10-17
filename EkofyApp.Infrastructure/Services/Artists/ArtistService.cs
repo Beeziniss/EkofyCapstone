@@ -239,10 +239,6 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     public async Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
     {
         string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-        string currentFullName = await _unitOfWork.GetCollection<User>()
-            .Find(u => u.Id == currentUserId)
-            .Project(x => x.FullName)
-            .FirstAsync();
 
         string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
 
@@ -305,9 +301,8 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 TargetId = user.Id,
                 ApprovalType = ApprovalType.ArtistRegistration,
                 ApprovedByUserId = currentUserId,
-                ApprovedByName = currentFullName,
                 ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = "Approved",
+                Action = HistoryActionType.Approved,
                 Notes = null, // Dùng trường Notes để lưu lý do từ chối nếu có
                 Snapshot = pendingRegistration
             });
@@ -320,10 +315,6 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     public async Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
     {
         string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-        string currentFullName = await _unitOfWork.GetCollection<User>()
-            .Find(u => u.Id == currentUserId)
-            .Project(x => x.FullName)
-            .FirstAsync();
 
         string redisKey = $"artist:{approvalRequest.UserId}:pendingRegistration";
 
@@ -346,9 +337,8 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             TargetId = approvalRequest.UserId,
             ApprovalType = ApprovalType.ArtistRegistration,
             ApprovedByUserId = currentUserId,
-            ApprovedByName = currentFullName,
             ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            Action = "Rejected",
+            Action = HistoryActionType.Rejected,
             Notes = approvalRequest.RejectionReason,
             Snapshot = pendingRegistration
         });

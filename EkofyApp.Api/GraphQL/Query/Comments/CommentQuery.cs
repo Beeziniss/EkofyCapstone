@@ -41,7 +41,7 @@ public sealed class CommentQuery(ITrackCommentService trackCommentService)
     [AuthorizeRoles(HelperRoleBase.FullRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
-    public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
+    public async Task<List<CommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
     {
         return await _trackCommentService.GetCommentThreadAsync(request);
     }
