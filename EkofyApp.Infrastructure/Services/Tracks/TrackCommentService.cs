@@ -17,7 +17,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
 
     public IQueryable<Comment> GetTrackComments()
     {
-        return _unitOfWork.GetCollection<Comment>().AsQueryable();
+        return _unitOfWork.GetCollection<Comment>().AsQueryable().Where(x => x.CommentType == CommentType.Track);
     }
 
     public async Task CreateCommentAsync(CreateTrackCommentRequest request)

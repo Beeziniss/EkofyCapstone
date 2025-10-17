@@ -1,24 +1,28 @@
 ﻿using EkofyApp.Api.GraphQL.DataLoader;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using HotChocolate.Data;
+using MongoDB.Driver;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(Artist))]
 public sealed class ArtistsResolver
 {
-    public async Task<User> GetUserAsync(
-        [Parent] Artist artist,
-        DataLoaderCustomOneToOne<User> userByIdDataLoader,
-        CancellationToken cancellationToken)
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<User> GetUser([Parent] Artist artist, [Service] IUnitOfWork unitOfWork)
     {
-        return await userByIdDataLoader.LoadAsync(artist.UserId, cancellationToken) ?? new User();
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(x => x.Id == artist.UserId);
     }
 
-    public async Task<IEnumerable<Category?>> GetCategoriesAsync(
-        [Parent] Artist artist,
-        DataLoaderCustomOneToOne<Category> categoriesDataLoader,
-        CancellationToken cancellationToken)
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Category> GetCategories([Parent] Artist artist, [Service] IUnitOfWork unitOfWork)
     {
-        return await categoriesDataLoader.LoadAsync(artist.CategoryIds, cancellationToken) ?? [];
+        return unitOfWork.GetCollection<Category>().AsQueryable().Where(x => artist.CategoryIds.Contains(x.Id));
     }
 }

@@ -141,23 +141,56 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 case UserRole.Artist:
                     {
                         // Update artist's follower count
-                        await _unitOfWork.GetCollection<Artist>()
+                        UpdateResult updateArtistFollowerCount = await _unitOfWork.GetCollection<Artist>()
                             .UpdateOneAsync(session,
                                 a => a.UserId == request.TargetUserId,
                                 Builders<Artist>.Update
                                     .Inc(a => a.FollowerCount, 1));
+
+                        if(updateArtistFollowerCount.MatchedCount == 0)
+                        {
+                            throw new NotFoundCustomException($"Artist profile for user {request.TargetUserId} not found");
+                        }
+                        if(updateArtistFollowerCount.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Failed to update artist's follower count");
+                        }
+
                         break;
                     }
 
                 case UserRole.Listener:
                     {
                         // Update listener's follower count
-                        await _unitOfWork.GetCollection<Listener>()
+                        UpdateResult updateListenerFollowerCount = await _unitOfWork.GetCollection<Listener>()
                             .UpdateOneAsync(session,
                                 l => l.UserId == request.TargetUserId,
                                 Builders<Listener>.Update
                                     .Inc(l => l.FollowerCount, 1)
-                                    .Push(l => l.LastFollowers, currentUserId));
+                                    .PushEach(l => l.LastFollowers, [currentUserId], position: 0, slice: 10));
+
+                        if(updateListenerFollowerCount.MatchedCount == 0)
+                        {
+                            throw new NotFoundCustomException($"Listener profile for user {request.TargetUserId} not found");
+                        }
+                        if(updateListenerFollowerCount.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Failed to update listener's follower count");
+                        }
+
+                        // Update current user's following count
+                        UpdateResult updateCurrentUserFollowingCount = await _unitOfWork.GetCollection<Listener>()
+                        .UpdateOneAsync(session,
+                            l => l.UserId == currentUserId,
+                            Builders<Listener>.Update
+                                .Inc(l => l.FollowingCount, 1)
+                                .PushEach(l => l.LastFollowings, [request.TargetUserId], position: 0, slice: 10));
+
+                        if (updateCurrentUserFollowingCount.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Failed to update current user's following count");
+                        }
+
                         break;
                     }
             }
@@ -197,23 +230,56 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 case UserRole.Artist:
                     {
                         // Update artist's follower count
-                        await _unitOfWork.GetCollection<Artist>()
+                        UpdateResult updateArtistFollowerCount = await _unitOfWork.GetCollection<Artist>()
                             .UpdateOneAsync(session,
                                 a => a.UserId == request.TargetUserId,
                                 Builders<Artist>.Update
                                     .Inc(a => a.FollowerCount, -1));
+
+                        if(updateArtistFollowerCount.MatchedCount == 0)
+                        {
+                            throw new NotFoundCustomException($"Artist profile for user {request.TargetUserId} not found");
+                        }
+                        if(updateArtistFollowerCount.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Failed to update artist's follower count");
+                        }
+
                         break;
                     }
 
                 case UserRole.Listener:
                     {
                         // Update listener's follower count
-                        await _unitOfWork.GetCollection<Listener>()
+                        UpdateResult updateListenerFollowerCount = await _unitOfWork.GetCollection<Listener>()
                             .UpdateOneAsync(session,
                                 l => l.UserId == request.TargetUserId,
                                 Builders<Listener>.Update
                                     .Inc(l => l.FollowerCount, -1)
                                     .Pull(l => l.LastFollowers, currentUserId));
+
+                        if(updateListenerFollowerCount.MatchedCount == 0)
+                        {
+                            throw new NotFoundCustomException($"Listener profile for user {request.TargetUserId} not found");
+                        }
+                        if(updateListenerFollowerCount.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Failed to update listener's follower count");
+                        }
+
+                        // Also update current user's following count
+                        UpdateResult updateCurrentUserFollowingCount = await _unitOfWork.GetCollection<Listener>()
+                            .UpdateOneAsync(session,
+                                l => l.UserId == currentUserId,
+                                Builders<Listener>.Update
+                                    .Inc(l => l.FollowingCount, -1)
+                                    .Pull(l => l.LastFollowings, request.TargetUserId));
+
+                        if (updateCurrentUserFollowingCount.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Failed to update current user's following count");
+                        }
+
                         break;
                     }
             }
