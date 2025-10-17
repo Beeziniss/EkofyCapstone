@@ -1,12 +1,12 @@
-﻿using EkofyApp.Application.Models.AudioFingerprints;
+﻿using EkofyApp.Application.Models.ApprovalHistories;
+using EkofyApp.Application.Models.AudioFingerprints;
 using EkofyApp.Application.Models.Recordings;
-using EkofyApp.Application.Models.TrackComments;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.Models.Works;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
-using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
@@ -25,19 +25,19 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IAudioFingerprintService audioFingerprintService, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, ITrackCommentService trackCommentService)
+public sealed class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IHttpContextAccessor httpContextAccessor)
 {
     private readonly ITrackService _trackService = trackService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonS3Service _amazonS3Service = amazonS3Service;
-    private readonly IAudioFingerprintService _audioFingerprintService = audioFingerprintService;
     private readonly IFfmpegService _ffmpegService = ffmpegService;
     private readonly IAudioAnalysisService _audioAnalysisService = audioAnalysisService;
     private readonly ICategoryService _categoryService = categoryService;
     private readonly IWorkService _workService = workService;
     private readonly IRecordingService _recordingService = recordingService;
     private readonly IEmySoundService _emySoundService = emySoundService;
-    private readonly ITrackCommentService _trackCommentService = trackCommentService;
+    private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {
@@ -72,7 +72,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                             // Còn nếu không có thì track không được đánh dấu explicit
                             // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
-                            await ApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+                            await AssignApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
                             return true;
                         }
@@ -166,6 +166,44 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
             // Đẩy hls playlist lên S3
             await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+
+            // Lưu snapshot
+            // Track
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetOwnerId = trackTempRequest.CreatedBy,
+                TargetId = trackTempRequest.Id,
+                ApprovalType = ApprovalType.TrackUpload,
+                ApprovedByUserId = "System",
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = trackTempRequest,
+            });
+
+            // Work
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = workTempRequest.Id,
+                ApprovalType = ApprovalType.WorkUpload,
+                ApprovedByUserId = "System",
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = workTempRequest,
+            });
+
+            // Recording
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = recordingTempRequest.Id,
+                ApprovalType = ApprovalType.RecordingUpload,
+                ApprovedByUserId = "System",
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = recordingTempRequest,
+            });
         }
         finally
         {
@@ -182,7 +220,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         }
     }
 
-    internal async Task ApproveManuallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    internal async Task AssignApproveManuallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {
         // Tạo track temp
         TrackTempRequest trackTemp = _trackService.CreateTrackTemp(createTrackRequest);
@@ -222,24 +260,72 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     //    return (result.BestConfidence, result.TrackId, result.TrackName);
     //}
 
-    public async Task<bool> RejectTrackUploadRequestAsync(string trackId, string workId, string recordingId)
+    public async Task<bool> RejectTrackUploadRequestAsync(string trackId, string workId, string recordingId, string reasonReject)
     {
-        if (_redisCacheService.TryGetGeneric($"track:{trackId}:requestUpload", out TrackTempRequest? trackUploadRequest) &&
-            await _redisCacheService.ExistsAsync($"work:{workId}:requestUpload") &&
-            await _redisCacheService.ExistsAsync($"recording:{recordingId}:requestUpload"))
+        if (_redisCacheService.TryGetGeneric($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest) &&
+            _redisCacheService.TryGetGeneric($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
+            _redisCacheService.TryGetGeneric($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
         {
-            if (trackUploadRequest is null)
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+            if (trackTempRequest is null)
             {
                 throw new NotFoundCustomException("Track upload request not found");
             }
+            if (workTempRequest is null)
+            {
+                throw new NotFoundCustomException("WorkProjection upload request not found");
+            }
+            if (recordingTempRequest is null)
+            {
+                throw new NotFoundCustomException("RecordingProjection upload request not found");
+            }
 
             // Xóa file đã upload trên cloud storage
-            await _amazonS3Service.DeleteOriginalAudioAsync(trackUploadRequest.Id);
+            await _amazonS3Service.DeleteOriginalAudioAsync(trackTempRequest.Id);
 
             // Xóa request trên redis
             await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
             await _redisCacheService.RemoveAsync($"work:{workId}:requestUpload");
             await _redisCacheService.RemoveAsync($"recording:{recordingId}:requestUpload");
+
+            // Lưu snapshot
+            // Track
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetOwnerId = trackTempRequest.CreatedBy,
+                TargetId = trackTempRequest.Id,
+                ApprovalType = ApprovalType.TrackUpload,
+                ApprovedByUserId = currentUserId,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Rejected,
+                Notes = reasonReject,
+                Snapshot = trackTempRequest,
+            });
+
+            // Work
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = workTempRequest.Id,
+                ApprovalType = ApprovalType.WorkUpload,
+                ApprovedByUserId = currentUserId,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Rejected,
+                Notes = reasonReject,
+                Snapshot = workTempRequest,
+            });
+
+            // Recording
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = recordingTempRequest.Id,
+                ApprovalType = ApprovalType.RecordingUpload,
+                ApprovedByUserId = currentUserId,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Rejected,
+                Notes = reasonReject,
+                Snapshot = recordingTempRequest,
+            });
 
             return true;
         }
@@ -255,6 +341,8 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             _redisCacheService.TryGetGeneric($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
             _redisCacheService.TryGetGeneric($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
         {
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
             WavFileResponse wavFileResponse = default!;
 
             if (trackTempRequest is null)
@@ -350,6 +438,44 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
             await _redisCacheService.RemoveAsync($"work:{workId}:requestUpload");
             await _redisCacheService.RemoveAsync($"recording:{recordingId}:requestUpload");
+
+            // Lưu snapshot
+            // Track
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetOwnerId = trackTempRequest.CreatedBy,
+                TargetId = trackTempRequest.Id,
+                ApprovalType = ApprovalType.TrackUpload,
+                ApprovedByUserId = currentUserId,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = trackTempRequest,
+            });
+
+            // Work
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = workTempRequest.Id,
+                ApprovalType = ApprovalType.WorkUpload,
+                ApprovedByUserId = currentUserId,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = workTempRequest,
+            });
+
+            // Recording
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = recordingTempRequest.Id,
+                ApprovalType = ApprovalType.RecordingUpload,
+                ApprovedByUserId = currentUserId,
+                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = recordingTempRequest,
+            });
 
             return true;
         }

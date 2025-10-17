@@ -20,7 +20,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         return _unitOfWork.GetCollection<Comment>().AsQueryable().Where(x => x.CommentType == CommentType.Track);
     }
 
-    public async Task CreateCommentAsync(CreateTrackCommentRequest request)
+    public async Task CreateCommentAsync(CreateCommentRequest request)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value 
             ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -91,7 +91,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         }
     }
 
-    public async Task DeleteCommentAsync(DeleteTrackCommentRequest request)
+    public async Task DeleteCommentAsync(DeleteCommentRequest request)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value 
             ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -202,7 +202,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         };
     }
 
-    public async Task<List<TrackCommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
+    public async Task<List<CommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
     {
         var comment = await _unitOfWork.GetCollection<Comment>()
             .Find(c => c.Id == request.CommentId)
@@ -345,9 +345,9 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     }
 
     // Helper method to map entity to response
-    private static TrackCommentResponse MapToResponse(Comment comment)
+    private static CommentResponse MapToResponse(Comment comment)
     {
-        return new TrackCommentResponse
+        return new CommentResponse
         {
             Id = comment.Id,
             TargetId = comment.TargetId,

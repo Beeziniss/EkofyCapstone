@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.ApprovalHistories;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Domain.Entities;
 using MongoDB.Driver;
@@ -11,5 +12,20 @@ public sealed class ApprovalHistoryService(IUnitOfWork unitOfWork) : IApprovalHi
     public IQueryable<ApprovalHistory> GetApprovalHistories()
     {
         return unitOfWork.GetCollection<ApprovalHistory>().AsQueryable();
+    }
+
+    public async Task CreateApprovalHistoryAsync(ApprovalHistoryRequest approvalHistoryRequest)
+    {
+        await unitOfWork.GetCollection<ApprovalHistory>().InsertOneAsync(new ApprovalHistory
+        {
+            TargetOwnerId = approvalHistoryRequest.TargetOwnerId,
+            TargetId = approvalHistoryRequest.TargetId,
+            ApprovalType = approvalHistoryRequest.ApprovalType,
+            ApprovedByUserId = approvalHistoryRequest.ApprovedByUserId,
+            ApprovedAt = approvalHistoryRequest.ApprovedAt,
+            Action = approvalHistoryRequest.Action,
+            Notes = approvalHistoryRequest.Notes,
+            Snapshot = approvalHistoryRequest.Snapshot
+        });
     }
 }
