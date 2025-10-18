@@ -85,8 +85,8 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
                 ValueType = EntitlementValueType.String,
                 DefaultValues =
                 [
+                    new() { Role = UserRole.Listener, Value = "128kbps" },
                     new() { Role = UserRole.Artist, Value = "320kbps" },
-                    new() { Role = UserRole.Listener, Value = "128kbps" }
                 ],
                 SubscriptionOverrides =
                 [
@@ -102,8 +102,8 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
                 ValueType = EntitlementValueType.Boolean,
                 DefaultValues =
                 [
+                    new() { Role = UserRole.Listener, Value = false },
                     new() { Role = UserRole.Artist, Value = true },
-                    new() { Role = UserRole.Listener, Value = false }
                 ],
                 SubscriptionOverrides =
                 [
@@ -119,8 +119,8 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
                 ValueType = EntitlementValueType.Boolean,
                 DefaultValues =
                 [
+                    new() { Role = UserRole.Listener, Value = false },
                     new() { Role = UserRole.Artist, Value = true },
-                    new() { Role = UserRole.Listener, Value = false }
                 ],
                 SubscriptionOverrides =
                 [
@@ -136,8 +136,8 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
                 ValueType = EntitlementValueType.String,
                 DefaultValues =
                 [
+                    new() { Role = UserRole.Listener, Value = "5" },
                     new() { Role = UserRole.Artist, Value = "Unlimited" },
-                    new() { Role = UserRole.Listener, Value = "5" }
                 ],
                 SubscriptionOverrides =
                 [
@@ -200,10 +200,13 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
                 ValueType = EntitlementValueType.Boolean,
                 DefaultValues =
                 [
-                    new() { Role = UserRole.Listener, Value = true },
+                    new() { Role = UserRole.Listener, Value = false },
                     new() { Role = UserRole.Artist, Value = true }
                 ],
-                SubscriptionOverrides = [],
+                SubscriptionOverrides = 
+                [
+                    new() { SubscriptionCode = "listener_premium", Value = true },
+                ],
                 IsActive = true
             },
             new()
@@ -231,10 +234,13 @@ public sealed class EntitlementService(IUnitOfWork unitOfWork) : IEntitlementSer
                 ValueType = EntitlementValueType.Boolean,
                 DefaultValues =
                 [
-                    new() { Role = UserRole.Listener, Value = true },
+                    new() { Role = UserRole.Listener, Value = false },
                     new() { Role = UserRole.Artist, Value = true }
                 ],
-                SubscriptionOverrides = [],
+                SubscriptionOverrides = 
+                [
+                    new() { SubscriptionCode = "listener_premium", Value = true },
+                ],
                 IsActive = true
             }
         ]);
