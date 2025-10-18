@@ -25,5 +25,8 @@ public sealed class UserMutationExtension : ObjectTypeExtension<UserMutation>
 
         descriptor.Field(x => x.ReActiveUserAsync(default!))
             .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
+
+        descriptor.Field(x => x.DeleteUserManualAsync(default!))
+            .Authorize(HelperRoleBase.AdminRolesArray);
     }
 }

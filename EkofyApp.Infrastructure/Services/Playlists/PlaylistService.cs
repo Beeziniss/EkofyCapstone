@@ -193,12 +193,12 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         UpdateResult updateResult = await _unitOfWork.GetCollection<Playlist>().UpdateOneAsync(x => x.Id == favoritePlaylist.Id, updateDefinition);
     }
 
-    public async Task RemoveFromPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest)
+    public async Task RemoveFromPlaylistAsync(RemoveFromPlaylistRequest removeFromPlaylistRequest)
     {
         UpdateDefinition<Playlist> updateDefinition = Builders<Playlist>.Update
-            .PullFilter(x => x.TracksInfo, y => y.TrackId == addToPlaylistRequest.TrackId);
+            .PullFilter(x => x.TracksInfo, y => y.TrackId == removeFromPlaylistRequest.TrackId);
         UpdateResult updateResult = await _unitOfWork.GetCollection<Playlist>()
-            .UpdateOneAsync(x => x.Id == addToPlaylistRequest.PlaylistId, updateDefinition);
+            .UpdateOneAsync(x => x.Id == removeFromPlaylistRequest.PlaylistId, updateDefinition);
 
         if (updateResult.ModifiedCount == 0)
         {
@@ -208,6 +208,14 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
     public async Task DeletePlaylistAsync(string playlistId)
     {
+        if(await _unitOfWork.GetCollection<Playlist>()
+            .Find(x => x.Id == playlistId)
+            .Project(x => x.Name)
+            .FirstOrDefaultAsync() == "Favorite Songs")
+        {
+            throw new BadRequestCustomException("Cannot delete favorite songs playlist.");
+        }
+
         DeleteResult deleteResult = await _unitOfWork.GetCollection<Playlist>()
             .DeleteOneAsync(x => x.Id == playlistId);
 

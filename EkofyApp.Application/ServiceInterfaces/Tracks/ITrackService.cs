@@ -14,7 +14,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<float[]> GenerateEmbeddingsAsync(string term);
         Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
-        IQueryable<Track> GetTracksQueryable();
+        IQueryable<Track> GetTracks();
         IQueryable<Track> SearchTracks(string searchTerm);
         Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue);
         Task UpdateStreamCount(string trackId);

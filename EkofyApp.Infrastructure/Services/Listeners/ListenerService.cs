@@ -87,6 +87,16 @@ public sealed class ListenerService(IUnitOfWork unitOfWork, IHttpContextAccessor
                 updates.Add(Builders<Listener>.Update.Set(l => l.BannerImage, updateListenerRequest.BannerImage));
             }
 
+            if (updateListenerRequest.Gender != null)
+            {
+                updatesUser.Add(Builders<User>.Update.Set(l => l.Gender, updateListenerRequest.Gender));
+            }
+
+            if (updateListenerRequest.BirthDate != null)
+            {
+                updatesUser.Add(Builders<User>.Update.Set(l => l.BirthDate, updateListenerRequest.BirthDate));
+            }
+
             bool isEmailUpdated = false;
             bool isFullNameUpdated = false;
 

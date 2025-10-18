@@ -27,4 +27,6 @@ public sealed class Listener : TimeStamped, IEntityCustom
     public List<string> LastFollowers { get; set; } = []; // List of last followers, storing their IDs
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> LastFollowings { get; set; } = []; // List of last following artists, storing their IDs
+
+    public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
 }

@@ -14,4 +14,5 @@ public interface IUserService
     IQueryable<Follows> GetUserFollows();
     Task FollowUserAsync(FollowUserRequest request);
     Task UnfollowUserAsync(UnfollowUserRequest request);
+    Task DeleteUserManualAsync(string userId);
 }

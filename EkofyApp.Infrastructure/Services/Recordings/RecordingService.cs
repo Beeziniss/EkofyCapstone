@@ -14,7 +14,7 @@ public sealed class RecordingService(IUnitOfWork unitOfWork) : IRecordingService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public IQueryable<Recording> GetRecordingsQueryable()
+    public IQueryable<Recording> GetRecordings()
     {
         return _unitOfWork.GetCollection<Recording>().AsQueryable();
     }

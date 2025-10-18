@@ -31,5 +31,13 @@ public sealed class UpdateListenerRequestValidator : AbstractValidator<UpdateLis
             .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("FullName must contain only alphabetic characters and spaces.")
             .MaximumLength(100).WithMessage("FullName cannot exceed 100 characters.")
             .When(x => x.FullName is not null);
+
+        RuleFor(x => x.Gender)
+            .IsInEnum().When(x => x.Gender != null).WithMessage("Gender must be valid value");
+
+        RuleFor(x => x.BirthDate)
+            .NotEmpty().WithMessage("Date of Birth is required")
+            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 13).WithMessage("Date of Birth must be at least 14 years old")
+            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
     }
 }

@@ -43,4 +43,6 @@ public sealed class Comment : TimeStamped, IEntityCustom
 
     public bool IsEdited { get; set; } = false;
     public bool IsDeleted { get; set; } = false;
+
+    public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
 }
