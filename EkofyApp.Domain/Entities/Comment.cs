@@ -43,10 +43,4 @@ public sealed class Comment : TimeStamped, IEntityCustom
 
     public bool IsEdited { get; set; } = false;
     public bool IsDeleted { get; set; } = false;
-
-    // Helper method to check if this is a root comment
-    //public bool IsRootComment => string.IsNullOrEmpty(ParentCommentId);
-
-    //// Helper method to get the thread identifier for grouping
-    //public string GetThreadId() => RootCommentId ?? Id;
 }

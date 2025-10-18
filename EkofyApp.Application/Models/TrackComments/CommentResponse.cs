@@ -24,8 +24,4 @@ public sealed record CommentResponse
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
     public DateTimeOffset ThreadUpdatedAt { get; init; }
-    
-    // Helper properties
-    public bool IsRootComment => string.IsNullOrEmpty(ParentCommentId);
-    public string ThreadId => RootCommentId ?? Id;
 }

@@ -1,5 +1,4 @@
-﻿using EkofyApp.Api.GraphQL.DataLoader;
-using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
 using HotChocolate.Data;
 using MongoDB.Driver;
@@ -15,6 +14,22 @@ public sealed class PlaylistResolver
     public IQueryable<User> GetUser([Parent] Playlist playlist, [Service] IUnitOfWork unitOfWork)
     {
         return unitOfWork.GetCollection<User>().AsQueryable().Where(x => x.Id == playlist.UserId);
+    }
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Listener> GetListener([Parent] Playlist playlist, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<Listener>().AsQueryable().Where(x => x.UserId == playlist.UserId);
+    }
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Artist> GetArtist([Parent] Playlist playlist, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<Artist>().AsQueryable().Where(x => x.UserId == playlist.UserId);
     }
 
     [UseOffsetPaging(IncludeTotalCount = true)]
