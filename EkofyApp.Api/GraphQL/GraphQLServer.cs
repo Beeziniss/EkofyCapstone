@@ -31,6 +31,7 @@ public static class GraphQLServer
             .ModifyCostOptions(opt =>
             {
                 opt.MaxFieldCost = 100000;
+                opt.MaxTypeCost = 1000000;
             })
             .AddErrorFilter<GraphQLExceptionFilter>()
             .AddAuthorization()
@@ -43,8 +44,8 @@ public static class GraphQLServer
 
             // Performance optimizations
             // Có liên quan đến Introspection, nếu rule thấp thì không auto-fetch được schema
-            .AddMaxExecutionDepthRule(20)
-            .AddMaxAllowedFieldCycleDepthRule(50)
+            .AddMaxExecutionDepthRule(100)
+            .AddMaxAllowedFieldCycleDepthRule(100)
             .AddCostAnalyzer()  // Analyze query cost
 
             // Caching
