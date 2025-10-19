@@ -318,8 +318,8 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             {
                 TargetId = user.Id,
                 ApprovalType = ApprovalType.ArtistRegistration,
-                ApprovedByUserId = currentUserId,
-                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                ActionByUserId = currentUserId,
+                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
                 Action = HistoryActionType.Approved,
                 Notes = approvalRequest.RejectionReason,
                 Snapshot = pendingRegistration,
@@ -358,9 +358,9 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             TargetId = pendingRegistration.UserId,
             ApprovalType = ApprovalType.ArtistRegistration,
-            ApprovedByUserId = currentUserId,
-            ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            Action = HistoryActionType.Approved,
+            ActionByUserId = currentUserId,
+            ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+            Action = HistoryActionType.Rejected,
             Notes = approvalRequest.RejectionReason, // Dùng trường Notes để lưu lý do từ chối nếu có
             Snapshot = pendingRegistration,
         };

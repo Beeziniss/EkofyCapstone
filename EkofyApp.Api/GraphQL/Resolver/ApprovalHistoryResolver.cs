@@ -40,6 +40,6 @@ public sealed class ApprovalHistoryResolver
     [UseSorting]
     public IQueryable<User> GetApprovedBy([Parent] ApprovalHistory approvalHistory, [Service] IUnitOfWork unitOfWork)
     {
-        return unitOfWork.GetCollection<User>().AsQueryable().Where(u => u.Id == approvalHistory.ApprovedByUserId);
+        return unitOfWork.GetCollection<User>().AsQueryable().Where(u => u.Id == approvalHistory.ActionByUserId);
     }
 }
