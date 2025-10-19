@@ -20,9 +20,9 @@ public sealed class RecordingQuery(IRecordingService recordingService, IRedisCac
     [UseProjection]
     [UseFiltering]
     [UseSorting<Recording>]
-    public IQueryable<Recording> GetRecordingsQueryable()
+    public IQueryable<Recording> GetRecordings()
     {
-        return _recordingService.GetRecordingsQueryable();
+        return _recordingService.GetRecordings();
     }
 
     [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]

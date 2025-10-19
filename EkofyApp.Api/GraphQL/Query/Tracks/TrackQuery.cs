@@ -29,7 +29,7 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
     [UseSorting<Track>]
     public IQueryable<Track> GetTracks()
     {
-        return _trackService.GetTracksQueryable();
+        return _trackService.GetTracks();
     }
 
     [AllowAnonymous]

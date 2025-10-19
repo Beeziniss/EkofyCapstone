@@ -45,4 +45,10 @@ public sealed class UserMutation(IUserService userService)
         await _userService.ReActiveUserAsync(targetUserId);
         return true;
     }
+
+    public async Task<bool> DeleteUserManualAsync(string userId)
+    {
+        await _userService.DeleteUserManualAsync(userId);
+        return true;
+    }
 }

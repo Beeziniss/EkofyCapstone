@@ -6,5 +6,5 @@ public interface IRecordingService
 {
     Task CreateRecordingAsync(CreateRecordingRequest createRecordingRequest, string trackId, CancellationToken cancellationToken = default);
     RecordingTempRequest CreateRecordingTemp(CreateRecordingRequest createRecordingRequest);
-    IQueryable<Recording> GetRecordingsQueryable();
+    IQueryable<Recording> GetRecordings();
 }

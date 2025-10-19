@@ -16,7 +16,7 @@ public sealed class WorkService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public IQueryable<Work> GetWorksQueryable()
+    public IQueryable<Work> GetWorks()
     {
         return _unitOfWork.GetCollection<Work>().AsQueryable();
     }

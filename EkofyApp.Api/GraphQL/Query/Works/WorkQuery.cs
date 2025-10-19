@@ -20,9 +20,9 @@ public sealed class WorkQuery(IWorkService workService, IRedisCacheService redis
     [UseProjection]
     [UseFiltering]
     [UseSorting<Work>]
-    public IQueryable<Work> GetWorksQueryable()
+    public IQueryable<Work> GetWorks()
     {
-        return _workService.GetWorksQueryable();
+        return _workService.GetWorks();
     }
 
     [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]

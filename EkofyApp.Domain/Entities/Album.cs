@@ -24,4 +24,6 @@ public sealed class Album : TimeStamped, IEntityCustom
     public string? ThumbnailImage { get; set; } // URL to the thumbnail image of the album
 
     public ReleaseInfo ReleaseInfo { get; set; } = null!; // Information about the album's release, including date and reason
+
+    public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
 }

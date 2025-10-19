@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Domain.Enums;
-using EkofyApp.Domain.Enums.Reports;
 
 namespace EkofyApp.Domain.EmbeddedDocuments;
 public sealed class Restriction // TODO: Chưa rõ cách sử dụng vì có status trong User rồi nên cái này có thể thay thế cho report "stuff"

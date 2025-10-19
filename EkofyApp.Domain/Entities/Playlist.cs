@@ -20,4 +20,6 @@ public sealed class Playlist : TimeStamped, IEntityCustom
     public List<PlaylistTracksInfo> TracksInfo { get; set; } = [];
 
     public bool IsPublic { get; set; } = false; // Indicates if the playlist is public or private
+
+    public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
 }

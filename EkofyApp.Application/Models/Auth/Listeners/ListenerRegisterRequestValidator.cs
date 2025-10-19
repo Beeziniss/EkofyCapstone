@@ -27,9 +27,9 @@ public sealed class ListenerRegisterRequestValidator : AbstractValidator<Listene
             .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("Full DisplayName must contain only letters and spaces");
 
         RuleFor(x => x.BirthDate)
-            .NotEmpty().WithMessage("Birth Date is required")
-            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Birth Date must be in the past")
-            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Birth Date must be in the past");
+            .NotEmpty().WithMessage("Date of Birth is required")
+            .Must(date => HelperMethod.GetExactAge(date) >= 13).WithMessage("Date of Birth must be at least 14 years old")
+            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
 
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Gender must be Male or Female or Other");

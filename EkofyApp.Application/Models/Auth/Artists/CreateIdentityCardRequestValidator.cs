@@ -20,7 +20,7 @@ public sealed class CreateIdentityCardRequestValidator : AbstractValidator<Creat
 
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Date of Birth is required")
-            .Must(date => HelperMethod.GetExactAge(date) >= 14).WithMessage("Date of Birth must be at least 14 years old")
+            .Must(date => HelperMethod.GetExactAge(date) >= 18).WithMessage("Date of Birth must be at least 14 years old")
             .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
 
         RuleFor(x => x.Gender)

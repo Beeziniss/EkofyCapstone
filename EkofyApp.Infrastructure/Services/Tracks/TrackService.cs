@@ -27,7 +27,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
 
-    public IQueryable<Track> GetTracksQueryable()
+    public IQueryable<Track> GetTracks()
     {
         return _unitOfWork.GetCollection<Track>().AsQueryable();
     }
@@ -251,7 +251,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         //nếu text rỗng thì trả về track nhu bình thường
         if (string.IsNullOrEmpty(text))
         {
-            return GetTracksQueryable();
+            return GetTracks();
         }
 
         //tạo vector từ text để tí so sánh
