@@ -721,7 +721,6 @@ public static class DependencyInjection
         // Approval History
         BsonSerializer.RegisterSerializer(typeof(ApprovalType), new EnumMemberSerializer<ApprovalType>());
         BsonSerializer.RegisterSerializer(typeof(HistoryActionType), new EnumMemberSerializer<HistoryActionType>());
-
     }
 
     public static void AddHangfire(this IServiceCollection service)
