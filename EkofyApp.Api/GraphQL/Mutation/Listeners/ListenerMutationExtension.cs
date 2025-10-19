@@ -6,7 +6,7 @@ public sealed class ListenerMutationExtension : ObjectTypeExtension<ListenerMuta
 {
     protected override void Configure(IObjectTypeDescriptor<ListenerMutation> descriptor)
     {
-        descriptor.Field(f => f.UpdateProfileAsync(default!))
+        descriptor.Field(f => f.UpdateListenerProfileAsync(default!))
             .Authorize(HelperRoleBase.ListenerRolesArray);
     }
 }
