@@ -8,6 +8,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.BillingPortalConfig;
 using EkofyApp.Domain.Enums.Coupons;
+using EkofyApp.Domain.Enums.Reports;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
@@ -16,6 +17,7 @@ using StackExchange.Redis;
 
 namespace EkofyApp.Api.GraphQL;
 public static class GraphQLServer
+
 {
     public static void RegisterGraphQLServer(this IServiceCollection services)
     {
@@ -111,6 +113,14 @@ public static class GraphQLServer
             .AddType<EnumType<TrackType>>()
             .AddType<EnumType<TransactionStatus>>()
             .AddType<EnumType<WorkStatus>>()
+            .AddType<EnumType<ReportStatus>>()
+            .AddType<EnumType<ReportType>>()
+            .AddType<EnumType<ReportAction>>()
+            .AddType<EnumType<ReportPriority>>()
+            .AddType<EnumType<ReportRelatedContentType>>()
+            .AddType<EnumType<CommentType>>()
+            .AddType<EnumType<ApprovalType>>()
+            .AddType<EnumType<HistoryActionType>>()
 
             // Paging
             //.AddQueryableCursorPagingProvider(defaultProvider: true)

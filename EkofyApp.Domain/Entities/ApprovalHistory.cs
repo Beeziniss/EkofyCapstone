@@ -23,6 +23,5 @@ public sealed class ApprovalHistory
     public string? Notes { get; set; }
 
     // Lưu lại bản đăng ký/bản ghi trước khi duyệt (JSON hoặc object)
-    [BsonRepresentation(BsonType.Document)]
-    public object Snapshot { get; set; } = null!;
+    public string Snapshot { get; set; } = null!;
 }

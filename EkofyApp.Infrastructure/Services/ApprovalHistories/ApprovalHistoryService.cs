@@ -3,6 +3,8 @@ using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Domain.Entities;
 using MongoDB.Driver;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace EkofyApp.Infrastructure.Services.ApprovalHistories;
 public sealed class ApprovalHistoryService(IUnitOfWork unitOfWork) : IApprovalHistoryService
@@ -25,7 +27,15 @@ public sealed class ApprovalHistoryService(IUnitOfWork unitOfWork) : IApprovalHi
             ApprovedAt = approvalHistoryRequest.ApprovedAt,
             Action = approvalHistoryRequest.Action,
             Notes = approvalHistoryRequest.Notes,
-            Snapshot = approvalHistoryRequest.Snapshot
+            Snapshot = JsonConvert.SerializeObject(
+                        approvalHistoryRequest.Snapshot,
+                        new JsonSerializerSettings
+                        {
+                            DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                            DateTimeZoneHandling = DateTimeZoneHandling.RoundtripKind,
+                            Formatting = Formatting.Indented,
+                            Converters = [new StringEnumConverter()]
+                        })
         });
     }
 }
