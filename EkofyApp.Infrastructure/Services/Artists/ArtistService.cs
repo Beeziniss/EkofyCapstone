@@ -126,6 +126,16 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 updates.Add(Builders<Artist>.Update.Set(a => a.BannerImage, updateArtistRequest.BannerImage));
             }
 
+            if (updateArtistRequest.Gender != null)
+            {
+                updatesUser.Add(Builders<User>.Update.Set(a => a.Gender, updateArtistRequest.Gender));
+            }
+
+            if (updateArtistRequest.BirthDate != null)
+            {
+                updatesUser.Add(Builders<User>.Update.Set(a => a.BirthDate, updateArtistRequest.BirthDate));
+            }
+
             // Track which fields are being updated for Stripe
             bool isEmailUpdated = false;
             bool isFullNameUpdated = false;

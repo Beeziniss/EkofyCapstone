@@ -6,5 +6,5 @@ public interface IWorkService
 {
     Task CreateWorkAsync(CreateWorkRequest createWorkRequest, string trackId, CancellationToken cancellationToken = default);
     WorkTempRequest CreateWorkTemp(CreateWorkRequest createWorkRequest);
-    IQueryable<Work> GetWorksQueryable();
+    IQueryable<Work> GetWorks();
 }

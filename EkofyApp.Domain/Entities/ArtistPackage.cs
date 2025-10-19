@@ -19,5 +19,7 @@ namespace EkofyApp.Domain.Entities
         public ArtistPackageStatus Status { get; set; }
 
         public long Version { get; set; }
+
+        public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
     }
 }

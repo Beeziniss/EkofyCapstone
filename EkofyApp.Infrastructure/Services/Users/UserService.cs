@@ -331,4 +331,71 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             }
         });
     }
+
+    public async Task DeleteUserManualAsync(string userId)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            User user = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == userId)
+                .Project<User>(Builders<User>.Projection
+                    .Include(x => x.Role))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found");
+
+            DeleteResult result = await _unitOfWork.GetCollection<User>()
+                .DeleteOneAsync(session, u => u.Id == userId && u.Role != UserRole.Admin && u.Id != currentUserId);
+            if (result.DeletedCount == 0)
+            {
+                throw new NotFoundCustomException("User not found or you cannot delete yourself.");
+            }
+
+            if(user.Role == UserRole.Artist)
+            {
+                DeleteResult artistProfileResult = await _unitOfWork.GetCollection<Artist>()
+                    .DeleteOneAsync(session, a => a.UserId == userId);
+                if (artistProfileResult.DeletedCount == 0)
+                {
+                    throw new NotFoundCustomException("Cannot delete artist profile.");
+                }
+            }
+            else if(user.Role == UserRole.Listener)
+            {
+                DeleteResult listenerProfileResult = await _unitOfWork.GetCollection<Listener>()
+                    .DeleteOneAsync(session, l => l.UserId == userId);
+                if (listenerProfileResult.DeletedCount == 0)
+                {
+                    throw new NotFoundCustomException("Cannot delete listener profile.");
+                }
+            }
+
+            DeleteResult userSubscriptionResult = await _unitOfWork.GetCollection<UserSubscription>()
+                .DeleteManyAsync(session, us => us.UserId == userId);
+            if (userSubscriptionResult.DeletedCount == 0)
+            {
+                throw new NotFoundCustomException("Cannot delete user subscription.");
+            }
+
+            DeleteResult effectiveEntitlementUserResult = await _unitOfWork.GetCollection<EffectiveEntitlement>()
+                .DeleteManyAsync(session, ee => ee.UserId == userId);
+            if (effectiveEntitlementUserResult.DeletedCount == 0)
+            {
+                throw new NotFoundCustomException("Cannot delete effective entitlement.");
+            }
+
+            DeleteResult playlistResult = await _unitOfWork.GetCollection<Playlist>()
+                .DeleteManyAsync(session, p => p.UserId == userId);
+            //if (playlistResult.DeletedCount == 0)
+            //{
+            //    throw new NotFoundCustomException("Cannot delete playlist.");
+            //}
+
+            DeleteResult followResult = await _unitOfWork.GetCollection<Follows>()
+                .DeleteManyAsync(session, f => f.FollowerId == userId || f.FollowedId == userId);
+            //if (followResult.DeletedCount == 0)
+            //{
+            //    throw new NotFoundCustomException("Cannot delete follows.");
+            //}
+        });
+    }
 }

@@ -34,9 +34,9 @@ public sealed class PlaylistMutation(IPlaylistService playlistService)
         return true;
     }
 
-    public async Task<bool> RemoveFromPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest)
+    public async Task<bool> RemoveFromPlaylistAsync(RemoveFromPlaylistRequest removeFromPlaylistRequest)
     {
-        await _playlistService.RemoveFromPlaylistAsync(addToPlaylistRequest);
+        await _playlistService.RemoveFromPlaylistAsync(removeFromPlaylistRequest);
         return true;
     }
 

@@ -36,5 +36,13 @@ public sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArtis
             .Matches(HelperMethod.RegexPatternAlphaWithSpace()).WithMessage("FullName contains invalid characters.")
             .MaximumLength(200).WithMessage("FullName must not exceed 200 characters.")
             .When(x => !string.IsNullOrEmpty(x.FullName));
+
+        RuleFor(x => x.Gender)
+            .IsInEnum().When(x => x.Gender != null).WithMessage("Gender must be valid value");
+
+        RuleFor(x => x.BirthDate)
+            .NotEmpty().WithMessage("Date of Birth is required")
+            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 18).WithMessage("Date of Birth must be at least 14 years old")
+            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
     }
 }
