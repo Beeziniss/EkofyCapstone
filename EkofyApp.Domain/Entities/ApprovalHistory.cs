@@ -16,9 +16,9 @@ public sealed class ApprovalHistory
     public ApprovalType ApprovalType { get; set; } // e.g. "Artist", "Track", "Album"
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string ApprovedByUserId { get; set; } = null!;
+    public string ActionByUserId { get; set; } = null!;
 
-    public DateTimeOffset ApprovedAt { get; set; }
+    public DateTimeOffset ActionAt { get; set; }
     public HistoryActionType Action { get; set; } // "Approve", "Reject", "RequestChange", etc.
     public string? Notes { get; set; }
 
