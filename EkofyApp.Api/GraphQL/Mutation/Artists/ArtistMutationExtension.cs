@@ -6,7 +6,7 @@ public class ArtistMutationExtension : ObjectTypeExtension<ArtistMutation>
 {
     protected override void Configure(IObjectTypeDescriptor<ArtistMutation> descriptor)
     {
-        descriptor.Field(f => f.UpdateProfileAsync(default!))
+        descriptor.Field(f => f.UpdateArtistProfileAsync(default!))
             .Authorize(HelperRoleBase.ArtistRolesArray);
 
         descriptor.Field(x => x.ApproveArtistRegistrationAsync(default!))

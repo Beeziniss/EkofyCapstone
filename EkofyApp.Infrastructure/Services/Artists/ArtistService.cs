@@ -1,5 +1,7 @@
-﻿using EkofyApp.Application.Models.Artists;
+﻿using EkofyApp.Application.Models.ApprovalHistories;
+using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
@@ -12,18 +14,21 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using Newtonsoft.Json;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.Artists;
 
-public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService) : IArtistService
+public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IApprovalHistoryService approvalHistoryService) : IArtistService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
     private readonly IEffectiveEntitlementService _effectiveEntitlementService = effectiveEntitlementService;
+    private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
 
     public IQueryable<Artist> GetArtistsQueryable()
     {
@@ -305,17 +310,21 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             // Remove from Redis after successful creation
             await _redisCacheService.RemoveAsync(redisKey);
 
+            // Ẩn passwordHash trước khi lưu snapshot
+            pendingRegistration = pendingRegistration with { PasswordHash = string.Empty };
+
             // Lưu snapshot
-            await _unitOfWork.GetCollection<ApprovalHistory>().InsertOneAsync(session, new ApprovalHistory
+            ApprovalHistoryRequest approvalHistoryRequest = new()
             {
                 TargetId = user.Id,
                 ApprovalType = ApprovalType.ArtistRegistration,
-                ApprovedByUserId = currentUserId,
-                ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                ActionByUserId = currentUserId,
+                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
                 Action = HistoryActionType.Approved,
-                Notes = null, // Dùng trường Notes để lưu lý do từ chối nếu có
-                Snapshot = pendingRegistration
-            });
+                Notes = approvalRequest.RejectionReason,
+                Snapshot = pendingRegistration,
+            };
+            await _approvalHistoryService.CreateApprovalHistoryAsync(approvalHistoryRequest);
 
             // Send approval email to user
             BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, user.Email, user.FullName, user.Email));
@@ -341,17 +350,22 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // Simply remove from Redis - rejection means no database record is created
         await _redisCacheService.RemoveAsync(redisKey);
 
+        // Ẩn passwordHash trước khi lưu snapshot
+        pendingRegistration = pendingRegistration with { PasswordHash = string.Empty };
+
         // Lưu snapshot
-        await _unitOfWork.GetCollection<ApprovalHistory>().InsertOneAsync(new ApprovalHistory
+        ApprovalHistoryRequest approvalHistoryRequest = new()
         {
-            TargetId = approvalRequest.UserId,
+            TargetId = pendingRegistration.UserId,
             ApprovalType = ApprovalType.ArtistRegistration,
-            ApprovedByUserId = currentUserId,
-            ApprovedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+            ActionByUserId = currentUserId,
+            ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
             Action = HistoryActionType.Rejected,
-            Notes = approvalRequest.RejectionReason,
-            Snapshot = pendingRegistration
-        });
+            Notes = approvalRequest.RejectionReason, // Dùng trường Notes để lưu lý do từ chối nếu có
+            Snapshot = pendingRegistration,
+        };
+
+        await _approvalHistoryService.CreateApprovalHistoryAsync(approvalHistoryRequest);
 
         // Send rejection email to user
         BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterReject, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email, approvalRequest.RejectionReason ?? string.Empty));

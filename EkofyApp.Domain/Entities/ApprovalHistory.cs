@@ -16,13 +16,12 @@ public sealed class ApprovalHistory
     public ApprovalType ApprovalType { get; set; } // e.g. "Artist", "Track", "Album"
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string ApprovedByUserId { get; set; } = null!;
+    public string ActionByUserId { get; set; } = null!;
 
-    public DateTimeOffset ApprovedAt { get; set; }
+    public DateTimeOffset ActionAt { get; set; }
     public HistoryActionType Action { get; set; } // "Approve", "Reject", "RequestChange", etc.
     public string? Notes { get; set; }
 
     // Lưu lại bản đăng ký/bản ghi trước khi duyệt (JSON hoặc object)
-    [BsonRepresentation(BsonType.Document)]
-    public object Snapshot { get; set; } = null!;
+    public string Snapshot { get; set; } = null!;
 }
