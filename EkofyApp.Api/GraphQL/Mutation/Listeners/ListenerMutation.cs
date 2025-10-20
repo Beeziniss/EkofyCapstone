@@ -9,7 +9,7 @@ public sealed class ListenerMutation(IListenerService listenerService)
 {
     private readonly IListenerService _listenerService = listenerService;
 
-    public async Task<bool> UpdateProfileAsync(UpdateListenerRequest updateListenerRequest)
+    public async Task<bool> UpdateListenerProfileAsync(UpdateListenerRequest updateListenerRequest)
     {
         await _listenerService.UpdateProfileAsync(updateListenerRequest);
         return true;
