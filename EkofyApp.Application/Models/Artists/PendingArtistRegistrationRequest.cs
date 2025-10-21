@@ -20,6 +20,9 @@ public sealed record class PendingArtistRegistrationRequest
     public ArtistType ArtistType { get; init; }
     public string? AvatarImage { get; init; }
     public List<ArtistMember> Members { get; init; } = [];
+
+    public List<LegalDocument> LegalDocuments { get; set; } = []; // List of legal documents associated with the artist, e.g., contracts, agreements, etc.
+
     public IdentityCard IdentityCard { get; init; } = null!;
     
     public DateTimeOffset RequestedAt { get; init; }

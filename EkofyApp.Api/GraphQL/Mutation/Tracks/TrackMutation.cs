@@ -80,7 +80,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             }
 
             // Duyệt tự động
-            await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            //await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
+            await AssignApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
             return true;
         }
@@ -151,6 +153,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                 IsExplicit = trackTempRequest.IsExplicit,
                 Lyrics = trackTempRequest.Lyrics,
                 ReleaseInfo = trackTempRequest.ReleaseInfo,
+                LegalDocuments = trackTempRequest.LegalDocuments,
                 //AudioFingerprint = audioFingerprint,
                 AudioFeature = audioAnalysisResponse,
                 AlternativeDescription = alternativeDescription,
