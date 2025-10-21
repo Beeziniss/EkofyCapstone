@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Works;
+﻿using EkofyApp.Application.Models.Uploads;
+using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
@@ -27,14 +28,14 @@ public sealed class WorkQuery(IWorkService workService, IRedisCacheService redis
 
     [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseProjection]
-    public async Task<WorkTempRequest> GetMetadataWorkUploadRequestAsync(string workId)
+    public async Task<WorkTempRequest> GetMetadataWorkUploadRequestAsync(string uploadId)
     {
-        ICacheResult<WorkTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<WorkTempRequest>($"work:{workId}:requestUpload");
+        ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
         if (!cacheResult.Success)
         {
-            throw new NotFoundCustomException("WorkProjection upload request not found or expired.");
+            throw new NotFoundCustomException("Upload request not found or expired.");
         }
 
-        return cacheResult.Value!;
+        return cacheResult.Value!.Work;
     }
 }

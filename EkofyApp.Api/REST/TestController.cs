@@ -5,6 +5,7 @@ using AutoMapper;
 using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.AudioFeatures;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
@@ -64,8 +65,9 @@ public class TestController : ControllerBase
 
         //await unitOfWork.GetCollection<Track>().InsertOneAsync(track);
 
+        // TODO: Cập nhật để sử dụng CombinedUploadRequest thay vì Track trực tiếp
         // Lưu request vào redis
-        await redisCacheService.SetGenericAsync($"track:{trackId}:requestUpload", track, TimeSpan.FromDays(3));
+        // await redisCacheService.SetGenericAsync($"upload:{trackId}:requestUpload", combinedRequest, TimeSpan.FromDays(3));
 
         // Upload file lên S3
         await amazonS3Service.UploadOriginalAudioAsync(stream, trackId);

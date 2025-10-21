@@ -2,6 +2,7 @@ using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -477,7 +478,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         try
         {
             IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
-            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "track:*:requestUpload").ToArray();
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "upload:*:requestUpload").ToArray();
 
             List<TrackTempRequest> allRequests = [];
 
@@ -489,16 +490,16 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
 
                     if (value.HasValue)
                     {
-                        TrackTempRequest? request = JsonSerializer.Deserialize<TrackTempRequest>(value!, _jsonOptions);
+                        CombinedUploadRequest? request = JsonSerializer.Deserialize<CombinedUploadRequest>(value!, _jsonOptions);
                         if (request != null)
                         {
-                            allRequests.Add(request);
+                            allRequests.Add(request.Track);
                         }
                     }
                 }
                 catch (Exception innerEx)
                 {
-                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize track upload request. Key: {key}");
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize combined upload request. Key: {key}");
                 }
             }
 
@@ -658,6 +659,52 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "[Redis] Failed to get pending artist packages.");
             return PaginatedCacheResult<PendingArtistPackageResponse>.Fail();
+        }
+    }
+
+    public async Task<ICacheResult<PaginatedData<CombinedUploadRequest>>> GetPendingCombinedUploadsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "upload:*:requestUpload").ToArray();
+
+            List<CombinedUploadRequest> allRequests = [];
+
+            foreach (RedisKey key in keys)
+            {
+                try
+                {
+                    RedisValue value = await _redisDb.StringGetAsync(key);
+
+                    if (value.HasValue)
+                    {
+                        CombinedUploadRequest? request = JsonSerializer.Deserialize<CombinedUploadRequest>(value!, _jsonOptions);
+                        if (request != null)
+                        {
+                            allRequests.Add(request);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize combined upload request. Key: {key}");
+                }
+            }
+
+            int totalCount = allRequests.Count;
+
+            IEnumerable<CombinedUploadRequest> paged = allRequests.OrderBy(r => r.RequestedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return PaginatedCacheResult<CombinedUploadRequest>.From(paged, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Redis] Failed to get pending combined uploads.");
+            return PaginatedCacheResult<CombinedUploadRequest>.Fail();
         }
     }
 }

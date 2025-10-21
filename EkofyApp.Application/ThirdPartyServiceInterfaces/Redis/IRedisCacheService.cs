@@ -2,6 +2,7 @@ using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using StackExchange.Redis;
 
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
@@ -27,6 +28,7 @@ public interface IRedisCacheService
     [Obsolete("Chưa kiểm tra và hàm này chưa đúng mục đích.")]
     Task<bool> SetHashManyAsync(string key, Dictionary<string, string?> fields, TimeSpan? expiry = null);
     Task<ICacheResult<PaginatedData<TrackTempRequest>>> GetPendingTrackUploadsAsync(int pageNumber = 1, int pageSize = 20);
+    Task<ICacheResult<PaginatedData<CombinedUploadRequest>>> GetPendingCombinedUploadsAsync(int pageNumber = 1, int pageSize = 20);
     Task<ICacheResult<PaginatedData<PendingArtistRegistrationRequest>>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task<ICacheResult<PaginatedData<PendingListenerRegistrationResponse>>> GetPendingListenerRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task<ICacheResult<PaginatedData<PendingArtistPackageResponse>>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);

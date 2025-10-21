@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;

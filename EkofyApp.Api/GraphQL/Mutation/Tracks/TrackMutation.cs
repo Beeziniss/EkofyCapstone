@@ -2,6 +2,7 @@
 using EkofyApp.Application.Models.AudioFingerprints;
 using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
@@ -244,10 +245,19 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         WorkTempRequest workTemp = _workService.CreateWorkTemp(createWorkRequest);
         RecordingTempRequest recordingTemp = _recordingService.CreateRecordingTemp(createRecordingRequest);
 
-        // Đẩy request lên redis để chờ duyệt
-        await _redisCacheService.SetGenericAsync($"track:{trackTemp.Id}:requestUpload", trackTemp, TimeSpan.FromDays(3));
-        await _redisCacheService.SetGenericAsync($"work:{workTemp.Id}:requestUpload", workTemp, TimeSpan.FromDays(3));
-        await _redisCacheService.SetGenericAsync($"recording:{recordingTemp.Id}:requestUpload", recordingTemp, TimeSpan.FromDays(3));
+        // Tạo combined upload request
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        CombinedUploadRequest combinedRequest = new()
+        {
+            Id = trackTemp.Id, // Sử dụng trackId làm ID chính
+            Track = trackTemp,
+            Work = workTemp,
+            Recording = recordingTemp,
+            CreatedBy = currentUserId
+        };
+
+        // Đẩy combined request lên redis để chờ duyệt (sử dụng 1 key thay vì 3 keys)
+        await _redisCacheService.SetGenericAsync($"upload:{trackTemp.Id}:requestUpload", combinedRequest, TimeSpan.FromDays(3));
 
         // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
         await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTemp.Id);
@@ -277,34 +287,26 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     //    return (result.BestConfidence, result.TrackId, result.TrackName);
     //}
 
-    public async Task<bool> RejectTrackUploadRequestAsync(string trackId, string workId, string recordingId, string reasonReject)
+    public async Task<bool> RejectTrackUploadRequestAsync(string uploadId, string reasonReject)
     {
-        if (_redisCacheService.TryGetGeneric($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest) &&
-            _redisCacheService.TryGetGeneric($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
-            _redisCacheService.TryGetGeneric($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
+        if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
         {
             string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            if (trackTempRequest is null)
+            if (combinedRequest is null)
             {
-                throw new NotFoundCustomException("Track upload request not found");
+                throw new NotFoundCustomException("Upload request not found");
             }
-            if (workTempRequest is null)
-            {
-                throw new NotFoundCustomException("WorkProjection upload request not found");
-            }
-            if (recordingTempRequest is null)
-            {
-                throw new NotFoundCustomException("RecordingProjection upload request not found");
-            }
+
+            var trackTempRequest = combinedRequest.Track;
+            var workTempRequest = combinedRequest.Work;
+            var recordingTempRequest = combinedRequest.Recording;
 
             // Xóa file đã upload trên cloud storage
             await _amazonS3Service.DeleteOriginalAudioAsync(trackTempRequest.Id);
 
-            // Xóa request trên redis
-            await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
-            await _redisCacheService.RemoveAsync($"work:{workId}:requestUpload");
-            await _redisCacheService.RemoveAsync($"recording:{recordingId}:requestUpload");
+            // Xóa request trên redis (chỉ cần xóa 1 key)
+            await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
 
             // Lưu snapshot
             // Track
@@ -351,29 +353,23 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     }
 
     // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
-    public async Task<bool> ApproveTrackUploadRequestAsync(string trackId, string workId, string recordingId)
+    public async Task<bool> ApproveTrackUploadRequestAsync(string uploadId)
     {
         // Lưu xuống database
-        if (_redisCacheService.TryGetGeneric($"track:{trackId}:requestUpload", out TrackTempRequest? trackTempRequest) &&
-            _redisCacheService.TryGetGeneric($"work:{workId}:requestUpload", out WorkTempRequest? workTempRequest) &&
-            _redisCacheService.TryGetGeneric($"recording:{recordingId}:requestUpload", out RecordingTempRequest? recordingTempRequest))
+        if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
         {
             string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             WavFileResponse wavFileResponse = default!;
 
-            if (trackTempRequest is null)
+            if (combinedRequest is null)
             {
-                throw new NotFoundCustomException("Track upload request not found");
+                throw new NotFoundCustomException("Upload request not found");
             }
-            if (workTempRequest is null)
-            {
-                throw new NotFoundCustomException("WorkProjection upload request not found");
-            }
-            if (recordingTempRequest is null)
-            {
-                throw new NotFoundCustomException("RecordingProjection upload request not found");
-            }
+
+            var trackTempRequest = combinedRequest.Track;
+            var workTempRequest = combinedRequest.Work;
+            var recordingTempRequest = combinedRequest.Recording;
 
             // Tài nguyên từ S3
             await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
@@ -452,9 +448,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
             // Resolved: Đã xóa tag trên S3 và xóa request trên redis
             await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
-            await _redisCacheService.RemoveAsync($"track:{trackId}:requestUpload");
-            await _redisCacheService.RemoveAsync($"work:{workId}:requestUpload");
-            await _redisCacheService.RemoveAsync($"recording:{recordingId}:requestUpload");
+            await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
 
             // Lưu snapshot
             // Track

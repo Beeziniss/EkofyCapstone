@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.Models.Recordings;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
@@ -27,14 +28,14 @@ public sealed class RecordingQuery(IRecordingService recordingService, IRedisCac
 
     [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseProjection]
-    public async Task<RecordingTempRequest> GetMetadataRecordingUploadRequestAsync(string recordingId)
+    public async Task<RecordingTempRequest> GetMetadataRecordingUploadRequestAsync(string uploadId)
     {
-        ICacheResult<RecordingTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<RecordingTempRequest>($"recording:{recordingId}:requestUpload");
+        ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
         if (!cacheResult.Success)
         {
-            throw new NotFoundCustomException("RecordingProjection upload request not found or expired.");
+            throw new NotFoundCustomException("Upload request not found or expired.");
         }
 
-        return cacheResult.Value!;
+        return cacheResult.Value!.Recording;
     }
 }
