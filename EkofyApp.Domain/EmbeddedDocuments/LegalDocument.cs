@@ -2,7 +2,7 @@
 using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Domain.EmbeddedDocuments;
-public sealed class LegalDocument : TimeStamped
+public sealed class LegalDocument
 {
     public string Name { get; set; } = null!; // Title of the document, e.g., "Artist Agreement"
     public string DocumentUrl { get; set; } = null!; // URL to the document, e.g., "https://example.com/document.pdf"
