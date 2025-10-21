@@ -14,7 +14,7 @@ namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
         Task DeleteArtistPackageAsync(string id);
 
         // New methods for Redis functionality
-        Task<ICacheResult<PaginatedData<PendingArtistPackageResponse>>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
+        Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
         Task RejectArtistPackageAsync(string id);
     }
 }

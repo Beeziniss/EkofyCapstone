@@ -149,7 +149,7 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
 
     public async Task DeleteMessage(string messageId, string userId)
     {
-        UpdateResult result = await _unitOfWork.GetCollection<Message>().UpdateOneAsync(Builders<Message>.Filter.Eq(m => m.Id, messageId), Builders<Message>.Update.AddToSet(m => m.DeletedFor, userId));
+        UpdateResult result = await _unitOfWork.GetCollection<Message>().UpdateOneAsync(Builders<Message>.Filter.Eq(m => m.Id, messageId), Builders<Message>.Update.AddToSet(m => m.DeletedForIds, userId));
 
         if (result.ModifiedCount == 0)
         {

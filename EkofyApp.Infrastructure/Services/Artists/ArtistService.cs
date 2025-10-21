@@ -216,39 +216,50 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         });
     }
 
-    public async Task<IEnumerable<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
-        var result = await _redisCacheService.GetPendingArtistRegistrationsAsync(pageNumber, pageSize);
+        ICacheResult<PaginatedData<PendingArtistRegistrationRequest>> result = await _redisCacheService.GetPendingArtistRegistrationsAsync(pageNumber, pageSize);
+
+        PaginatedData<PendingArtistRegistrationResponse> paginatedData;
 
         if (!result.Success || result.Value == null)
         {
-            return [];
+            return new()
+            {
+                Items = Enumerable.Empty<PendingArtistRegistrationResponse>(),
+                TotalCount = 0
+            };
         }
 
-        return result.Value.Items.Select(pending => new PendingArtistRegistrationResponse
+        paginatedData = new()
         {
-            Id = pending.UserId,
-            Email = pending.Email,
-            FullName = pending.FullName,
-            StageName = pending.StageName,
-            StageNameUnsigned = pending.StageNameUnsigned,
-            ArtistType = pending.ArtistType,
-            Gender = pending.Gender,
-            BirthDate = pending.BirthDate,
-            PhoneNumber = pending.PhoneNumber,
-            AvatarImage = pending.AvatarImage,
-            Members = pending.Members,
-            RequestedAt = pending.RequestedAt,
-            TimeToLive = result.TimeToLive,
-            IdentityCardNumber = pending.IdentityCard.Number,
-            IdentityCardFullName = pending.IdentityCard.FullName,
-            IdentityCardDateOfBirth = pending.IdentityCard.DateOfBirth,
-            PlaceOfOrigin = pending.IdentityCard.PlaceOfOrigin,
-            PlaceOfResidence = pending.IdentityCard.PlaceOfResidence.AddressLine ?? string.Empty,
-            FrontImageUrl = pending.IdentityCard.FrontImage,
-            BackImageUrl = pending.IdentityCard.BackImage,
+            Items = result.Value.Items.Select(pending => new PendingArtistRegistrationResponse
+            {
+                Id = pending.UserId,
+                Email = pending.Email,
+                FullName = pending.FullName,
+                StageName = pending.StageName,
+                StageNameUnsigned = pending.StageNameUnsigned,
+                ArtistType = pending.ArtistType,
+                Gender = pending.Gender,
+                BirthDate = pending.BirthDate,
+                PhoneNumber = pending.PhoneNumber,
+                AvatarImage = pending.AvatarImage,
+                Members = pending.Members,
+                RequestedAt = pending.RequestedAt,
+                TimeToLive = result.TimeToLive,
+                IdentityCardNumber = pending.IdentityCard.Number,
+                IdentityCardFullName = pending.IdentityCard.FullName,
+                IdentityCardDateOfBirth = pending.IdentityCard.DateOfBirth,
+                PlaceOfOrigin = pending.IdentityCard.PlaceOfOrigin,
+                PlaceOfResidence = pending.IdentityCard.PlaceOfResidence.AddressLine ?? string.Empty,
+                FrontImageUrl = pending.IdentityCard.FrontImage,
+                BackImageUrl = pending.IdentityCard.BackImage,
+            }),
             TotalCount = result.Value.TotalCount
-        });
+        };
+        
+        return paginatedData;
     }
 
     public async Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)

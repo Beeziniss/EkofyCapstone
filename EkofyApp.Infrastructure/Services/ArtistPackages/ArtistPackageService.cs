@@ -200,9 +200,40 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
             await _redisCacheService.RemoveAsync(redisKey);
         }
 
-        public async Task<ICacheResult<PaginatedData<PendingArtistPackageResponse>>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
+        public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
         {
-            return await _redisCacheService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
+            ICacheResult<PaginatedData<PendingArtistPackageResponse>> result = await _redisCacheService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
+
+            PaginatedData<PendingArtistPackageResponse> paginatedData;
+
+            if (!result.Success || result.Value == null)
+            {
+                return paginatedData = new()
+                {
+                    Items = Enumerable.Empty<PendingArtistPackageResponse>(),
+                    TotalCount = 0
+                };
+            }
+
+            paginatedData = new()
+            {
+                Items = result.Value.Items.Select(pending => new PendingArtistPackageResponse
+                {
+                    Id = pending.Id,
+                    ArtistId = pending.ArtistId,
+                    PackageName = pending.PackageName,
+                    Amount = pending.Amount,
+                    Currency = pending.Currency,
+                    EstimateDeliveryDays = pending.EstimateDeliveryDays,
+                    Description = pending.Description,
+                    ServiceDetails = pending.ServiceDetails,
+                    Status = pending.Status,
+                    RequestedAt = pending.RequestedAt,
+                }),
+                TotalCount = result.Value.TotalCount
+            };
+
+            return paginatedData;
         }
     }
 }

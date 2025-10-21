@@ -181,6 +181,30 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return track;
     }
 
+    public async Task<PaginatedData<TrackTempRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        ICacheResult<PaginatedData<TrackTempRequest>> result = await _redisCacheService.GetPendingTrackUploadsAsync(pageNumber, pageSize);
+
+        PaginatedData<TrackTempRequest> paginatedData;
+
+        if (!result.Success || result.Value == null)
+        {
+            return new PaginatedData<TrackTempRequest>
+            {
+                Items = [],
+                TotalCount = 0
+            };
+        }
+
+        paginatedData = new()
+        {
+            Items = result.Value.Items,
+            TotalCount = result.Value.TotalCount
+        };
+
+        return paginatedData;
+    }
+
     public async Task UpdateStreamCount(string trackId)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");

@@ -26,16 +26,9 @@ public class ArtistPackageQuery(IArtistPackageService artistPackageService)
     }
 
     [AuthorizeRoles(HelperRoleBase.ArtistModeratorRoles)]
-    [UseProjection]
     [UseFiltering]
-    public async Task<IEnumerable<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
     {
-        ICacheResult<PaginatedData<PendingArtistPackageResponse>> result = await _artistPackageService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
-        if (result.Success && result.Value != null)
-        {
-            return result.Value.Items;
-        }
-
-        return [];
+        return await _artistPackageService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
     }
 }

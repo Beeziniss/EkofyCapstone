@@ -22,7 +22,7 @@ public sealed class Message
     public bool IsRead { get; set; } = false;
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public List<string> DeletedFor { get; set; } = [];
+    public List<string> DeletedForIds { get; set; } = [];
 
     public DateTimeOffset SentAt { get; set; }
 

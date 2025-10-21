@@ -42,20 +42,13 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
         return _trackService.SearchTracks(name);
     }
 
-    // TODO: Sorting for requests?
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     //[UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    public async Task<IEnumerable<TrackTempRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<TrackTempRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
     {
-        ICacheResult<PaginatedData<TrackTempRequest>> requests = await _redisCacheService.GetPendingTrackUploadsAsync(pageNumber, pageSize);
-        if (requests.Success && requests.Value != null)
-        {
-            return requests.Value.Items;
-        }
-
-        return [];
+        return await _trackService.GetPendingTrackUploadRequestsAsync(pageNumber, pageSize);
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]

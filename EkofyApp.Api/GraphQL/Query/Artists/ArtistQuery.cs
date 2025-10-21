@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.Artists;
 using EkofyApp.Application.ServiceInterfaces.Artists;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
@@ -36,7 +37,7 @@ public sealed class ArtistQuery(IArtistService artistService)
 
     [AuthorizeRoles(HelperRoleBase.ModeratorRoles)]
     [UseFiltering]
-    public async Task<IEnumerable<PendingArtistRegistrationResponse>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<PendingArtistRegistrationResponse>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         return await _artistService.GetPendingRegistrationsAsync(pageNumber, pageSize);
     }
