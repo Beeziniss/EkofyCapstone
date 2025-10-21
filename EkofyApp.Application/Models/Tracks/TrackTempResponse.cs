@@ -22,6 +22,8 @@ public sealed record TrackTempResponse
 
     public ReleaseInfo ReleaseInfo { get; init; } = null!;
 
+    public List<LegalDocument> LegalDocuments { get; set; } = [];
+
     public string CreatedBy { get; init; } = null!;
     #endregion
 

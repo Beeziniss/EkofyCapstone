@@ -23,6 +23,8 @@ public sealed record class TrackTempRequest
 
     public ReleaseInfo ReleaseInfo { get; init; } = null!;
 
+    public List<LegalDocument> LegalDocuments { get; set; } = [];
+
     public string CreatedBy { get; init; } = null!;
 
     public DateTimeOffset RequestedAt { get; init; } = HelperMethod.GetUtcPlus7TimeOffset();

@@ -109,6 +109,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                     Type = RestrictionType.None,
                 },
 
+                LegalDocuments = trackResponse.LegalDocuments,
+
                 CreatedBy = trackResponse.CreatedBy,
             };
 
@@ -170,6 +172,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 ReleaseDate = createTrackRequest.ReleaseDate,
                 ReleaseStatus = createTrackRequest.ReleaseStatus,
             },
+
+            LegalDocuments = createTrackRequest.LegalDocuments,
 
             CreatedBy = artistId,
         };

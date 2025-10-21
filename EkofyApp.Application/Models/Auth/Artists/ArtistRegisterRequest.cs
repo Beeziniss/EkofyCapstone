@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Enums.Artist;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.Users;
 
 namespace EkofyApp.Application.Models.Auth.Artists;
@@ -21,6 +22,8 @@ public sealed record class ArtistRegisterRequest
     public ArtistType ArtistType { get; init; } // Type of artist, e.g., Individual, Band, etc.
     public string? AvatarImage { get; init; } // Optional avatar image URL for the artist
     public List<CreateArtistMemberRequest> Members { get; init; } = []; // List of members in the artist group, if applicable
+
+    public List<LegalDocument> LegalDocuments { get; set; } = []; // List of legal documents associated with the artist, e.g., contracts, agreements, etc.
 
     public CreateIdentityCardRequest IdentityCard { get; init; } = null!; // Identity card details for the artist
 }
