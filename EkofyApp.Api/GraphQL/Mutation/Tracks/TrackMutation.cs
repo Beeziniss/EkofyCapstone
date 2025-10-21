@@ -52,7 +52,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         }
 
         // Sử dụng memory stream cho fingerprint
-        using var fingerprintStream = new MemoryStream(fileBytes);
+        using MemoryStream fingerprintStream = new(fileBytes);
         StreamPart streamPart = new(fingerprintStream, file.Name, file.ContentType);
 
         if (createTrackRequest.IsOriginal)
@@ -82,7 +82,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                             // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
                             // Tạo stream mới để dùng cho duyệt thủ công
-                            using var manualStream = new MemoryStream(fileBytes);
+                            using MemoryStream manualStream = new(fileBytes);
                             await AssignApproveManuallyAsync(manualStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
                             return true;
