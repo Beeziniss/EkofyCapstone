@@ -40,9 +40,9 @@ public sealed class UserMutation(IUserService userService)
         return true;
     }
 
-    public async Task<bool> ReActiveUserAsync(string targetUserId)
+    public async Task<bool> UnbanUserAsync(string targetUserId)
     {
-        await _userService.ReActiveUserAsync(targetUserId);
+        await _userService.UnbanUserAsync(targetUserId);
         return true;
     }
 

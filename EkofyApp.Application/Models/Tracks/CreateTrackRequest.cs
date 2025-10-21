@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Application.Models.Tracks;
 
@@ -22,6 +23,8 @@ public sealed record class CreateTrackRequest
     public bool IsReleased { get; init; }
     public DateTimeOffset? ReleaseDate { get; init; }
     public ReleaseStatus ReleaseStatus { get; init; }
+
+    public List<LegalDocument> LegalDocuments { get; set; } = [];
 
     public bool IsOriginal { get; init; }
 }

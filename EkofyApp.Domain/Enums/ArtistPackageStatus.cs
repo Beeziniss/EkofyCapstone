@@ -11,8 +11,6 @@ namespace EkofyApp.Domain.Enums
         [EnumMember(Value = "Pending")]
         Pending,
         [EnumMember(Value = "Rejected")]
-        Rejected,
-        [EnumMember(Value = "Canceled")]
-        Canceled
+        Rejected
     }
 }

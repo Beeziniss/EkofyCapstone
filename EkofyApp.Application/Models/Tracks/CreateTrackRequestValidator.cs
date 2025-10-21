@@ -1,7 +1,9 @@
-﻿using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Application.Models.LegalDocs;
+using EkofyApp.Domain.Utils;
 using FluentValidation;
 
 namespace EkofyApp.Application.Models.Tracks;
+
 public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackRequest>
 {
     public CreateTrackRequestValidator()
@@ -50,6 +52,10 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
 
         RuleFor(x => x.ReleaseStatus)
             .IsInEnum().WithMessage("Release status must be a valid enum value.");
+
+        RuleFor(x => x.LegalDocuments)
+            .NotEmpty().WithMessage("At least one legal document is required.")
+            .ForEach(doc => doc.SetValidator(new LegalDocumentValidator()));
 
         RuleFor(x => x.IsOriginal)
             .NotNull().WithMessage("Original content flag is required.");

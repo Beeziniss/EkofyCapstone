@@ -295,6 +295,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 AvatarImage = pendingRegistration.AvatarImage,
                 ArtistType = pendingRegistration.ArtistType,
                 Members = pendingRegistration.Members,
+                LegalDocuments = pendingRegistration.LegalDocuments,
                 IdentityCard = pendingRegistration.IdentityCard,
             };
 

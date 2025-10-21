@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Enums.Artist;
+﻿using EkofyApp.Application.Models.LegalDocs;
+using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Utils;
 using FluentValidation;
 
@@ -59,6 +60,9 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
         RuleFor(x => x.Members)
             .NotEmpty().When(x => x.ArtistType != ArtistType.Individual).WithMessage("Artist Members List cannot be null")
             .ForEach(x => x.SetValidator(new CreateArtistMemberRequestValidator())).When(x => x.ArtistType != ArtistType.Individual).WithMessage("Artist Members are required for non-individual artists.");
+
+        RuleFor(x => x.LegalDocuments)
+            .ForEach(doc => doc.SetValidator(new LegalDocumentValidator())).When(x => x.LegalDocuments.Count > 0).WithMessage("Legal Documents is not valid");
 
 
         RuleFor(x => x.IdentityCard)

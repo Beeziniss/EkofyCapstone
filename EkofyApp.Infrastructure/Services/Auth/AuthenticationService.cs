@@ -291,6 +291,7 @@ public sealed class AuthenticationService(
             ArtistType = registerRequest.ArtistType,
             AvatarImage = registerRequest.AvatarImage,
             Members = artistMembers,
+            LegalDocuments = registerRequest.LegalDocuments,
             IdentityCard = new IdentityCard
             {
                 Number = registerRequest.IdentityCard.Number,
