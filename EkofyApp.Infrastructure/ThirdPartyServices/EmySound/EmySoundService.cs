@@ -17,12 +17,15 @@ public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
         return response;
     }
 
-    public async Task<IEnumerable<QueryAudioFingerprintResponse>> CheckTrackFingerprintAsync(StreamPart streamPart)
+    public async Task<IEnumerable<QueryAudioFingerprintResponse>> CheckTrackFingerprintAsync(byte[] fileBytes, string fileName, string contentType)
     {
         double minConfidence = 0.8;
         double minCoverage = 0.6;
 
-        HttpResponseMessage response = await _emySoundApi.QueryTrackAsync(streamPart, MediaType.Audio.ToString(), minConfidence, minCoverage);
+        using MemoryStream firstStream = new(fileBytes);
+        StreamPart firstStreamPart = new(firstStream, fileName, contentType);
+
+        HttpResponseMessage response = await _emySoundApi.QueryTrackAsync(firstStreamPart, MediaType.Audio.ToString(), minConfidence, minCoverage);
 
         string body = await response.Content.ReadAsStringAsync();
 
@@ -31,8 +34,10 @@ public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
             minConfidence = 0.7;
             minCoverage = 0.4;
 
-            streamPart.Value.Position = 0; // Reset stream position before reusing
-            response = await _emySoundApi.QueryTrackAsync(streamPart, MediaType.Audio.ToString(), minConfidence, minCoverage);
+            using MemoryStream secondStream = new(fileBytes);
+            StreamPart secondStreamPart = new(secondStream, fileName, contentType);
+
+            response = await _emySoundApi.QueryTrackAsync(secondStreamPart, MediaType.Audio.ToString(), minConfidence, minCoverage);
             body = await response.Content.ReadAsStringAsync();
         }
 
