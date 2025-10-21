@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -9,13 +10,10 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.ArtistPackages
 {
-    public class ArtistPackageService : IArtistPackageService
+    public class ArtistPackageService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService) : IArtistPackageService
     {
-        private readonly IUnitOfWork _unitOfWork;
-        public ArtistPackageService(IUnitOfWork unitOfWork)
-        {
-            _unitOfWork = unitOfWork;
-        }
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
         public IQueryable<ArtistPackage> GetArtistPackages()
         {
@@ -24,19 +22,11 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
 
         public async Task CreateArtistPackageAsync(CreateArtistPackageRequest createRequest)
         {
-            //?? tại sao chỗ này lại lấy version cao nhất rồi +1 nhỉ, ko hợp lý lắm
-            //long currentVersion = await _unitOfWork.GetCollection<ArtistPackage>()
-            //     .Find(x => x.PackageName == createRequest.PackageName && x.IsDelete != true )
-            //     .SortByDescending(ap => ap.Version)
-            //     .Project(ap => ap.Version)
-            //     .FirstOrDefaultAsync();
-
-            String newArtistPackageId = ObjectId.GenerateNewId().ToString();
+            string newArtistPackageId = ObjectId.GenerateNewId().ToString();
 
             ArtistPackage newArtistPackage = new ArtistPackage
             {
                 Id = newArtistPackageId,
-                OriginPackageId = newArtistPackageId,
                 ArtistId = createRequest.ArtistId,
                 PackageName = createRequest.PackageName,
                 Amount = createRequest.Amount,
@@ -44,35 +34,60 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
                 Description = createRequest.Description,
                 ServiceDetails = createRequest.ServiceDetails,
                 Status = ArtistPackageStatus.Pending,
-                Version = 1,
             };
 
-            await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(newArtistPackage);
+            // Save to Redis for moderation
+            var pendingPackage = new PendingArtistPackageResponse
+            {
+                Id = newArtistPackage.Id,
+                ArtistId = newArtistPackage.ArtistId,
+                PackageName = newArtistPackage.PackageName,
+                Amount = newArtistPackage.Amount,
+                Currency = newArtistPackage.Currency,
+                EstimateDeliveryDays = newArtistPackage.EstimateDeliveryDays,
+                Description = newArtistPackage.Description,
+                ServiceDetails = newArtistPackage.ServiceDetails,
+                Status = newArtistPackage.Status,
+                RequestedAt = newArtistPackage.CreatedAt
+            };
+
+            string redisKey = $"artistpackage:{newArtistPackageId}:pending";
+            TimeSpan expiry = TimeSpan.FromDays(3); // Cache for 7 days
+
+            await _redisCacheService.SetGenericAsync(redisKey, pendingPackage, expiry);
         }
 
         public async Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
         {
+            List<UpdateDefinition<ArtistPackage>> updates = [];
 
-            long currentVersion = await _unitOfWork.GetCollection<ArtistPackage>()
-             .Find(x => x.Id == updateRequest.Id && !x.IsDelete)
-             .SortByDescending(ap => ap.Version)
-             .Project(ap => ap.Version)
-             .FirstOrDefaultAsync();
-
-            // artist package thực chất không thay đổi mà tạo mới với version mới, tránh conflict với những gói mà người dùng đã mua
-            var artistPackage = new ArtistPackage
+            if (!string.IsNullOrWhiteSpace(updateRequest.PackageName))
             {
-                PackageName = updateRequest.PackageName,
-                Amount = updateRequest.Amount,
-                OriginPackageId = updateRequest.OriginPackageId,
-                EstimateDeliveryDays = updateRequest.EstimateDeliveryDays,
-                Description = updateRequest.Description,
-                ServiceDetails = updateRequest.ServiceDetails,
-                IsDelete = updateRequest.IsDelete,
-                Version = ++currentVersion,
-            };
+                updates.Add(Builders<ArtistPackage>.Update.Set(x => x.PackageName, updateRequest.PackageName));
+            }
 
-            await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(artistPackage);
+            if (!string.IsNullOrWhiteSpace(updateRequest.Description))
+            {
+                updates.Add(Builders<ArtistPackage>.Update.Set(x => x.Description, updateRequest.Description));
+            }
+
+            if (updates.Count == 0)
+            {
+                throw new BadRequestCustomException("No valid fields to update.");
+            }
+
+            UpdateDefinition<ArtistPackage> updateDefinition = Builders<ArtistPackage>.Update.Combine(updates);
+
+            UpdateResult result = await _unitOfWork.GetCollection<ArtistPackage>()
+                .UpdateOneAsync(x => x.Id == updateRequest.Id && !x.IsDelete, updateDefinition);
+            if (result.MatchedCount == 0)
+            {
+                throw new NotFoundCustomException("Artist package not found.");
+            }
+            if (result.ModifiedCount == 0)
+            {
+                throw new UnprocessableEntityCustomException("No changes were made to the artist package.");
+            }
         }
 
         public async Task DeleteArtistPackageAsync(string id)
@@ -91,51 +106,103 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
 
         public async Task ChangeArtistPackageStatusAsync(UpdateStatusArtistPackageRequest updateStatusRequest)
         {
-
             var artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
-                                                   .Find(ap => ap.Id == updateStatusRequest.Id)
+                                                   .Find(ap => ap.Id == updateStatusRequest.Id && !ap.IsDelete)
                                                    .Project<ArtistPackage>(Builders<ArtistPackage>.Projection.Include(ap => ap.Status))
                                                    .FirstOrDefaultAsync();
 
-            if (artistPackage.Status != ArtistPackageStatus.Enabled || artistPackage.Status != ArtistPackageStatus.Disabled)
+            if (artistPackage == null)
             {
-                throw new ForbiddenCustomException("This action can not be execute by artist.");
+                throw new NotFoundCustomException("Artist package not found.");
+            }
+
+            // Only artists can toggle between Enabled/Disabled status
+            if (artistPackage.Status != ArtistPackageStatus.Enabled && artistPackage.Status != ArtistPackageStatus.Disabled)
+            {
+                throw new ForbiddenCustomException("This action can not be executed by artist. Package must be approved first.");
+            }
+
+            // Artists can only toggle between Enabled and Disabled
+            if (updateStatusRequest.Status != ArtistPackageStatus.Enabled && updateStatusRequest.Status != ArtistPackageStatus.Disabled)
+            {
+                throw new ForbiddenCustomException("Artists can only enable or disable their packages.");
             }
 
             UpdateDefinition<ArtistPackage> updateDefinition = Builders<ArtistPackage>.Update.Set(ap => ap.Status, updateStatusRequest.Status);
 
             var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.Id == updateStatusRequest.Id && !ap.IsDelete, updateDefinition);
 
-            if (result.MatchedCount == 0)
-            {
-                throw new NotFoundCustomException("Artist package not found.");
-            }
             if (result.ModifiedCount == 0)
             {
                 throw new BadRequestCustomException("No changes were made to the artist package status.");
             }
         }
 
-        public async Task ApproveArtistPackageAsync(UpdateStatusArtistPackageRequest updateStatusRequest)
+        public async Task ApproveArtistPackageAsync(string id)
         {
-            //Only moderator approve => Pending -> Active or Pending -> Rejected
-            if (updateStatusRequest.Status != ArtistPackageStatus.Enabled || updateStatusRequest.Status != ArtistPackageStatus.Rejected)
+            // Get package info from Redis first
+            string redisKey = $"artistpackage:{id}:pending";
+            ICacheResult<PendingArtistPackageResponse> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistPackageResponse>(redisKey);
+
+            if (!cacheResult.Success || cacheResult.Value == null)
             {
-                throw new ForbiddenCustomException("This action can not be excecute by moderator.");
+                throw new NotFoundCustomException("Pending artist package not found in cache or has expired.");
             }
 
-            UpdateDefinition<ArtistPackage> updateDefinition = Builders<ArtistPackage>.Update.Set(ap => ap.Status, updateStatusRequest.Status);
+            var pendingPackage = cacheResult.Value;
 
-            var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.Id == updateStatusRequest.Id, updateDefinition);
+            if (pendingPackage.Status != ArtistPackageStatus.Pending)
+            {
+                throw new ForbiddenCustomException("Only pending packages can be approved.");
+            }
 
-            if (result.MatchedCount == 0)
+            // Create approved package from pending data and insert into database
+            var approvedPackage = new ArtistPackage
             {
-                throw new NotFoundCustomException("Artist package not found.");
-            }
-            if (result.ModifiedCount == 0)
+                Id = pendingPackage.Id,
+                ArtistId = pendingPackage.ArtistId,
+                PackageName = pendingPackage.PackageName,
+                Amount = pendingPackage.Amount,
+                Currency = pendingPackage.Currency,
+                EstimateDeliveryDays = pendingPackage.EstimateDeliveryDays,
+                Description = pendingPackage.Description,
+                ServiceDetails = pendingPackage.ServiceDetails,
+                Status = ArtistPackageStatus.Enabled,
+                IsDelete = false
+            };
+
+            // Insert new approved package
+            await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(approvedPackage);
+
+            // Remove from Redis cache after approval
+            await _redisCacheService.RemoveAsync(redisKey);
+        }
+
+        public async Task RejectArtistPackageAsync(string id)
+        {
+            // Get package info from Redis first
+            string redisKey = $"artistpackage:{id}:pending";
+            ICacheResult<PendingArtistPackageResponse> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistPackageResponse>(redisKey);
+
+            if (!cacheResult.Success || cacheResult.Value == null)
             {
-                throw new BadRequestCustomException("No changes were made to the artist package status.");
+                throw new NotFoundCustomException("Pending artist package not found in cache or has expired.");
             }
+
+            var pendingPackage = cacheResult.Value;
+
+            if (pendingPackage.Status != ArtistPackageStatus.Pending)
+            {
+                throw new ForbiddenCustomException("Only pending packages can be rejected.");
+            }
+
+            // Remove from Redis cache after rejection
+            await _redisCacheService.RemoveAsync(redisKey);
+        }
+
+        public async Task<ICacheResult<PaginatedData<PendingArtistPackageResponse>>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
+        {
+            return await _redisCacheService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
         }
     }
 }
