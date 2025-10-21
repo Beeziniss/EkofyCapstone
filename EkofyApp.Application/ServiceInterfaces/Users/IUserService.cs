@@ -10,7 +10,7 @@ public interface IUserService
     Task BanUserAsync(string targetUserId);
     Task<User> GetUserByIdAsync(string id);
     IQueryable<User> GetUsers();
-    Task ReActiveUserAsync(string targetUserId);
+    Task UnbanUserAsync(string targetUserId);
     IQueryable<Follows> GetUserFollows();
     Task FollowUserAsync(FollowUserRequest request);
     Task UnfollowUserAsync(UnfollowUserRequest request);

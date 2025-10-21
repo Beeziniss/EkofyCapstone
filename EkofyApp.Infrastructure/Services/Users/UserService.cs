@@ -2,7 +2,9 @@
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
@@ -45,7 +47,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         {
             Id = moderatorId,
             Email = createModeratorRequest.Email.ToLowerInvariant(),
-            FullName  = $"{UserRole.Moderator.ToString()}-{moderatorId}",
+            FullName = $"{UserRole.Moderator.ToString()}-{moderatorId}",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(createModeratorRequest.Password),
 
             BirthDate = DateTimeOffset.MinValue, // Lý do dùng min vì không nên thay đổi cấu trúc non-nullable sang nullable chỉ vì 2 role là Moderator và Admin
@@ -59,7 +61,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
 
     public async Task CreateAdminAsync(CreateAdminRequest createAdminRequest)
     {
-        if(await IsEmailExistsAsync(createAdminRequest.Email))
+        if (await IsEmailExistsAsync(createAdminRequest.Email))
         {
             throw new ConflictCustomException("Email already exists.");
         }
@@ -69,7 +71,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         {
             Id = adminId,
             Email = createAdminRequest.Email.ToLowerInvariant(),
-            FullName  = $"{UserRole.Admin.ToString()}-{adminId}",
+            FullName = $"{UserRole.Admin.ToString()}-{adminId}",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(createAdminRequest.Password),
 
             BirthDate = DateTimeOffset.MinValue, // Lý do dùng min vì không nên thay đổi cấu trúc non-nullable sang nullable chỉ vì 2 role là Moderator và Admin
@@ -121,7 +123,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             // Check if already following
             bool existingFollow = await _unitOfWork.GetCollection<Follows>()
                 .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
-                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false ; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
+                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
 
             // Create follow relationship
             Follows follow = new()
@@ -147,11 +149,11 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                                 Builders<Artist>.Update
                                     .Inc(a => a.FollowerCount, 1));
 
-                        if(updateArtistFollowerCount.MatchedCount == 0)
+                        if (updateArtistFollowerCount.MatchedCount == 0)
                         {
                             throw new NotFoundCustomException($"Artist profile for user {request.TargetUserId} not found");
                         }
-                        if(updateArtistFollowerCount.ModifiedCount == 0)
+                        if (updateArtistFollowerCount.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to update artist's follower count");
                         }
@@ -169,11 +171,11 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                                     .Inc(l => l.FollowerCount, 1)
                                     .PushEach(l => l.LastFollowers, [currentUserId], position: 0, slice: 10));
 
-                        if(updateListenerFollowerCount.MatchedCount == 0)
+                        if (updateListenerFollowerCount.MatchedCount == 0)
                         {
                             throw new NotFoundCustomException($"Listener profile for user {request.TargetUserId} not found");
                         }
-                        if(updateListenerFollowerCount.ModifiedCount == 0)
+                        if (updateListenerFollowerCount.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to update listener's follower count");
                         }
@@ -236,11 +238,11 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                                 Builders<Artist>.Update
                                     .Inc(a => a.FollowerCount, -1));
 
-                        if(updateArtistFollowerCount.MatchedCount == 0)
+                        if (updateArtistFollowerCount.MatchedCount == 0)
                         {
                             throw new NotFoundCustomException($"Artist profile for user {request.TargetUserId} not found");
                         }
-                        if(updateArtistFollowerCount.ModifiedCount == 0)
+                        if (updateArtistFollowerCount.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to update artist's follower count");
                         }
@@ -258,11 +260,11 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                                     .Inc(l => l.FollowerCount, -1)
                                     .Pull(l => l.LastFollowers, currentUserId));
 
-                        if(updateListenerFollowerCount.MatchedCount == 0)
+                        if (updateListenerFollowerCount.MatchedCount == 0)
                         {
                             throw new NotFoundCustomException($"Listener profile for user {request.TargetUserId} not found");
                         }
-                        if(updateListenerFollowerCount.ModifiedCount == 0)
+                        if (updateListenerFollowerCount.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to update listener's follower count");
                         }
@@ -286,25 +288,81 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         });
     }
 
-    public async Task ReActiveUserAsync(string targetUserId)
+    public async Task UnbanUserAsync(string targetUserId)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             UpdateDefinition<User> update = Builders<User>.Update
-            .Set(u => u.Status, UserStatus.Active)
-            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+                .Set(u => u.Status, UserStatus.Active)
+                .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            UpdateResult result = await _unitOfWork.GetCollection<User>()
-                .UpdateOneAsync(session, u => u.Id == targetUserId && u.Role != UserRole.Admin && u.Id != currentUserId, update);
-            if (result.MatchedCount == 0)
+            FilterDefinition<User> userFilter = Builders<User>.Filter.Eq(u => u.Id, targetUserId) &
+                Builders<User>.Filter.Ne(u => u.Role, UserRole.Admin) &
+                Builders<User>.Filter.Ne(u => u.Id, currentUserId) &
+                (Builders<User>.Filter.Eq(u => u.Status, UserStatus.Banned) | Builders<User>.Filter.Eq(u => u.Status, UserStatus.Suspended));
+
+            User user = await _unitOfWork.GetCollection<User>()
+                .FindOneAndUpdateAsync<User>(session, userFilter, update,
+                    new FindOneAndUpdateOptions<User, User>
+                    {
+                        ReturnDocument = ReturnDocument.Before,
+                        Projection = Builders<User>.Projection.Include(x => x.Role),
+                    }) ?? throw new NotFoundCustomException("Not found user or user hasn't banned/suspended");
+
+            if (user.Role == UserRole.Listener)
             {
-                throw new NotFoundCustomException("User not found or you cannot reactive yourself.");
+                UpdateResult listenerProfileUpdate = await _unitOfWork.GetCollection<Listener>()
+                .UpdateOneAsync(session, l => l.UserId == targetUserId,
+                    Builders<Listener>.Update
+                        .Set(l => l.IsVisible, true)
+                        .Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (listenerProfileUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide listener profile.");
+                }
             }
-            if (result.ModifiedCount == 0)
+            else if (user.Role == UserRole.Artist)
             {
-                throw new UnprocessableEntityCustomException("Failed to reactivate user.");
+                UpdateResult artistProfileUpdate = await _unitOfWork.GetCollection<Artist>()
+                .UpdateOneAsync(session, a => a.UserId == targetUserId,
+                    Builders<Artist>.Update.Set(a => a.IsVisible, true).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (artistProfileUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide artist profile.");
+                }
+
+                UpdateResult trackUpdateRestriction = await _unitOfWork.GetCollection<Track>()
+                .UpdateManyAsync(session, u => u.MainArtistIds.Contains(targetUserId),
+                    Builders<Track>.Update.Set(u => u.Restriction,
+                        new Restriction
+                        {
+                            Type = RestrictionType.None,
+                        }).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (trackUpdateRestriction.MatchedCount > 0 && trackUpdateRestriction.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to restrict user's tracks.");
+                }
+            }
+
+            if (user.Role != UserRole.Moderator)
+            {
+                UpdateResult commentUpdate = await _unitOfWork.GetCollection<Comment>()
+                .UpdateManyAsync(session, c => c.CommenterId == targetUserId,
+                    Builders<Comment>.Update.Set(c => c.IsVisible, true).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (commentUpdate.MatchedCount > 0 && commentUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide user's comments.");
+                }
+
+                UpdateResult playlistUpdate = await _unitOfWork.GetCollection<Playlist>()
+                    .UpdateManyAsync(session, p => p.UserId == targetUserId,
+                        Builders<Playlist>.Update.Set(p => p.IsVisible, true).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (playlistUpdate.MatchedCount > 0 && playlistUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide user's playlists.");
+                }
             }
         });
     }
@@ -315,19 +373,77 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         {
             string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            UpdateDefinition <User> update = Builders<User>.Update
-            .Set(u => u.Status, UserStatus.Banned)
-            .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            UpdateDefinition<User> update = Builders<User>.Update
+                .Set(u => u.Status, UserStatus.Banned)
+                .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            UpdateResult result = await _unitOfWork.GetCollection<User>()
-                .UpdateOneAsync(session, u => u.Id == targetUserId && u.Role != UserRole.Admin && u.Id != currentUserId, update);
-            if (result.MatchedCount == 0)
+            FilterDefinition<User> userFilter = Builders<User>.Filter.Eq(u => u.Id, targetUserId) &
+                Builders<User>.Filter.Ne(u => u.Role, UserRole.Admin) &
+                Builders<User>.Filter.Ne(u => u.Id, currentUserId) &
+                (Builders<User>.Filter.Eq(u => u.Status, UserStatus.Active) | Builders<User>.Filter.Eq(u => u.Status, UserStatus.Suspended));
+
+            User user = await _unitOfWork.GetCollection<User>()
+                .FindOneAndUpdateAsync<User>(session, u => u.Id == targetUserId && u.Role != UserRole.Admin && u.Id != currentUserId, update,
+                    new FindOneAndUpdateOptions<User, User>
+                    {
+                        ReturnDocument = ReturnDocument.Before,
+                        Projection = Builders<User>.Projection.Include(x => x.Role),
+                    });
+
+            if (user.Role == UserRole.Listener)
             {
-                throw new NotFoundCustomException("User not found or you cannot deactive yourself.");
+                UpdateResult listenerProfileUpdate = await _unitOfWork.GetCollection<Listener>()
+                .UpdateOneAsync(session, l => l.UserId == targetUserId,
+                    Builders<Listener>.Update
+                        .Set(l => l.IsVisible, false)
+                        .Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (listenerProfileUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide listener profile.");
+                }
             }
-            if (result.ModifiedCount == 0)
+            else if (user.Role == UserRole.Artist)
             {
-                throw new UnprocessableEntityCustomException("Failed to deactivate user.");
+                UpdateResult artistProfileUpdate = await _unitOfWork.GetCollection<Artist>()
+                .UpdateOneAsync(session, a => a.UserId == targetUserId,
+                    Builders<Artist>.Update.Set(a => a.IsVisible, false).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (artistProfileUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide artist profile.");
+                }
+
+                UpdateResult trackUpdateRestriction = await _unitOfWork.GetCollection<Track>()
+                .UpdateManyAsync(session, u => u.MainArtistIds.Contains(targetUserId),
+                    Builders<Track>.Update.Set(u => u.Restriction,
+                        new Restriction
+                        {
+                            Type = RestrictionType.Banned,
+                            Reason = "User is banned",
+                            RestrictedAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                        }).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (trackUpdateRestriction.MatchedCount > 0 && trackUpdateRestriction.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to restrict user's tracks.");
+                }
+            }
+
+            if (user.Role != UserRole.Moderator)
+            {
+                UpdateResult commentUpdate = await _unitOfWork.GetCollection<Comment>()
+                .UpdateManyAsync(session, c => c.CommenterId == targetUserId,
+                    Builders<Comment>.Update.Set(c => c.IsVisible, false).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (commentUpdate.MatchedCount > 0 && commentUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide user's comments.");
+                }
+
+                UpdateResult playlistUpdate = await _unitOfWork.GetCollection<Playlist>()
+                    .UpdateManyAsync(session, p => p.UserId == targetUserId,
+                        Builders<Playlist>.Update.Set(p => p.IsVisible, false).Set(l => l.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                if (playlistUpdate.MatchedCount > 0 && playlistUpdate.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to hide user's playlists.");
+                }
             }
         });
     }
@@ -350,7 +466,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 throw new NotFoundCustomException("User not found or you cannot delete yourself.");
             }
 
-            if(user.Role == UserRole.Artist)
+            if (user.Role == UserRole.Artist)
             {
                 DeleteResult artistProfileResult = await _unitOfWork.GetCollection<Artist>()
                     .DeleteOneAsync(session, a => a.UserId == userId);
@@ -359,7 +475,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                     throw new NotFoundCustomException("Cannot delete artist profile.");
                 }
             }
-            else if(user.Role == UserRole.Listener)
+            else if (user.Role == UserRole.Listener)
             {
                 DeleteResult listenerProfileResult = await _unitOfWork.GetCollection<Listener>()
                     .DeleteOneAsync(session, l => l.UserId == userId);
