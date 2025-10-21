@@ -61,7 +61,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             // Reset lại vị trí của stream về đầu
             fingerprintStream.Position = 0;
 
-            IEnumerable<QueryAudioFingerprintResponse> responses = await _emySoundService.CheckTrackFingerprintAsync(streamPart);
+            IEnumerable<QueryAudioFingerprintResponse> responses = await _emySoundService.CheckTrackFingerprintAsync(fileBytes, file.Name, file.ContentType ?? throw new ConflictCustomException("Content type file is empty or null"));
             if (responses.Any())
             {
                 QueryAudioFingerprintResponse bestMatch = responses.OrderByDescending(r => r.QueryCoverage).First();
