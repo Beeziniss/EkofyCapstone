@@ -41,17 +41,26 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {
-        using Stream stream = file.OpenReadStream();
+        //using Stream stream = file.OpenReadStream();
+        // Đọc toàn bộ file vào mảng byte[]
+        byte[] fileBytes;
+        using (Stream tempStream = file.OpenReadStream())
+        {
+            using MemoryStream memoryStream = new();
+            await tempStream.CopyToAsync(memoryStream);
+            fileBytes = memoryStream.ToArray();
+        }
+
+        // Sử dụng memory stream cho fingerprint
+        using var fingerprintStream = new MemoryStream(fileBytes);
+        StreamPart streamPart = new(fingerprintStream, file.Name, file.ContentType);
 
         if (createTrackRequest.IsOriginal)
         {
-            // Kiểm tra bản quyền
-            StreamPart streamPart = new(stream, file.Name, file.ContentType);
-            if(stream.CanSeek && stream.Position != 0)
-            {
-                //stream.Seek(0, SeekOrigin.Begin);
-                stream.Position = 0;
-            }
+            //Kiểm tra bản quyền
+            // Reset lại vị trí của stream về đầu
+            fingerprintStream.Position = 0;
+
             IEnumerable<QueryAudioFingerprintResponse> responses = await _emySoundService.CheckTrackFingerprintAsync(streamPart);
             if (responses.Any())
             {
@@ -72,7 +81,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                             // Còn nếu không có thì track không được đánh dấu explicit
                             // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
-                            await AssignApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+                            // Tạo stream mới để dùng cho duyệt thủ công
+                            using var manualStream = new MemoryStream(fileBytes);
+                            await AssignApproveManuallyAsync(manualStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
                             return true;
                         }
@@ -81,8 +92,11 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
             // Duyệt tự động
             //await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+
+            // Tạo stream mới để dùng cho duyệt tự động
+            using var autoStream = new MemoryStream(fileBytes);
             // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
-            await AssignApproveManuallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
             return true;
         }
