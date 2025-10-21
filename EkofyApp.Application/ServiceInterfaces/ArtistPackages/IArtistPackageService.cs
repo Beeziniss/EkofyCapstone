@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.Models.ArtistPackage;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
@@ -9,7 +10,11 @@ namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
         Task ChangeArtistPackageStatusAsync(UpdateStatusArtistPackageRequest updateStatusRequest);
         Task CreateArtistPackageAsync(CreateArtistPackageRequest createRequest);
         Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest);
-        Task ApproveArtistPackageAsync(UpdateStatusArtistPackageRequest updateStatusRequest);
+        Task ApproveArtistPackageAsync(string id);
         Task DeleteArtistPackageAsync(string id);
+
+        // New methods for Redis functionality
+        Task<ICacheResult<PaginatedData<PendingArtistPackageResponse>>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
+        Task RejectArtistPackageAsync(string id);
     }
 }

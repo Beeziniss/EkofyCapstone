@@ -1,4 +1,5 @@
 using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.Models.Listeners;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
@@ -606,6 +607,57 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, "[Redis] Failed to get pending listener registrations.");
             return PaginatedCacheResult<PendingListenerRegistrationResponse>.Fail();
+        }
+    }
+
+    public async Task<ICacheResult<PaginatedData<PendingArtistPackageResponse>>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        try
+        {
+            IServer server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints().First());
+            RedisKey[] keys = server.Keys(_redisDb.Database, pattern: "artistpackage:*:pending").ToArray();
+
+            List<PendingArtistPackageResponse> allRequests = [];
+
+            foreach (RedisKey key in keys)
+            {
+                try
+                {
+                    RedisValue value = await _redisDb.StringGetAsync(key);
+
+                    if (value.HasValue)
+                    {
+                        PendingArtistPackageResponse? request = JsonSerializer.Deserialize<PendingArtistPackageResponse>(value!, _jsonOptions);
+                        if (request != null)
+                        {
+                            // Get TTL for this key
+                            TimeSpan? ttl = await GetTTLAsync(key);
+                            
+                            // Create a new response with TTL information
+                            var requestWithTtl = request with { TimeToLive = ttl };
+                            allRequests.Add(requestWithTtl);
+                        }
+                    }
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogWarning(innerEx, $"[Redis] Failed to deserialize artist package request. Key: {key}");
+                }
+            }
+
+            int totalCount = allRequests.Count;
+
+            IEnumerable<PendingArtistPackageResponse> paged = allRequests.OrderBy(r => r.RequestedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return PaginatedCacheResult<PendingArtistPackageResponse>.From(paged, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Redis] Failed to get pending artist packages.");
+            return PaginatedCacheResult<PendingArtistPackageResponse>.Fail();
         }
     }
 }

@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
+using EkofyApp.Domain.Utils;
+using HotChocolate.Authorization;
 
 namespace EkofyApp.Api.GraphQL.Mutation.ArtistPackages
 {
@@ -9,33 +11,45 @@ namespace EkofyApp.Api.GraphQL.Mutation.ArtistPackages
     {
         private readonly IArtistPackageService _artistPackageService = artistPackageService;
 
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
         public async Task<bool> CreateArtistPackageAsync(CreateArtistPackageRequest createRequest)
         {
             await _artistPackageService.CreateArtistPackageAsync(createRequest);
             return true;
         }
 
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
         public async Task<bool> UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
         {
             await _artistPackageService.UpdateArtistPackageAsync(updateRequest);
             return true;
         }
 
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
         public async Task<bool> DeleteArtistPackageAsync(string artistPackageId)
         {
             await _artistPackageService.DeleteArtistPackageAsync(artistPackageId);
             return true;
         }
 
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
         public async Task<bool> ChangeArtistPackageStatusAsync(UpdateStatusArtistPackageRequest updateStatusRequest)
         {
             await _artistPackageService.ChangeArtistPackageStatusAsync(updateStatusRequest);
             return true;
         }
 
-        public async Task<bool> ApproveArtistPackageAsync(UpdateStatusArtistPackageRequest updateStatusRequest)
+        [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
+        public async Task<bool> ApproveArtistPackageAsync(string id)
         {
-            await _artistPackageService.ApproveArtistPackageAsync(updateStatusRequest);
+            await _artistPackageService.ApproveArtistPackageAsync(id);
+            return true;
+        }
+
+        [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
+        public async Task<bool> RejectArtistPackageAsync(string id)
+        {
+            await _artistPackageService.RejectArtistPackageAsync(id);
             return true;
         }
     }
