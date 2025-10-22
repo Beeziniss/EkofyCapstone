@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.Models.LegalDocs;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
 using FluentValidation;
 
@@ -43,15 +44,76 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
         RuleFor(x => x.Lyrics)
             .MaximumLength(5000).WithMessage("Lyrics must not exceed 5000 characters.");
 
-        RuleFor(x => x.IsReleased)
-            .NotNull().WithMessage("Release status is required.");
+        //RuleFor(x => x.IsReleased)
+        //    .NotNull().WithMessage("Release status is required.");
 
-        RuleFor(x => x.ReleaseDate)
-            .GreaterThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).When(x => x.IsReleased)
-            .WithMessage("Release date must be in the present or future if the track is marked as released.");
+        //RuleFor(x => x.ReleaseDate)
+        //    .GreaterThanOrEqualTo(_ => HelperMethod.GetUtcPlus7TimeOffset().AddDays(3).AddHours(2)).When(x => x.IsReleased)
+        //    .WithMessage("Release date must be in the present or future if the track is marked as released.");
 
-        RuleFor(x => x.ReleaseStatus)
-            .IsInEnum().WithMessage("Release status must be a valid enum value.");
+        //RuleFor(x => x.ReleaseStatus)
+        //    .IsInEnum().WithMessage("Release status must be a valid enum value.");
+
+        RuleFor(x => x)
+            .Custom((model, context) =>
+            {
+                DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+
+                switch (model.ReleaseStatus)
+                {
+                    case ReleaseStatus.Official:
+                        if (!model.IsReleased)
+                        {
+                            context.AddFailure(nameof(model.IsReleased), "IsReleased must be true when ReleaseStatus is Official.");
+                        }
+                        if (model.ReleaseDate != null)
+                        {
+                            context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate must be null when ReleaseStatus is Official.");
+                        }
+                        break;
+
+                    case ReleaseStatus.NotAnnounced:
+                        if (model.IsReleased)
+                        {
+                            context.AddFailure(nameof(model.IsReleased), "IsReleased must be false when ReleaseStatus is Not Announced.");
+                        }
+                        if (model.ReleaseDate == null)
+                        {
+                            context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate is required when ReleaseStatus is Not Announced.");
+                        }
+                        break;
+
+                    case ReleaseStatus.Delayed:
+                    case ReleaseStatus.Canceled:
+                    case ReleaseStatus.Leaked:
+                        // Tuỳ vào logic nghiệp vụ muốn:
+                        // Ví dụ giả định muốn:
+                        // - IsReleased = false
+                        // - ReleaseDate = null
+                        if (model.IsReleased)
+                        {
+                            context.AddFailure(nameof(model.IsReleased), $"IsReleased must be false when ReleaseStatus is {model.ReleaseStatus}.");
+                        }
+                        if (model.ReleaseDate != null)
+                        {
+                            context.AddFailure(nameof(model.ReleaseDate), $"ReleaseDate must be null when ReleaseStatus is {model.ReleaseStatus}.");
+                        }
+                        break;
+                }
+
+                // Thêm điều kiện riêng cho ngày phát hành nếu đã phát hành
+                if (model.IsReleased && model.ReleaseStatus != ReleaseStatus.Official)
+                {
+                    if (model.ReleaseDate == null)
+                    {
+                        context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate is required if the track is marked as released (except Official).");
+                    }
+                    else if (model.ReleaseDate < now.AddDays(3).AddHours(2))
+                    {
+                        context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate must be at least 3 days and 2 hours from now.");
+                    }
+                }
+            });
 
         RuleFor(x => x.LegalDocuments)
             .NotEmpty().WithMessage("At least one legal document is required.")

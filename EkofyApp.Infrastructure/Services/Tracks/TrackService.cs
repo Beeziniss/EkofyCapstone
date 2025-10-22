@@ -65,14 +65,33 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return trackUpdated.FavoriteCount;
     }
 
-    public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
+    public async Task ReleaseScheduledTrackAsync(string trackId)
     {
-        Track track = await _unitOfWork.GetCollection<Track>()
-            .Find(x => x.Id == id)
-            .Project<Track>(projection)
-            .FirstOrDefaultAsync();
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
 
-        return _mapper.Map<TrackResponse>(track);
+        // Cập nhật thông tin phát hành track với điều kiện track chưa được release
+        UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
+            .Set(t => t.ReleaseInfo.IsReleased, true)
+            .Set(t => t.ReleaseInfo.ReleasedAt, currentTime)
+            .Set(t => t.ReleaseInfo.ReleaseStatus, ReleaseStatus.Official);
+
+        FilterDefinition<Track> filter = Builders<Track>.Filter.And(
+            Builders<Track>.Filter.Eq(t => t.Id, trackId),
+            Builders<Track>.Filter.Eq(t => t.ReleaseInfo.IsReleased, false) // Chỉ cập nhật nếu chưa được release
+        );
+
+        UpdateResult result = await _unitOfWork.GetCollection<Track>()
+            .UpdateOneAsync(filter, updateDefinition);
+
+        if (result.MatchedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException($"Track {trackId} not found or already released. Skipping release job.");
+        }
+
+        if (result.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException($"Track {trackId} was not modified. It may have been released by another process.");
+        }
     }
 
     public async Task CreateTrackFromTrackUploadRequestAsync(TrackTempResponse trackResponse, WorkTempRequest workTempRequest, RecordingTempRequest recordingTempRequest)
@@ -301,5 +320,15 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 .Exclude(t => t.AudioFeature)
                 .Exclude(t => t.AlternativeDescription))
             .ToListAsync();
+    }
+
+    public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
+    {
+        Track track = await _unitOfWork.GetCollection<Track>()
+            .Find(x => x.Id == id)
+            .Project<Track>(projection)
+            .FirstOrDefaultAsync();
+
+        return _mapper.Map<TrackResponse>(track);
     }
 }

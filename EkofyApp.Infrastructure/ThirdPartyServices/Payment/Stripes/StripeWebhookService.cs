@@ -9,7 +9,6 @@ using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using HotChocolate.Execution.Processing;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;

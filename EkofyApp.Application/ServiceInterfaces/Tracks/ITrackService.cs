@@ -18,6 +18,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracks();
+        Task ReleaseScheduledTrackAsync(string trackId);
         IQueryable<Track> SearchTracks(string searchTerm);
         Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue);
         Task UpdateStreamCount(string trackId);
