@@ -23,7 +23,7 @@ jobs:
       infisical export --silent --token=${{ secrets.INFISICAL_TOKEN }} > .env
      "
 
-  # pull image from hub and run command
+  # pull image from hub and run command for clear cache
   - name: Docker jobs [Login - Pull - Run - Logout]
     run: |
      ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
@@ -32,6 +32,9 @@ jobs:
       docker pull ${{ secrets.DOCKER_IMAGE }}
       docker-compose down
       docker-compose up -d
+      sleep 20
+      docker image prune -f
+      docker volume prune -f
       docker logout
      "
 

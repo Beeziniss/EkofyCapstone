@@ -1,6 +1,6 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL;
-using EkofyApp.Application.ServiceInterfaces.Policies;
+using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
@@ -32,7 +32,9 @@ public sealed class Program
         builder.Host.UseSerilog((hostingContext, LoggerConfiguration) =>
         {
             LoggerConfiguration
-                .ReadFrom.Configuration(hostingContext.Configuration);
+                .Enrich.With(new CustomDateFormatter())
+                .ReadFrom.Configuration(hostingContext.Configuration)
+                .WriteTo.Seq(Environment.GetEnvironmentVariable("SEQ_URL")!);
         });
 
         //Log.Logger = new LoggerConfiguration()
