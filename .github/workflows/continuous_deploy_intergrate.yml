@@ -6,8 +6,40 @@ on:
    - main
 
 jobs:
- setup-ssh:
+ build-and-push-image:
   runs-on: ubuntu-latest
+  steps:
+  - name: Checkout source
+    uses: actions/checkout@v4
+    with:
+     fetch-depth: 0
+
+  - name: Get latest Git tag
+    id: get_tag
+    run: |
+      TAG=$(git describe --tags --abbrev=0)
+      echo "Latest tag is $TAG"
+      echo "tag=$TAG" >> $GITHUB_OUTPUT
+    
+  - name: Log in Dockerhub
+    uses: docker/login-action@v3
+    with:
+     username: ${{ secrets.DOCKERHUB_USERNAME }}
+     password: ${{ secrets.DOCKERHUB_PAT }}
+     
+  - name: Build and push Docker image
+    uses: docker/build-push-action@v6
+    with:
+     context: .
+     file: ./Dockerfile
+     push: true
+     tags: |
+      ${{ secrets.DOCKERHUB_REPO_NAME }}:latest
+      ${{ secrets.DOCKERHUB_REPO_NAME }}:${{ steps.get_tag.outputs.tag }}
+     
+ pull-and-deploy:
+  runs-on: ubuntu-latest
+  needs: build-and-push-image
   steps:
   - name: Install ssh keys
     run: |
