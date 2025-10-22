@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.Models.Artists;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.Artists;
@@ -9,7 +10,7 @@ public interface IArtistService
     Task UpdateProfileAsync(UpdateArtistRequest updateArtistRequest);
     
     // Artist Registration Approval Methods
-    Task<IEnumerable<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
+    Task<PaginatedData<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     IQueryable<Artist> SearchArtists(string stageName);

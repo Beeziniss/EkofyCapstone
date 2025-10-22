@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
@@ -179,6 +180,30 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         };
 
         return track;
+    }
+
+    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    {
+        ICacheResult<PaginatedData<CombinedUploadRequest>> result = await _redisCacheService.GetPendingCombinedUploadsAsync(pageNumber, pageSize);
+
+        PaginatedData<CombinedUploadRequest> paginatedData;
+
+        if (!result.Success || result.Value == null)
+        {
+            return new PaginatedData<CombinedUploadRequest>
+            {
+                Items = [],
+                TotalCount = 0
+            };
+        }
+
+        paginatedData = new()
+        {
+            Items = result.Value.Items,
+            TotalCount = result.Value.TotalCount
+        };
+
+        return paginatedData;
     }
 
     public async Task UpdateStreamCount(string trackId)

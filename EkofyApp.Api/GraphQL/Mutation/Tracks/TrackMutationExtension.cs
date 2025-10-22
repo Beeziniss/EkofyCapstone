@@ -9,10 +9,10 @@ public sealed class TrackMutationExtension : ObjectTypeExtension<TrackMutation>
         descriptor.Field(x => x.UploadTrackAsync(default!, default!, default!, default!))
             .Authorize(HelperRoleBase.ArtistRolesArray);
 
-        descriptor.Field(x => x.ApproveTrackUploadRequestAsync(default!, default!, default!))
+        descriptor.Field(x => x.ApproveTrackUploadRequestAsync(default!))
             .Authorize(HelperRoleBase.ModeratorRolesArray);
 
-        descriptor.Field(x => x.RejectTrackUploadRequestAsync(default!, default!, default!, default!))
+        descriptor.Field(x => x.RejectTrackUploadRequestAsync(default!, default!))
             .Authorize(HelperRoleBase.ModeratorRolesArray);
 
         descriptor.Field(x => x.UpdateFavoriteCountAsync(default!, default!, default!, default!))

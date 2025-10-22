@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.TrackComments;
 using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
@@ -42,33 +43,26 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
         return _trackService.SearchTracks(name);
     }
 
-    // TODO: Sorting for requests?
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     //[UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    public async Task<IEnumerable<TrackTempRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
     {
-        ICacheResult<PaginatedData<TrackTempRequest>> requests = await _redisCacheService.GetPendingTrackUploadsAsync(pageNumber, pageSize);
-        if (requests.Success && requests.Value != null)
-        {
-            return requests.Value.Items;
-        }
-
-        return [];
+        return await _trackService.GetPendingTrackUploadRequestsAsync(pageNumber, pageSize);
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     [UseProjection]
-    public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string trackId)
+    public async Task<TrackTempRequest> GetMetadataTrackUploadRequestAsync(string uploadId)
     {
-        ICacheResult<TrackTempRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<TrackTempRequest>($"track:{trackId}:requestUpload");
+        ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
         if (!cacheResult.Success)
         {
-            throw new NotFoundCustomException("Track upload request not found or expired.");
+            throw new NotFoundCustomException("Upload request not found or expired.");
         }
 
-        return cacheResult.Value!;
+        return cacheResult.Value!.Track;
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
