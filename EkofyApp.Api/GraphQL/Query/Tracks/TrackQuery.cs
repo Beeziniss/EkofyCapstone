@@ -66,7 +66,6 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
-    [UseProjection]
     public string GetOriginalFileTrackUploadRequest(string trackId)
     {
         return _amazonCloudFrontService.GenerateOriginalSignedURL(trackId);
