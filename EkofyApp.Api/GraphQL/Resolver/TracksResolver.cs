@@ -13,7 +13,7 @@ public sealed class TracksResolver
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Artist> GetMainArtistsAsync([Parent] Track track, [Service] IUnitOfWork unitOfWork)
+    public IQueryable<Artist> GetMainArtists([Parent] Track track, [Service] IUnitOfWork unitOfWork)
     {
         return unitOfWork.GetCollection<Artist>().AsQueryable().Where(x => track.MainArtistIds.Contains(x.Id));
     }

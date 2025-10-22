@@ -182,15 +182,15 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return track;
     }
 
-    public async Task<PaginatedData<TrackTempRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
     {
-        ICacheResult<PaginatedData<TrackTempRequest>> result = await _redisCacheService.GetPendingTrackUploadsAsync(pageNumber, pageSize);
+        ICacheResult<PaginatedData<CombinedUploadRequest>> result = await _redisCacheService.GetPendingCombinedUploadsAsync(pageNumber, pageSize);
 
-        PaginatedData<TrackTempRequest> paginatedData;
+        PaginatedData<CombinedUploadRequest> paginatedData;
 
         if (!result.Success || result.Value == null)
         {
-            return new PaginatedData<TrackTempRequest>
+            return new PaginatedData<CombinedUploadRequest>
             {
                 Items = [],
                 TotalCount = 0
