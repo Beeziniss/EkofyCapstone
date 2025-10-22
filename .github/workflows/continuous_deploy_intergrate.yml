@@ -64,6 +64,9 @@ jobs:
       docker pull ${{ secrets.DOCKER_IMAGE }}
       docker-compose down
       docker-compose up -d
+      sleep 20
+      docker image prune -f
+      docker volume prune -f
       docker logout
      "
 
