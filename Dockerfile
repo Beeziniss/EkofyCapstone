@@ -9,6 +9,7 @@ EXPOSE 8081
 
 RUN apt-get update && \
     apt-get install -y ffmpeg && \
+    apt-get install -y curl && \
     mkdir -p /app/Tools && \
     cp /usr/bin/ffmpeg /app/Tools/ffmpeg && \
     cp /usr/bin/ffprobe /app/Tools/ffprobe && \

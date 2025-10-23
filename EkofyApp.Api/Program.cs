@@ -131,6 +131,8 @@ public sealed class Program
 
         app.MapHub<ChatHub>("/chat");
 
+        app.MapHealthChecks("/health");
+
         app.UseStaticFiles();
 
         app.Run();
