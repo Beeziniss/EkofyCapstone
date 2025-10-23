@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.Models.UserFollows;
+﻿using EkofyApp.Application.Models.UserEngagements;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Users;
@@ -47,7 +47,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         {
             Id = moderatorId,
             Email = createModeratorRequest.Email.ToLowerInvariant(),
-            FullName = $"{UserRole.Moderator.ToString()}-{moderatorId}",
+            FullName = createModeratorRequest.FullName,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(createModeratorRequest.Password),
 
             BirthDate = DateTimeOffset.MinValue, // Lý do dùng min vì không nên thay đổi cấu trúc non-nullable sang nullable chỉ vì 2 role là Moderator và Admin
@@ -71,7 +71,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         {
             Id = adminId,
             Email = createAdminRequest.Email.ToLowerInvariant(),
-            FullName = $"{UserRole.Admin.ToString()}-{adminId}",
+            FullName = createAdminRequest.FullName,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(createAdminRequest.Password),
 
             BirthDate = DateTimeOffset.MinValue, // Lý do dùng min vì không nên thay đổi cấu trúc non-nullable sang nullable chỉ vì 2 role là Moderator và Admin
@@ -91,26 +91,31 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             .AnyAsync();
     }
 
-    public IQueryable<Follows> GetUserFollows()
+    public IQueryable<UserEngagement> GetUserEngagement()
     {
-        return _unitOfWork.GetCollection<Follows>().AsQueryable();
+        return _unitOfWork.GetCollection<UserEngagement>().AsQueryable();
     }
 
-    public async Task FollowUserAsync(FollowUserRequest request)
+    public async Task FollowUserAsync(UserEngagementRequest request)
     {
         string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        if (currentUserId == request.TargetUserId)
+        if (currentUserId == request.TargetId)
         {
             throw new BadRequestCustomException("You cannot follow yourself");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
+            // Check if already following
+            bool existingFollow = await _unitOfWork.GetCollection<UserEngagement>()
+                .Find(f => f.ActorId == currentUserId && f.TargetId == request.TargetId)
+                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
+
             // Check if target user exists
             User? targetUser = await _unitOfWork.GetCollection<User>()
-                .Find(u => u.Id == request.TargetUserId)
+                .Find(u => u.Id == request.TargetId)
                 .Project<User>(Builders<User>.Projection.Include(x => x.Role))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found target user {currentUserId}");
 
@@ -120,22 +125,20 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 .Project<User>(Builders<User>.Projection.Include(x => x.Role))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found current user {currentUserId}");
 
-            // Check if already following
-            bool existingFollow = await _unitOfWork.GetCollection<Follows>()
-                .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
-                .AnyAsync() ? throw new ConflictCustomException("Already following this user") : false; // Cách viết này (micro-optimization) có thật sự hiệu quả so với truyền thống?
+            UserEngagementTargetType followerType = currentUser.Role == UserRole.Artist ? UserEngagementTargetType.Artist : UserEngagementTargetType.Listener;
+            UserEngagementTargetType followedType = targetUser.Role == UserRole.Artist ? UserEngagementTargetType.Artist : UserEngagementTargetType.Listener;
 
             // Create follow relationship
-            Follows follow = new()
+            UserEngagement follow = new()
             {
-                FollowerId = currentUserId,
-                FollowerType = currentUser.Role,
-                FollowedId = request.TargetUserId,
-                FollowedType = targetUser.Role,
+                ActorId = currentUserId,
+                ActorType = followerType,
+                TargetId = request.TargetId,
+                TargetType = followedType,
                 CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
             };
 
-            await _unitOfWork.GetCollection<Follows>().InsertOneAsync(session, follow);
+            await _unitOfWork.GetCollection<UserEngagement>().InsertOneAsync(session, follow);
 
             // Update follower counts based on user types
             switch (targetUser.Role)
@@ -145,13 +148,13 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                         // Update artist's follower count
                         UpdateResult updateArtistFollowerCount = await _unitOfWork.GetCollection<Artist>()
                             .UpdateOneAsync(session,
-                                a => a.UserId == request.TargetUserId,
+                                a => a.UserId == request.TargetId,
                                 Builders<Artist>.Update
                                     .Inc(a => a.FollowerCount, 1));
 
                         if (updateArtistFollowerCount.MatchedCount == 0)
                         {
-                            throw new NotFoundCustomException($"Artist profile for user {request.TargetUserId} not found");
+                            throw new NotFoundCustomException($"Artist profile for user {request.TargetId} not found");
                         }
                         if (updateArtistFollowerCount.ModifiedCount == 0)
                         {
@@ -166,14 +169,14 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                         // Update listener's follower count
                         UpdateResult updateListenerFollowerCount = await _unitOfWork.GetCollection<Listener>()
                             .UpdateOneAsync(session,
-                                l => l.UserId == request.TargetUserId,
+                                l => l.UserId == request.TargetId,
                                 Builders<Listener>.Update
                                     .Inc(l => l.FollowerCount, 1)
                                     .PushEach(l => l.LastFollowers, [currentUserId], position: 0, slice: 10));
 
                         if (updateListenerFollowerCount.MatchedCount == 0)
                         {
-                            throw new NotFoundCustomException($"Listener profile for user {request.TargetUserId} not found");
+                            throw new NotFoundCustomException($"Listener profile for user {request.TargetId} not found");
                         }
                         if (updateListenerFollowerCount.ModifiedCount == 0)
                         {
@@ -186,7 +189,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                             l => l.UserId == currentUserId,
                             Builders<Listener>.Update
                                 .Inc(l => l.FollowingCount, 1)
-                                .PushEach(l => l.LastFollowings, [request.TargetUserId], position: 0, slice: 10));
+                                .PushEach(l => l.LastFollowings, [request.TargetId], position: 0, slice: 10));
 
                         if (updateCurrentUserFollowingCount.ModifiedCount == 0)
                         {
@@ -199,7 +202,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         });
     }
 
-    public async Task UnfollowUserAsync(UnfollowUserRequest request)
+    public async Task UnfollowUserAsync(UserEngagementRequest request)
     {
         string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
             ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -207,13 +210,13 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
             // Find the follow relationship
-            Follows? follow = await _unitOfWork.GetCollection<Follows>()
-                .Find(f => f.FollowerId == currentUserId && f.FollowedId == request.TargetUserId)
-                .Project<Follows>(Builders<Follows>.Projection.Include(f => f.Id))
+            UserEngagement? follow = await _unitOfWork.GetCollection<UserEngagement>()
+                .Find(f => f.ActorId == currentUserId && f.TargetId == request.TargetId)
+                .Project<UserEngagement>(Builders<UserEngagement>.Projection.Include(f => f.Id))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Follow relationship not found");
 
             // Delete the follow relationship
-            await _unitOfWork.GetCollection<Follows>()
+            await _unitOfWork.GetCollection<UserEngagement>()
                 .DeleteOneAsync(session, f => f.Id == follow.Id);
 
             // Get user info for updating counts
@@ -222,7 +225,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 .AnyAsync() ? true : throw new NotFoundCustomException($"Not found current user {currentUserId}");
 
             User? targetUser = await _unitOfWork.GetCollection<User>()
-                .Find(u => u.Id == request.TargetUserId)
+                .Find(u => u.Id == request.TargetId)
                 .Project<User>(Builders<User>.Projection.Include(x => x.Role))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found target user {currentUserId}");
 
@@ -234,13 +237,13 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                         // Update artist's follower count
                         UpdateResult updateArtistFollowerCount = await _unitOfWork.GetCollection<Artist>()
                             .UpdateOneAsync(session,
-                                a => a.UserId == request.TargetUserId,
+                                a => a.UserId == request.TargetId,
                                 Builders<Artist>.Update
                                     .Inc(a => a.FollowerCount, -1));
 
                         if (updateArtistFollowerCount.MatchedCount == 0)
                         {
-                            throw new NotFoundCustomException($"Artist profile for user {request.TargetUserId} not found");
+                            throw new NotFoundCustomException($"Artist profile for user {request.TargetId} not found");
                         }
                         if (updateArtistFollowerCount.ModifiedCount == 0)
                         {
@@ -255,14 +258,14 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                         // Update listener's follower count
                         UpdateResult updateListenerFollowerCount = await _unitOfWork.GetCollection<Listener>()
                             .UpdateOneAsync(session,
-                                l => l.UserId == request.TargetUserId,
+                                l => l.UserId == request.TargetId,
                                 Builders<Listener>.Update
                                     .Inc(l => l.FollowerCount, -1)
                                     .Pull(l => l.LastFollowers, currentUserId));
 
                         if (updateListenerFollowerCount.MatchedCount == 0)
                         {
-                            throw new NotFoundCustomException($"Listener profile for user {request.TargetUserId} not found");
+                            throw new NotFoundCustomException($"Listener profile for user {request.TargetId} not found");
                         }
                         if (updateListenerFollowerCount.ModifiedCount == 0)
                         {
@@ -275,7 +278,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                                 l => l.UserId == currentUserId,
                                 Builders<Listener>.Update
                                     .Inc(l => l.FollowingCount, -1)
-                                    .Pull(l => l.LastFollowings, request.TargetUserId));
+                                    .Pull(l => l.LastFollowings, request.TargetId));
 
                         if (updateCurrentUserFollowingCount.ModifiedCount == 0)
                         {
@@ -506,8 +509,8 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             //    throw new NotFoundCustomException("Cannot delete playlist.");
             //}
 
-            DeleteResult followResult = await _unitOfWork.GetCollection<Follows>()
-                .DeleteManyAsync(session, f => f.FollowerId == userId || f.FollowedId == userId);
+            DeleteResult followResult = await _unitOfWork.GetCollection<UserEngagement>()
+                .DeleteManyAsync(session, f => f.ActorId == userId || f.TargetId == userId);
             //if (followResult.DeletedCount == 0)
             //{
             //    throw new NotFoundCustomException("Cannot delete follows.");

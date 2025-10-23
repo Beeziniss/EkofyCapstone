@@ -592,5 +592,64 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return service.Get(paymentMethodId);
     }
     #endregion
+
+    #region Payout Methods
+    /// <summary>
+    /// Tạo payout thường (1-3 ngày làm việc) cho connected account
+    /// </summary>
+    public async Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string currency = "sgd")
+    {
+        PayoutService payoutService = new();
+        
+        var requestOptions = new RequestOptions
+        {
+            StripeAccount = connectedAccountId
+        };
+
+        return await payoutService.CreateAsync(new PayoutCreateOptions
+        {
+            Amount = amount,
+            Currency = currency,
+            Method = "standard", // Standard payout (1-3 business days)
+            Description = $"Royalty payout - {DateTime.UtcNow:yyyy-MM}"
+        }, requestOptions);
+    }
+
+    /// <summary>
+    /// Tạo instant payout (trong vòng 30 phút, có phí cao hơn)
+    /// </summary>
+    public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string currency = "sgd")
+    {
+        PayoutService payoutService = new();
+        
+        var requestOptions = new RequestOptions
+        {
+            StripeAccount = connectedAccountId
+        };
+
+        return await payoutService.CreateAsync(new PayoutCreateOptions
+        {
+            Amount = amount,
+            Currency = currency,
+            Method = "instant", // Instant payout (within 30 minutes, higher fee)
+            Description = $"Instant royalty payout - {DateTime.UtcNow:yyyy-MM}"
+        }, requestOptions);
+    }
+
+    /// <summary>
+    /// Lấy balance của connected account để kiểm tra trước khi payout
+    /// </summary>
+    public async Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId)
+    {
+        BalanceService balanceService = new();
+        
+        var requestOptions = new RequestOptions
+        {
+            StripeAccount = connectedAccountId
+        };
+
+        return await balanceService.GetAsync(requestOptions);
+    }
+    #endregion
 }
 

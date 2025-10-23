@@ -1,6 +1,7 @@
-﻿using EkofyApp.Application.Models.UserFollows;
+﻿using EkofyApp.Application.Models.UserEngagements;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Users;
 
@@ -22,14 +23,24 @@ public sealed class UserMutation(IUserService userService)
         return true;
     }
 
-    public async Task<bool> FollowUserAsync(FollowUserRequest request)
+    public async Task<bool> FollowUserAsync(UserEngagementRequest request)
     {
+        if(request.TargetType != UserEngagementTargetType.Listener && request.TargetType != UserEngagementTargetType.Artist)
+        {
+            throw new ArgumentException("TargetType must be User for following a user.");
+        }
+
         await _userService.FollowUserAsync(request);
         return true;
     }
 
-    public async Task<bool> UnfollowUserAsync(UnfollowUserRequest request)
+    public async Task<bool> UnfollowUserAsync(UserEngagementRequest request)
     {
+        if (request.TargetType != UserEngagementTargetType.Listener && request.TargetType != UserEngagementTargetType.Artist)
+        {
+            throw new ArgumentException("TargetType must be User for following a user.");
+        }
+
         await _userService.UnfollowUserAsync(request);
         return true;
     }

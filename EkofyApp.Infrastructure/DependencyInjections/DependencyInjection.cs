@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
@@ -22,8 +23,8 @@ using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
-using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Reports;
+using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
@@ -52,6 +53,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.ApprovalHistories;
 using EkofyApp.Infrastructure.Services.ArtistPackages;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
@@ -66,8 +68,8 @@ using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
 using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
-using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Reports;
+using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
@@ -108,8 +110,6 @@ using Stripe;
 using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
-using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
-using EkofyApp.Infrastructure.Services.ApprovalHistories;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
 public static class DependencyInjection
@@ -724,6 +724,10 @@ public static class DependencyInjection
 
         //Artist Package
         BsonSerializer.RegisterSerializer(typeof(ArtistPackageStatus), new EnumMemberSerializer<ArtistPackageStatus>());
+
+        // User Engagement
+        BsonSerializer.RegisterSerializer(typeof(UserEngagementTargetType), new EnumMemberSerializer<UserEngagementTargetType>());
+        BsonSerializer.RegisterSerializer(typeof(UserEngagementAction), new EnumMemberSerializer<UserEngagementAction>());
     }
 
     public static void AddHangfire(this IServiceCollection service)
