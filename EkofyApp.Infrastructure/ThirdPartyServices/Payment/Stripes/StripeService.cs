@@ -7,6 +7,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -595,10 +596,12 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
     #region Payout Methods
     /// <summary>
-    /// Tạo payout thường (1-3 ngày làm việc) cho connected account
+    /// Tạo payout thường (1-5 ngày làm việc) cho connected account
     /// </summary>
-    public async Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string currency = "sgd")
+    public async Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
     {
+        string alternativeDescription = $"Royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
+
         PayoutService payoutService = new();
         
         var requestOptions = new RequestOptions
@@ -610,19 +613,21 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             Amount = amount,
             Currency = currency,
-            Method = "standard", // Standard payout (1-3 business days)
-            Description = $"Royalty payout - {DateTime.UtcNow:yyyy-MM}"
+            Method = "standard", // Standard payout (1-5 business days)
+            Description = description ?? alternativeDescription
         }, requestOptions);
     }
 
     /// <summary>
     /// Tạo instant payout (trong vòng 30 phút, có phí cao hơn)
     /// </summary>
-    public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string currency = "sgd")
+    public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
     {
+        string alternativeDescription = $"Instant royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
+
         PayoutService payoutService = new();
-        
-        var requestOptions = new RequestOptions
+
+        RequestOptions requestOptions = new()
         {
             StripeAccount = connectedAccountId
         };
@@ -632,18 +637,15 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Amount = amount,
             Currency = currency,
             Method = "instant", // Instant payout (within 30 minutes, higher fee)
-            Description = $"Instant royalty payout - {DateTime.UtcNow:yyyy-MM}"
+            Description = description ?? alternativeDescription
         }, requestOptions);
     }
 
-    /// <summary>
-    /// Lấy balance của connected account để kiểm tra trước khi payout
-    /// </summary>
     public async Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId)
     {
         BalanceService balanceService = new();
-        
-        var requestOptions = new RequestOptions
+
+        RequestOptions requestOptions = new()
         {
             StripeAccount = connectedAccountId
         };

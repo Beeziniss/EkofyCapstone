@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -19,15 +20,17 @@ public sealed class PayoutTransaction : TimeStamped, IEntityCustom
 
     #region Stripe
     public string StripeTransferId { get; set; } = null!; // Transfer.EntitlementId từ Stripe
+    public string StripePayoutId { get; set; } = null!; // Payout.Id từ Stripe
     public string DestinationAccountId { get; set; } = null!; // Stripe Connected Account
     #endregion
 
     public decimal Amount { get; set; }
     public string Currency { get; set; } = null!;
 
+    public AggregationLevel Level { get; set; }
     public string Description { get; set; } = null!;
     
     // Payout specific fields
-    public string? PayoutStatus { get; set; } // pending, paid, failed, canceled (from Stripe)
-    public string? PayoutMethod { get; set; } // standard, instant (from Stripe)
+    public string? Status { get; set; } // pending, paid, failed, canceled (from Stripe)
+    public string? Method { get; set; } // standard, instant (from Stripe)
 }

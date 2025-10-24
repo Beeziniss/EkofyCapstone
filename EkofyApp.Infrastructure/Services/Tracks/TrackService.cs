@@ -257,7 +257,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
     public async Task<bool> CheckTrackInFavoriteAsync(string trackId)
     {
-        string userId = httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         try
         {

@@ -7,6 +7,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.Extensions.Logging;
@@ -246,13 +247,13 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 string userId = userGroup.Key;
                 var userSplits = userGroup.Value;
                 
-                // Lấy artistAccountId từ UserId
-                string? artistAccountId = await _unitOfWork.GetCollection<User>()
+                // Lấy artistStripeAccountId từ UserId
+                string? artistStripeAccountId = await _unitOfWork.GetCollection<User>()
                     .Find(x => x.Id == userId)
                     .Project(x => x.StripeAccountId)
                     .FirstOrDefaultAsync(ct);
 
-                if (string.IsNullOrEmpty(artistAccountId))
+                if (string.IsNullOrEmpty(artistStripeAccountId))
                 {
                     _logger.LogWarning($"Skipping payout for userId={userId} due to missing StripeAccountId");
                     // Đánh dấu các splits này là không thể transfer
@@ -264,36 +265,41 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 }
 
                 // Tính tổng amount cho user này
-                decimal totalAmount = userSplits.Sum(x => x.Split.Amount);
-                long stripeAmount = Convert.ToInt64(totalAmount * 100); // Stripe tính bằng cent
+                decimal totalVndAmount = userSplits.Sum(x => x.Split.Amount);
+                decimal totalSgdAmount = HelperCurrencyConverter.ConvertVndToSgd(totalVndAmount);
+                //decimal stripeAmount = HelperCurrencyConverter.FormatDecimalLiteral(totalVndAmount); // Stripe tính bằng cent
 
                 try
                 {
-                    // Kiểm tra balance của connected account trước khi payout
-                    Balance accountBalance = await _stripeService.GetConnectedAccountBalanceAsync(artistAccountId);
-                    long availableBalance = accountBalance.Available.FirstOrDefault()?.Amount ?? 0;
-                    
-                    if (availableBalance < stripeAmount)
-                    {
-                        _logger.LogWarning($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {stripeAmount}");
-                        
-                        // Thực hiện transfer trước, sau đó payout
-                        TransferService transferService = new();
-                        Transfer transferResponse = transferService.Create(new TransferCreateOptions
-                        {
-                            Amount = stripeAmount,
-                            Currency = CurrencyType.sgd.ToString(), // Sử dụng SGD cho sandbox
-                            Destination = artistAccountId,
-                            TransferGroup = $"royalty-{month}-{year}-{HelperMethod.GetUtcPlus7TimeOffset().ToUnixTimeMilliseconds()}",
-                            Description = $"Royalty transfer for {month}/{year}"
-                        });
+                    long stripeTotalAmountLong = HelperCurrencyConverter.ConvertDecimalToStripeAmount(totalSgdAmount, CurrencyType.sgd.ToString());
 
-                        // Đợi một chút để transfer được xử lý
-                        await Task.Delay(1000, ct);
+                    // Thực hiện transfer trước, sau đó payout
+                    TransferService transferService = new();
+                    Transfer transferResponse = transferService.Create(new TransferCreateOptions
+                    {
+                        Amount = stripeTotalAmountLong,
+                        Currency = CurrencyType.sgd.ToString(), // Sử dụng SGD cho sandbox
+                        Destination = artistStripeAccountId,
+                        TransferGroup = $"royalty-{month}-{year}",
+                        Description = $"Royalty transfer for {month}/{year}"
+                    });
+
+                    // Đợi một chút để transfer được xử lý
+                    await Task.Delay(3000, ct);
+
+                    // Kiểm tra balance của connected account trước khi payout
+                    Balance accountBalance = await _stripeService.GetConnectedAccountBalanceAsync(artistStripeAccountId);
+                    long availableBalance = accountBalance.Available.FirstOrDefault()?.Amount ?? 0;
+                    //decimal availableBalanceDecimal = HelperCurrencyConverter.ConvertStripeAmountToDecimal(availableBalance, CurrencyType.sgd.ToString());
+                    if (availableBalance < stripeTotalAmountLong)
+                    {
+                        _logger.LogWarning($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {totalSgdAmount}");
+
+                        continue;
                     }
 
                     // Thực hiện payout thực sự
-                    Payout payoutResponse = await _stripeService.CreatePayoutAsync(artistAccountId, stripeAmount, CurrencyType.sgd.ToString());
+                    Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong,  CurrencyType.sgd.ToString());
 
                     // Lưu transaction cho từng report
                     foreach (var item in userSplits)
@@ -302,13 +308,15 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         {
                             UserId = userId,
                             RoyaltyReportId = item.Report.Id,
-                            StripeTransferId = payoutResponse.Id, // Sử dụng payout ID
+                            StripeTransferId = transferResponse.Id,
+                            StripePayoutId = payoutResponse.Id,
                             Amount = item.Split.Amount,
-                            Currency = payoutResponse.Currency,
-                            DestinationAccountId = artistAccountId,
+                            Currency = CurrencyType.vnd.ToString(),
+                            DestinationAccountId = artistStripeAccountId,
+                            Level = item.Split.Level,
                             Description = payoutResponse.Description,
-                            PayoutStatus = payoutResponse.Status, // pending, paid, failed, canceled
-                            PayoutMethod = payoutResponse.Method, // standard hoặc instant
+                            Status = payoutResponse.Status, // pending, paid, failed, canceled
+                            Method = payoutResponse.Method, // standard hoặc instant
                         };
 
                         payoutTransactions.Add(payoutTransaction);
@@ -317,11 +325,11 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         item.Split.IsTransferred = true;
                     }
 
-                    _logger.LogInformation($"Successfully created payout for userId={userId}, amount={totalAmount}, payoutId={payoutResponse.Id}");
+                    _logger.LogInformation($"Successfully created payout for userId={userId}, amount={totalSgdAmount}, payoutId={payoutResponse.Id}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to create payout for userId={userId}, amount={totalAmount}");
+                    _logger.LogError(ex, $"Failed to create payout for userId={userId}, amount={totalSgdAmount}");
                     
                     // Đánh dấu các splits này là không thể transfer
                     foreach (var item in userSplits)
@@ -366,6 +374,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
         });
     }
 
+    #region Chưa đụng đến
     /// <summary>
     /// Manual payout cho một artist cụ thể
     /// </summary>
@@ -374,25 +383,29 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
         try
         {
             // Lấy thông tin artist
-            var artist = await _unitOfWork.GetCollection<User>()
-                .Find(x => x.Id == artistId)
-                .Project(x => new { x.Id, x.StripeAccountId, x.FullName })
-                .FirstOrDefaultAsync(ct);
+            string userId = await _unitOfWork.GetCollection<Artist>()
+                .Find(x => x.UserId == artistId)
+                .Project(x => x.UserId)
+                .FirstOrDefaultAsync(ct) ?? throw new NotFoundCustomException($"Artist {artistId} not found");
 
-            if (artist == null)
-            {
-                throw new NotFoundCustomException($"Artist {artistId} not found");
-            }
+            // Lấy thông tin user
+            User user = await _unitOfWork.GetCollection<User>()
+                .Find(x => x.Id == userId && x.Role == UserRole.Artist)
+                .Project<User>(Builders<User>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.FullName)
+                    .Include(x => x.StripeAccountId))
+                .FirstOrDefaultAsync(ct) ?? throw new NotFoundCustomException($"Artist for user {userId} not found");
 
-            if (string.IsNullOrEmpty(artist.StripeAccountId))
+            if (string.IsNullOrEmpty(user.StripeAccountId))
             {
-                throw new BadRequestCustomException($"Artist {artist.FullName} does not have Stripe account connected");
+                throw new BadRequestCustomException($"Artist {user.FullName} does not have Stripe account connected");
             }
 
             long stripeAmount = Convert.ToInt64(amount * 100); // Convert to cents
 
             // Kiểm tra balance
-            Balance accountBalance = await _stripeService.GetConnectedAccountBalanceAsync(artist.StripeAccountId);
+            Balance accountBalance = await _stripeService.GetConnectedAccountBalanceAsync(user.StripeAccountId);
             long availableBalance = accountBalance.Available.FirstOrDefault()?.Amount ?? 0;
 
             if (availableBalance < stripeAmount)
@@ -402,8 +415,8 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 
             // Thực hiện payout
             Payout payoutResponse = isInstant 
-                ? await _stripeService.CreateInstantPayoutAsync(artist.StripeAccountId, stripeAmount)
-                : await _stripeService.CreatePayoutAsync(artist.StripeAccountId, stripeAmount);
+                ? await _stripeService.CreateInstantPayoutAsync(user.StripeAccountId, stripeAmount)
+                : await _stripeService.CreatePayoutAsync(user.StripeAccountId, stripeAmount);
 
             // Lưu transaction
             PayoutTransaction payoutTransaction = new()
@@ -413,20 +426,20 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 StripeTransferId = payoutResponse.Id,
                 Amount = amount,
                 Currency = payoutResponse.Currency,
-                DestinationAccountId = artist.StripeAccountId,
-                Description = $"Manual {(isInstant ? "instant" : "standard")} payout for {artist.FullName}",
-                PayoutStatus = payoutResponse.Status,
-                PayoutMethod = payoutResponse.Method,
+                DestinationAccountId = user.StripeAccountId,
+                Description = $"Manual {(isInstant ? "instant" : "standard")} payout for {user.FullName}",
+                Status = payoutResponse.Status,
+                Method = payoutResponse.Method,
             };
 
             await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(payoutTransaction, cancellationToken: ct);
 
-            _logger.LogInformation($"Successfully processed manual payout for artist {artistId}, amount=${amount:F2}, payoutId={payoutResponse.Id}");
+            _logger.LogInformation($"Successfully processed manual payout for user {artistId}, amount=${amount:F2}, payoutId={payoutResponse.Id}");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to process manual payout for artist {artistId}, amount=${amount:F2}");
+            _logger.LogError(ex, $"Failed to process manual payout for user {artistId}, amount=${amount:F2}");
             throw;
         }
     }
@@ -470,7 +483,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     string artistId = artistPayout.Key;
                     decimal totalAmount = artistPayout.Value.TotalAmount;
 
-                    // Process payout for this artist
+                    // Process payout for this user
                     await ProcessPayoutForArtistAsync(artistId, totalAmount, isInstant, ct);
 
                     // Mark all splits as transferred
@@ -495,7 +508,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to process batch payout for artist {artistPayout.Key}");
+                    _logger.LogError(ex, $"Failed to process batch payout for user {artistPayout.Key}");
                     failCount++;
                 }
             }
@@ -509,4 +522,5 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             throw;
         }
     }
+    #endregion
 }
