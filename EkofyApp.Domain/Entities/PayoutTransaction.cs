@@ -31,6 +31,6 @@ public sealed class PayoutTransaction : TimeStamped, IEntityCustom
     public string Description { get; set; } = null!;
     
     // Payout specific fields
-    public string? Status { get; set; } // pending, paid, failed, canceled (from Stripe)
+    public PayoutTransactionStatus Status { get; set; } // pending, paid, failed, canceled (from Stripe)
     public string? Method { get; set; } // standard, instant (from Stripe)
 }

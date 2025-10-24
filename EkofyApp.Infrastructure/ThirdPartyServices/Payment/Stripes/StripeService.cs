@@ -69,10 +69,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 {
                     Schedule = new AccountSettingsPayoutsScheduleOptions
                     {
-                        //Interval = "manual" // Chuyển tiền thủ công
-                        Interval = "monthly", // Tự động chuyển tiền hàng tháng,
-                        DelayDays = 3, // sau 3 ngày
-                        MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
+                        Interval = "manual" // Chuyển tiền thủ công
+                        //Interval = "monthly", // Tự động chuyển tiền hàng tháng,
+                        //DelayDays = 3, // sau 3 ngày
+                        //MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
                     }
                 },
             },
@@ -103,10 +103,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 {
                     Schedule = new AccountSettingsPayoutsScheduleOptions
                     {
-                        //Interval = "manual" // Rút tiền thủ công
-                        Interval = "monthly", // Tự động rút tiền hàng tháng,
-                        DelayDays = 3, // sau 3 ngày
-                        MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
+                        Interval = "manual" // Rút tiền thủ công
+                        //Interval = "monthly", // Tự động rút tiền hàng tháng,
+                        //DelayDays = 3, // sau 3 ngày
+                        //MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
                     }
                 },
             },
@@ -120,7 +120,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
         if (updateResult.ModifiedCount == 0)
         {
-            throw new NotFoundCustomException("Nothing is updated.");
+            throw new NotFoundCustomException("Cannot create express connected account.");
         }
 
         return;
@@ -177,6 +177,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
     // Tạo Customer
     // TODO: Lưu customerId vào DB User nhưng chỉ khi user thanh toán thành công lần đầu
+    // Resolved: Đã lưu ngay khi thanh toán thành công lần đầu
     public async Task<Customer> CreateCustomerAsync()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -308,7 +309,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
             Currency = checkoutSession.Currency,
 
-            PaymentStatus = PaymentStatus.Pending,
+            PaymentStatus = PaymentTransactionStatus.Pending,
             Status = TransactionStatus.Open
         });
 
@@ -444,7 +445,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
             Currency = checkoutSession.Currency,
 
-            PaymentStatus = PaymentStatus.Pending,
+            PaymentStatus = PaymentTransactionStatus.Pending,
             Status = TransactionStatus.Open
         });
 
@@ -603,8 +604,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         string alternativeDescription = $"Royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
 
         PayoutService payoutService = new();
-        
-        var requestOptions = new RequestOptions
+
+        RequestOptions requestOptions = new()
         {
             StripeAccount = connectedAccountId
         };

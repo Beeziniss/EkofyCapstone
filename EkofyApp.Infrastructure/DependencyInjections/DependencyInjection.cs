@@ -166,7 +166,9 @@ public static class DependencyInjection
             AccountV2SigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2 is not set in the environment"),
             CustomerSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CUSTOMER") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CUSTOMER is not set in the environment"),
             SubscriptionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION is not set in the environment"),
-            CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment")
+            CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
+            InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
+            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
         };
 
         services.AddSingleton(stripeSetting);
@@ -697,7 +699,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
 
         // PaymentTransaction
-        BsonSerializer.RegisterSerializer(typeof(PaymentStatus), new EnumMemberSerializer<PaymentStatus>());
+        BsonSerializer.RegisterSerializer(typeof(PaymentTransactionStatus), new EnumMemberSerializer<PaymentTransactionStatus>());
         BsonSerializer.RegisterSerializer(typeof(TransactionStatus), new EnumMemberSerializer<TransactionStatus>());
 
         // Common
@@ -707,7 +709,10 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
-        
+
+        // Payout Trasnsaction
+        BsonSerializer.RegisterSerializer(typeof(PayoutTransactionStatus), new EnumMemberSerializer<PayoutTransactionStatus>());
+
         // Report
         BsonSerializer.RegisterSerializer(typeof(ReportStatus), new EnumMemberSerializer<ReportStatus>());
         BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());

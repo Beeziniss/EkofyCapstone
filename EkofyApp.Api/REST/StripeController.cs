@@ -57,6 +57,33 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
         return Ok("StripeController is working!");
     }
 
+    [AllowAnonymous, HttpPost("invoice")]
+    public async Task<IActionResult> HandleWebhookInvoiceAsync()
+    {
+        string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+        string? stripeSignature = Request.Headers["Stripe-Signature"];
+        if (string.IsNullOrEmpty(stripeSignature))
+        {
+            return BadRequest("Missing Stripe-Signature header");
+        }
+        await _stripeWebhookService.HandleWebhookInvoiceAsync(json, stripeSignature);
+        return Ok("Invoice webhook processed successfully!");
+    }
+
+    [AllowAnonymous, HttpPost("payout")]
+    public async Task<IActionResult> HandleWebhookPayoutAsync()
+    {
+        string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+        string? stripeSignature = Request.Headers["Stripe-Signature"];
+        if (string.IsNullOrEmpty(stripeSignature))
+        {
+            return BadRequest("Missing Stripe-Signature header");
+        }
+
+        await _stripeWebhookService.HandleWebhookPayoutAsync(json, stripeSignature);
+        return Ok("Payout webhook processed successfully!");
+    }
+
     #region Test
     [HttpPost("connected-account")]
     public async Task<IActionResult> CreateExpressConnectedAccountAsync()

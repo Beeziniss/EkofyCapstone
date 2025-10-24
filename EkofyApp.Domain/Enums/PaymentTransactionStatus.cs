@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
-public enum PaymentStatus
+public enum PaymentTransactionStatus
 {
     [EnumMember(Value = "pending")]
     Pending,

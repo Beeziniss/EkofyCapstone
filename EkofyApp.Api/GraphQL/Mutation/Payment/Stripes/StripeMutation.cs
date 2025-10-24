@@ -10,13 +10,13 @@ public sealed class StripeMutation(IStripeService stripeService)
 {
     private readonly IStripeService _stripeService = stripeService;
 
-    public async Task<AccountLinkResponse> CreateExpressConnectedAccountAsync()
+    public async Task<AccountLinkResponse> CreateExpressConnectedAccountAsync(string refreshUrl = "https://ekofy.com/refresh", string returnUrl = "https://ekofy.com/return")
     {
         await _stripeService.CreateExpressConnectedAccount();
 
         AccountLinkResponse accountLink = _stripeService.CreateAccountOnboardingLink(
-            refreshUrl: "https://ekofy.com/reauth",
-            returnUrl: "https://ekofy.com/dashboard");
+            refreshUrl: refreshUrl,
+            returnUrl: returnUrl);
 
         return accountLink;
     }

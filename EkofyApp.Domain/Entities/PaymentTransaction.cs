@@ -22,7 +22,7 @@ public sealed class PaymentTransaction : TimeStamped, IEntityCustom // Snapshot 
     public decimal Amount { get; set; }
     public string Currency { get; set; } = null!; // e.g., "usd", "vnd"
 
-    public PaymentStatus PaymentStatus { get; set; } // e.g., "pending", "paid", "unpaid"
+    public PaymentTransactionStatus PaymentStatus { get; set; } // e.g., "pending", "paid", "unpaid"
     public TransactionStatus Status { get; set; } // e.g., "open", "completed", "expired"
 }
 

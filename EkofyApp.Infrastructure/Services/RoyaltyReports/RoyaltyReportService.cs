@@ -293,7 +293,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     //decimal availableBalanceDecimal = HelperCurrencyConverter.ConvertStripeAmountToDecimal(availableBalance, CurrencyType.sgd.ToString());
                     if (availableBalance < stripeTotalAmountLong)
                     {
-                        _logger.LogWarning($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {totalSgdAmount}");
+                        _logger.LogError($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {totalSgdAmount}");
 
                         continue;
                     }
@@ -315,7 +315,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                             DestinationAccountId = artistStripeAccountId,
                             Level = item.Split.Level,
                             Description = payoutResponse.Description,
-                            Status = payoutResponse.Status, // pending, paid, failed, canceled
+                            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status), // pending, paid, failed, canceled
                             Method = payoutResponse.Method, // standard hoặc instant
                         };
 
@@ -324,13 +324,9 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         // Đánh dấu là đã được transfer/payout
                         item.Split.IsTransferred = true;
                     }
-
-                    _logger.LogInformation($"Successfully created payout for userId={userId}, amount={totalSgdAmount}, payoutId={payoutResponse.Id}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to create payout for userId={userId}, amount={totalSgdAmount}");
-                    
                     // Đánh dấu các splits này là không thể transfer
                     foreach (var item in userSplits)
                     {
@@ -428,7 +424,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 Currency = payoutResponse.Currency,
                 DestinationAccountId = user.StripeAccountId,
                 Description = $"Manual {(isInstant ? "instant" : "standard")} payout for {user.FullName}",
-                Status = payoutResponse.Status,
+                Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status),
                 Method = payoutResponse.Method,
             };
 
