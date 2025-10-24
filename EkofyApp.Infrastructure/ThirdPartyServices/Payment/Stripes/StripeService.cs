@@ -7,6 +7,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -68,10 +69,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 {
                     Schedule = new AccountSettingsPayoutsScheduleOptions
                     {
-                        //Interval = "manual" // Chuyển tiền thủ công
-                        Interval = "monthly", // Tự động chuyển tiền hàng tháng,
-                        DelayDays = 3, // sau 3 ngày
-                        MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
+                        Interval = "manual" // Chuyển tiền thủ công
+                        //Interval = "monthly", // Tự động chuyển tiền hàng tháng,
+                        //DelayDays = 3, // sau 3 ngày
+                        //MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
                     }
                 },
             },
@@ -102,10 +103,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 {
                     Schedule = new AccountSettingsPayoutsScheduleOptions
                     {
-                        //Interval = "manual" // Rút tiền thủ công
-                        Interval = "monthly", // Tự động rút tiền hàng tháng,
-                        DelayDays = 3, // sau 3 ngày
-                        MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
+                        Interval = "manual" // Rút tiền thủ công
+                        //Interval = "monthly", // Tự động rút tiền hàng tháng,
+                        //DelayDays = 3, // sau 3 ngày
+                        //MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
                     }
                 },
             },
@@ -119,7 +120,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
         if (updateResult.ModifiedCount == 0)
         {
-            throw new NotFoundCustomException("Nothing is updated.");
+            throw new NotFoundCustomException("Cannot create express connected account.");
         }
 
         return;
@@ -176,6 +177,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
     // Tạo Customer
     // TODO: Lưu customerId vào DB User nhưng chỉ khi user thanh toán thành công lần đầu
+    // Resolved: Đã lưu ngay khi thanh toán thành công lần đầu
     public async Task<Customer> CreateCustomerAsync()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -307,7 +309,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
             Currency = checkoutSession.Currency,
 
-            PaymentStatus = PaymentStatus.Pending,
+            PaymentStatus = PaymentTransactionStatus.Pending,
             Status = TransactionStatus.Open
         });
 
@@ -443,7 +445,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
             Currency = checkoutSession.Currency,
 
-            PaymentStatus = PaymentStatus.Pending,
+            PaymentStatus = PaymentTransactionStatus.Pending,
             Status = TransactionStatus.Open
         });
 
@@ -590,6 +592,66 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     {
         var service = new PaymentMethodService();
         return service.Get(paymentMethodId);
+    }
+    #endregion
+
+    #region Payout Methods
+    /// <summary>
+    /// Tạo payout thường (1-5 ngày làm việc) cho connected account
+    /// </summary>
+    public async Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
+    {
+        string alternativeDescription = $"Royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
+
+        PayoutService payoutService = new();
+
+        RequestOptions requestOptions = new()
+        {
+            StripeAccount = connectedAccountId
+        };
+
+        return await payoutService.CreateAsync(new PayoutCreateOptions
+        {
+            Amount = amount,
+            Currency = currency,
+            Method = "standard", // Standard payout (1-5 business days)
+            Description = description ?? alternativeDescription
+        }, requestOptions);
+    }
+
+    /// <summary>
+    /// Tạo instant payout (trong vòng 30 phút, có phí cao hơn)
+    /// </summary>
+    public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
+    {
+        string alternativeDescription = $"Instant royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
+
+        PayoutService payoutService = new();
+
+        RequestOptions requestOptions = new()
+        {
+            StripeAccount = connectedAccountId
+        };
+
+        return await payoutService.CreateAsync(new PayoutCreateOptions
+        {
+            Amount = amount,
+            Currency = currency,
+            Method = "instant", // Instant payout (within 30 minutes, higher fee)
+            Description = description ?? alternativeDescription
+        }, requestOptions);
+    }
+
+    public async Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId)
+    {
+        BalanceService balanceService = new();
+
+        RequestOptions requestOptions = new()
+        {
+            StripeAccount = connectedAccountId
+        };
+
+        return await balanceService.GetAsync(requestOptions);
     }
     #endregion
 }

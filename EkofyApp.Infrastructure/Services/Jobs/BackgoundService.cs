@@ -3,6 +3,7 @@ using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
+using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -77,6 +78,15 @@ public class BackgoundService : IBackgoundService
         }
     }
 
+
+    [Queue("track_upload")]
+    [JobDisplayName("Release Scheduled Track")]
+    public async Task ReleaseScheduledTrackJob(string trackId)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
+        await trackService.ReleaseScheduledTrackAsync(trackId);
+    }
 
     [Queue("scheduled")]
     [JobDisplayName("Scheduled Job Example")]

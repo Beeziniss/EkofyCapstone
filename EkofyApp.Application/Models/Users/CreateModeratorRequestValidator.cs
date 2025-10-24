@@ -5,6 +5,10 @@ public sealed class CreateModeratorRequestValidator : AbstractValidator<CreateMo
 {
     public CreateModeratorRequestValidator()
     {
+        RuleFor(x => x.FullName)
+            .NotEmpty().WithMessage("Full name is required")
+            .MaximumLength(100).WithMessage("Full name must not exceed 100 characters");
+
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email is required")
             .MaximumLength(100).WithMessage("Email must not exceed 100 characters")

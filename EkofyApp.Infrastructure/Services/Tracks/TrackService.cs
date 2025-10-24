@@ -10,23 +10,27 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Artist;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, ILogger<TrackService> logger) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
+    private readonly ILogger<TrackService> _logger = logger;
 
     public IQueryable<Track> GetTracks()
     {
@@ -48,31 +52,33 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return query;
     }
 
-    public async Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue)
+    public async Task ReleaseScheduledTrackAsync(string trackId)
     {
-        Track trackUpdated = await _unitOfWork.GetCollection<Track>()
-            .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, incrementValue),
-            new FindOneAndUpdateOptions<Track>
-            {
-                // Trả về tài liệu sau khi cập nhật
-                ReturnDocument = ReturnDocument.After,
-                Projection = Builders<Track>.Projection
-                    .Include(t => t.Id)
-                    .Include(t => t.FavoriteCount)
-            });
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
 
-        // Trả về số lượt yêu thích mới của bài hát
-        return trackUpdated.FavoriteCount;
-    }
+        // Cập nhật thông tin phát hành track với điều kiện track chưa được release
+        UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
+            .Set(t => t.ReleaseInfo.IsReleased, true)
+            .Set(t => t.ReleaseInfo.ReleasedAt, currentTime)
+            .Set(t => t.ReleaseInfo.ReleaseStatus, ReleaseStatus.Official);
 
-    public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
-    {
-        Track track = await _unitOfWork.GetCollection<Track>()
-            .Find(x => x.Id == id)
-            .Project<Track>(projection)
-            .FirstOrDefaultAsync();
+        FilterDefinition<Track> filter = Builders<Track>.Filter.And(
+            Builders<Track>.Filter.Eq(t => t.Id, trackId),
+            Builders<Track>.Filter.Eq(t => t.ReleaseInfo.IsReleased, false) // Chỉ cập nhật nếu chưa được release
+        );
 
-        return _mapper.Map<TrackResponse>(track);
+        UpdateResult result = await _unitOfWork.GetCollection<Track>()
+            .UpdateOneAsync(filter, updateDefinition);
+
+        if (result.MatchedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException($"Track {trackId} not found or already released. Skipping release job.");
+        }
+
+        if (result.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException($"Track {trackId} was not modified. It may have been released by another process.");
+        }
     }
 
     public async Task CreateTrackFromTrackUploadRequestAsync(TrackTempResponse trackResponse, WorkTempRequest workTempRequest, RecordingTempRequest recordingTempRequest)
@@ -206,6 +212,205 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return paginatedData;
     }
 
+    #region Favorite Tracks
+    public async Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue)
+    {
+        Track trackUpdated = await _unitOfWork.GetCollection<Track>()
+        .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, incrementValue),
+        new FindOneAndUpdateOptions<Track>
+        {
+            // Trả về tài liệu sau khi cập nhật
+            ReturnDocument = ReturnDocument.After,
+            Projection = Builders<Track>.Projection
+                .Include(t => t.Id)
+                .Include(t => t.FavoriteCount)
+        }) ?? throw new NotFoundCustomException($"Track with ID {trackId} not found.");
+
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        // Nếu decrementValue là âm, tức là người dùng bỏ thích bài hát
+        if (incrementValue < 0)
+        {
+            // Xóa track khỏi cache yêu thích của users
+            await RemoveTrackFromFavoriteCacheAsync(userId, trackId);
+            return trackUpdated.FavoriteCount;
+        }
+
+        // Thêm track yêu thích của users vào UserEngagement
+        await _unitOfWork.GetCollection<UserEngagement>()
+            .InsertOneAsync(new UserEngagement
+            {
+                ActorId = userId,
+                ActorType = Enum.Parse<UserRole>(role) == UserRole.Listener ?  UserEngagementTargetType.Listener : UserEngagementTargetType.Artist,
+                TargetId = trackId,
+                TargetType = UserEngagementTargetType.Track,
+                Action = UserEngagementAction.Like,
+            });
+
+        // Thêm track yêu thích của users vào cache
+        await AddTrackToFavoriteCacheAsync(userId, trackId);
+
+        // Trả về số lượt yêu thích mới của bài hát
+        return trackUpdated.FavoriteCount;
+    }
+
+    public async Task<bool> CheckTrackInFavoriteAsync(string trackId)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        try
+        {
+            string cacheKey = $"favorite_track:{userId}";
+
+            // Check if cache exists and has items
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+
+            if (listLength > 0)
+            {
+                // Cache hit - check if track exists in Redis list
+                return await _redisCacheService.ListContainsAsync(cacheKey, trackId);
+            }
+
+            // Cache miss - populate from database
+            await EnsureCachePopulatedAsync(userId);
+
+            // Check again after population
+            return await _redisCacheService.ListContainsAsync(cacheKey, trackId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check if track {TrackId} is in favorite for user {UserId}", trackId, userId);
+            return false;
+        }
+    }
+
+    private async Task AddTrackToFavoriteCacheAsync(string userId, string trackId)
+    {
+        try
+        {
+            string cacheKey = $"favorite_track:{userId}";
+
+            // Check if cache exists
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+
+            if (listLength > 0)
+            {
+                // Cache exists - check if track already exists to avoid duplicates
+                bool exists = await _redisCacheService.ListContainsAsync(cacheKey, trackId);
+
+                if (!exists)
+                {
+                    // Get current TTL to preserve it
+                    var remainingTtl = await _redisCacheService.GetTTLAsync(cacheKey);
+                    var ttlToSet = remainingTtl ?? TimeSpan.FromHours(1);
+
+                    // Add track to the beginning of the list
+                    await _redisCacheService.ListPushAsync(cacheKey, trackId, ttlToSet);
+                }
+            }
+            else
+            {
+                // Cache doesn't exist - create new list with this track
+                await _redisCacheService.ListPushAsync(cacheKey, trackId, TimeSpan.FromHours(1));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add track {TrackId} to favorite cache for user {UserId}", trackId, userId);
+        }
+    }
+
+    private async Task RemoveTrackFromFavoriteCacheAsync(string userId, string trackId)
+    {
+        try
+        {
+            string cacheKey = $"favorite_track:{userId}";
+
+            // Check if cache exists
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+
+            if (listLength > 0)
+            {
+                // Get current TTL to preserve it
+                var remainingTtl = await _redisCacheService.GetTTLAsync(cacheKey);
+
+                // Remove track from list (removes all occurrences)
+                long removedCount = await _redisCacheService.ListRemoveAsync(cacheKey, trackId, 0);
+
+                if (removedCount > 0)
+                {
+                    // Restore TTL if there are still items in the list
+                    long newLength = await _redisCacheService.ListLengthAsync(cacheKey);
+                    if (newLength > 0 && remainingTtl.HasValue)
+                    {
+                        await _redisCacheService.SetExpirationAsync(cacheKey, remainingTtl);
+                    }
+
+                    _logger.LogDebug("Removed track {TrackId} from favorite cache for user {UserId}", trackId, userId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove track {TrackId} from favorite cache for user {UserId}", trackId, userId);
+        }
+    }
+
+    private async Task InvalidateFavoriteCacheAsync(string userId)
+    {
+        try
+        {
+            string cacheKey = $"favorite_track:{userId}";
+            await _redisCacheService.RemoveAsync(cacheKey);
+
+            _logger.LogDebug("Invalidated favorite cache for user {UserId}", userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to invalidate favorite cache for user {UserId}", userId);
+        }
+    }
+
+    private async Task<bool> EnsureCachePopulatedAsync(string userId)
+    {
+        try
+        {
+            string cacheKey = $"favorite_track:{userId}";
+
+            // Check if cache already exists
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+            if (listLength > 0)
+            {
+                return true; // Cache already populated
+            }
+
+            // Fetch favorite track from database
+            List<string> favoriteTrackIds = await _unitOfWork.GetCollection<UserEngagement>()
+                .Find(x => x.ActorId == userId && x.TargetType == UserEngagementTargetType.Track && x.Action == UserEngagementAction.Like)
+                .Project(x => x.TargetId)
+                .ToListAsync();
+
+            if (favoriteTrackIds.Count > 0)
+            {
+                // Populate cache with track IDs
+                await _redisCacheService.ListPushRangeAsync(cacheKey, favoriteTrackIds, TimeSpan.FromHours(1));
+
+                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} tracks", userId, favoriteTrackIds.Count);
+                return true;
+            }
+
+            _logger.LogDebug("No favorite tracks found for user {UserId}", userId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to populate favorite cache for user {UserId}", userId);
+            return false;
+        }
+    }
+    #endregion
+
     public async Task UpdateStreamCount(string trackId)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -301,5 +506,15 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 .Exclude(t => t.AudioFeature)
                 .Exclude(t => t.AlternativeDescription))
             .ToListAsync();
+    }
+
+    public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
+    {
+        Track track = await _unitOfWork.GetCollection<Track>()
+            .Find(x => x.Id == id)
+            .Project<Track>(projection)
+            .FirstOrDefaultAsync();
+
+        return _mapper.Map<TrackResponse>(track);
     }
 }

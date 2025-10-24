@@ -28,6 +28,9 @@ public sealed class Program
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
 
+        // Add health checks
+        builder.Services.AddHealthChecks();
+
         // Register Serilog 
         builder.Host.UseSerilog((hostingContext, LoggerConfiguration) =>
         {

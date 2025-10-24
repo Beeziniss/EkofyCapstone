@@ -707,4 +707,101 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
             return PaginatedCacheResult<CombinedUploadRequest>.Fail();
         }
     }
+
+    #region Redis List Operations
+    public async Task<long> ListPushAsync(string key, string value, TimeSpan? expiry = null)
+    {
+        try
+        {
+            long result = await _redisDb.ListLeftPushAsync(key, value);
+            
+            if (expiry.HasValue)
+            {
+                await _redisDb.KeyExpireAsync(key, expiry);
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] ListPushAsync failed. Key: {key}");
+            return 0;
+        }
+    }
+
+    public async Task<long> ListPushRangeAsync(string key, IEnumerable<string> values, TimeSpan? expiry = null)
+    {
+        try
+        {
+            RedisValue[] redisValues = values.Select(v => (RedisValue)v).ToArray();
+            long result = await _redisDb.ListLeftPushAsync(key, redisValues);
+            
+            if (expiry.HasValue)
+            {
+                await _redisDb.KeyExpireAsync(key, expiry);
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] ListPushRangeAsync failed. Key: {key}");
+            return 0;
+        }
+    }
+
+    public async Task<string[]> ListRangeAsync(string key, long start = 0, long stop = -1)
+    {
+        try
+        {
+            RedisValue[] values = await _redisDb.ListRangeAsync(key, start, stop);
+            return values.Select(v => v.ToString()).ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] ListRangeAsync failed. Key: {key}");
+            return Array.Empty<string>();
+        }
+    }
+
+    public async Task<long> ListRemoveAsync(string key, string value, long count = 0)
+    {
+        try
+        {
+            return await _redisDb.ListRemoveAsync(key, value, count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] ListRemoveAsync failed. Key: {key}, Value: {value}");
+            return 0;
+        }
+    }
+
+    public async Task<long> ListLengthAsync(string key)
+    {
+        try
+        {
+            return await _redisDb.ListLengthAsync(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] ListLengthAsync failed. Key: {key}");
+            return 0;
+        }
+    }
+
+    public async Task<bool> ListContainsAsync(string key, string value)
+    {
+        try
+        {
+            RedisValue[] values = await _redisDb.ListRangeAsync(key, 0, -1);
+            return values.Any(v => v == value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"[Redis] ListContainsAsync failed. Key: {key}, Value: {value}");
+            return false;
+        }
+    }
+    #endregion
 }

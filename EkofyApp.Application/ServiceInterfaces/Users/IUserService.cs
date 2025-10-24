@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.Models.UserFollows;
+﻿using EkofyApp.Application.Models.UserEngagements;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Domain.Entities;
 
@@ -11,8 +11,8 @@ public interface IUserService
     Task<User> GetUserByIdAsync(string id);
     IQueryable<User> GetUsers();
     Task UnbanUserAsync(string targetUserId);
-    IQueryable<Follows> GetUserFollows();
-    Task FollowUserAsync(FollowUserRequest request);
-    Task UnfollowUserAsync(UnfollowUserRequest request);
+    IQueryable<UserEngagement> GetUserEngagement();
+    Task FollowUserAsync(UserEngagementRequest request);
+    Task UnfollowUserAsync(UserEngagementRequest request);
     Task DeleteUserManualAsync(string userId);
 }

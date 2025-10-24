@@ -103,7 +103,7 @@ public static class GraphQLServer
             .AddType<EnumType<MoodType>>()
             .AddType<EnumType<PathTag>>()
             .AddType<EnumType<PaymentMethodType>>()
-            .AddType<EnumType<PaymentStatus>>()
+            .AddType<EnumType<PaymentTransactionStatus>>()
             .AddType<EnumType<PeriodTime>>()
             .AddType<EnumType<PolicyStatus>>()
             .AddType<EnumType<PolicyType>>()

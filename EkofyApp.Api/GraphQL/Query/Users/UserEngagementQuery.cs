@@ -7,7 +7,7 @@ namespace EkofyApp.Api.GraphQL.Query.Users;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public sealed class FollowQuery(IUserService userService)
+public sealed class UserEngagementQuery(IUserService userService)
 {
     private readonly IUserService _userService = userService;
 
@@ -15,9 +15,9 @@ public sealed class FollowQuery(IUserService userService)
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    [UseSorting<Follows>]
-    public IQueryable<Follows> GetFollows()
+    [UseSorting<UserEngagement>]
+    public IQueryable<UserEngagement> GetUserEngagement()
     {
-        return _userService.GetUserFollows();
+        return _userService.GetUserEngagement();
     }
 }

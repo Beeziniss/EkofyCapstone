@@ -22,4 +22,9 @@ public interface IStripeService
     Task<bool> IsCustomerIdExisted();
     void TransferGroupArtist(string[] artistAccountIds, long amount, string groupId = "default");
     TransferResponse TransferToArtist(string artistAccountId, long amount);
+    
+    // Payout methods
+    Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
+    Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
+    Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId);
 }

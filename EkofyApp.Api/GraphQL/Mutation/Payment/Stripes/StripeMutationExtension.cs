@@ -6,7 +6,7 @@ public sealed class StripeMutationExtension : ObjectTypeExtension<StripeMutation
 {
     protected override void Configure(IObjectTypeDescriptor<StripeMutation> descriptor)
     {
-        descriptor.Field(x => x.CreateExpressConnectedAccountAsync())
+        descriptor.Field(x => x.CreateExpressConnectedAccountAsync(default!, default!))
             .Authorize(roles: HelperRoleBase.ArtistRolesArray);
 
         descriptor.Field(x => x.CreatePaymentCheckoutSessionAsync(default!))
