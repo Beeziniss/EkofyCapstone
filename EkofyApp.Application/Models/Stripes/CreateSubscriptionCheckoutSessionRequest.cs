@@ -1,10 +1,11 @@
 ﻿using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Subcriptions;
 
 namespace EkofyApp.Application.Models.Stripes;
 public sealed record class CreateSubscriptionCheckoutSessionRequest
 {
-    public string SubscriptionCode { get; init; } = null!;
-    //public SubscriptionTier SubscriptionTier { get; init; }
+    //public string SubscriptionCode { get; init; } = null!;
+    public SubscriptionTier SubscriptionTier { get; init; }
     //public int SubscriptionVersion { get; init; }
 
     public PeriodTime Period { get; init; }

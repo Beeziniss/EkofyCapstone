@@ -367,6 +367,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.CheckoutSessionSigningSecret);
                 if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
                 {
+                    //_logger.LogInformation("Handling Checkout Session Completed event.");
+                    //return;
+
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
 
                     // Cập nhật PaymentTransaction
@@ -447,15 +450,15 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         OneOffSnapshot = oneOffSnapshot,
                         SubscriptionSnapshot = subscriptionSnapshot,
 
-                        OriginContext = checkoutSession.OriginContext,
+                        //OriginContext = checkoutSession.OriginContext,
 
-                        FullName = checkoutSession.Customer.Name,
-                        Email = checkoutSession.Customer.Email,
+                        FullName = checkoutSession.CustomerDetails.Name,
+                        Email = checkoutSession.CustomerDetails.Email,
                         Country = "VN", // Tạm thời
                         Amount = transaction.Amount,
                         Currency = transaction.Currency,
 
-                        From = checkoutSession.Customer.Email,
+                        From = checkoutSession.CustomerDetails.Email,
                         To = "Ekofy" // Tạm thời
                     });
                 }

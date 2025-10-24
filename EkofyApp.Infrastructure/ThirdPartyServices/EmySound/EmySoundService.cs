@@ -31,7 +31,7 @@ public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
 
         if (JsonDocument.Parse(body).RootElement.GetArrayLength() == 0)
         {
-            minConfidence = 0.7;
+            minConfidence = 0.6;
             minCoverage = 0.4;
 
             using MemoryStream secondStream = new(fileBytes);

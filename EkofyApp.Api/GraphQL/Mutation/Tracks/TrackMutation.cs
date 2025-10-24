@@ -75,7 +75,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                         {
                             throw new BadRequestCustomException($"The uploaded track is likely to infringe copyright.\nScore: {bestMatch.MinConfidence}.\nCoverage: {bestMatch.QueryCoverage}.\nTrack: {bestMatch.TrackId} | {bestMatch.TrackName}.");
                         }
-                    case 0.7:
+                    case 0.6:
                         {
                             // Đánh cờ duyệt thủ công
                             // TODO: Kiểm tra các thông tin metadata cơ bản tự động
@@ -93,13 +93,14 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                 }
             }
 
-            // Duyệt tự động
-            //await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
-
             // Tạo stream mới để dùng cho duyệt tự động
             using var autoStream = new MemoryStream(fileBytes);
+
+            // Duyệt tự động
+            await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+
             // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
-            await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            //await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
             return true;
         }

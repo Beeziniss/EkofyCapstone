@@ -1,5 +1,4 @@
-﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Domain.EmbeddedDocuments;
 public sealed class LegalDocument

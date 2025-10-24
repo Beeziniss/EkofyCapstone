@@ -6,12 +6,12 @@ public sealed class CreateCheckoutSessionRequestValidator : AbstractValidator<Cr
 {
     public CreateCheckoutSessionRequestValidator()
     {
-        RuleFor(x => x.SubscriptionCode)
-            .NotEmpty().WithMessage("Subscription Code is required.")
-            .MaximumLength(50).WithMessage("Subscription Code must not exceed 50 characters.");
+        //RuleFor(x => x.SubscriptionCode)
+        //    .NotEmpty().WithMessage("Subscription Code is required.")
+        //    .MaximumLength(50).WithMessage("Subscription Code must not exceed 50 characters.");
 
-        //RuleFor(x => x.SubscriptionTier)
-        //    .IsInEnum().WithMessage("Invalid subscription tier.");
+        RuleFor(x => x.SubscriptionTier)
+            .IsInEnum().WithMessage("Invalid subscription tier.");
 
         //RuleFor(x => x.SubscriptionVersion)
         //    .GreaterThan(0).WithMessage("Subscription version must be greater than 0.");

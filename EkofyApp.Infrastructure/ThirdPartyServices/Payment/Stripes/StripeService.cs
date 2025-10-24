@@ -343,7 +343,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // Tạm thời chưa Lookup vì chưa hoàn thành Entity SubscriptionPlan
         // TODO: Cần lookup SubscriptionPlan để lấy StripePriceId
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
-            .Find(x => x.Code == createCheckoutSessionRequest.SubscriptionCode &&
+            .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
                 x.Status == SubscriptionStatus.Active)
             //.Project<Subscription>(Builders<Subscription>.Projection
             //    .Include(x => x.UserId))
@@ -393,14 +393,14 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             //OriginContext = "web",
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createCheckoutSessionRequest.CancelUrl,
-            InvoiceCreation = new SessionInvoiceCreationOptions
-            {
-                Enabled = true, // Tạo hóa đơn
-                //InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
-                //{
-                //    Description = $"Invoice for {subscriptionPlan.Name} plan",
-                //}
-            },
+            //InvoiceCreation = new SessionInvoiceCreationOptions
+            //{
+            //    Enabled = true, // Tạo hóa đơn
+            //    //InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
+            //    //{
+            //    //    Description = $"Invoice for {subscriptionPlan.Name} plan",
+            //    //}
+            //},
             Discounts = couponIds != null ? couponIds?.Select(x => new SessionDiscountOptions
             {
                 Coupon = x

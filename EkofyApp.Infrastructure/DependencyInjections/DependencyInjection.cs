@@ -162,10 +162,10 @@ public static class DependencyInjection
 
         StripeSetting stripeSetting = new()
         {
+            TestSigningSecret = Environment.GetEnvironmentVariable("STRIPE_SIGNATURE_SECRET_TEST") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_SIGNATURE_SECRET_TEST is not set in the environment"),
             AccountSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT is not set in the environment"),
             AccountV2SigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2 is not set in the environment"),
             CustomerSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CUSTOMER") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CUSTOMER is not set in the environment"),
-            SubscriptionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION is not set in the environment"),
             CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
             InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
             PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
