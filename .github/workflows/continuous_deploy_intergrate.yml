@@ -48,7 +48,7 @@ jobs:
   - name: Sync env from Infisical
     run: |
      ssh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
-      cd ${{ secrets.WORKDIR }} 
+      cd ${{ secrets.WORKDIR }}/app_env 
       infisical export --silent --token=${{ secrets.INFISICAL_TOKEN }} > .env
      "
 
