@@ -404,9 +404,24 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         // Tạo URL đầy đủ
         string fullUrl = $"{domainUrl}/{relativePath}";
 
-        // Đọc private key từ file
-        string privateKeyPath = HelperMethod.ResolvePath(PathTag.Base, "PrivateKeys");
-        privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+        string privateKeyPath = "";
+
+        if (HelperMethod.IsWindows())
+        {
+            // Đọc private key từ file
+            privateKeyPath = HelperMethod.ResolvePath(PathTag.Base, "PrivateKeys");
+            privateKeyPath = Path.GetFullPath(Path.Combine(privateKeyPath, "private_key.pem"));
+        }
+        else if (HelperMethod.IsLinux())
+        {
+            privateKeyPath = Path.GetFullPath(Path.Combine("/app/PrivateKey", "private_key.pem"));
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("Unsupported operating system");
+        }
+
+
         using StreamReader privateKeyStream = new(privateKeyPath);
 
         // Thời gian hết hạn của signed URL
