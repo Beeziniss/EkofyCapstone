@@ -90,16 +90,19 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
             entitlementclones.AddRange(additionalEntitlements);
         }
 
-        EffectiveEntitlement effectiveEntitlement = new()
-        {
-            UserId = userId,
-            Role = userRole,
-            SubscriptionId = subscription.Id,
-            Entitlements = entitlementclones,
-            ValidUntil = validUntil,
-        };
+        UpdateDefinition<EffectiveEntitlement> update = Builders<EffectiveEntitlement>.Update
+            .Set(x => x.Role, userRole)
+            .Set(x => x.SubscriptionId, subscription.Id)
+            .Set(x => x.Entitlements, entitlementclones)
+            .Set(x => x.ValidUntil, validUntil)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-        await _unitOfWork.GetCollection<EffectiveEntitlement>().ReplaceOneAsync(session, ef => ef.UserId == userId, effectiveEntitlement, new ReplaceOptions { IsUpsert = true });
+        await _unitOfWork.GetCollection<EffectiveEntitlement>()
+            .UpdateOneAsync(
+                session,
+                filter: ef => ef.UserId == userId,
+                update: update,
+                options: new UpdateOptions { IsUpsert = true });
     }
 
     public async Task RebuildTierAsync(IClientSessionHandle? session, string userId, UserRole userRole, string subscriptionId, List<AppliedEntitlement>? additionalEntitlements = null, DateTimeOffset? validUntil = null)
@@ -122,11 +125,11 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
         }
 
         UpdateDefinition<EffectiveEntitlement> update = Builders<EffectiveEntitlement>.Update
-        .Set(x => x.Role, userRole)
-        .Set(x => x.SubscriptionId, subscription.Id)
-        .Set(x => x.Entitlements, entitlementclones)
-        .Set(x => x.ValidUntil, validUntil)
-        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            .Set(x => x.Role, userRole)
+            .Set(x => x.SubscriptionId, subscription.Id)
+            .Set(x => x.Entitlements, entitlementclones)
+            .Set(x => x.ValidUntil, validUntil)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
         await _unitOfWork.GetCollection<EffectiveEntitlement>()
             .UpdateOneAsync(
