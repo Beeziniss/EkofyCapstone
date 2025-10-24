@@ -7,6 +7,7 @@ using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.Categories;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Works;
@@ -18,6 +19,7 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Hangfire;
 using HotChocolate.Subscriptions;
 using MongoDB.Bson;
 using Refit;
@@ -367,9 +369,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                 throw new NotFoundCustomException("Upload request not found");
             }
 
-            var trackTempRequest = combinedRequest.Track;
-            var workTempRequest = combinedRequest.Work;
-            var recordingTempRequest = combinedRequest.Recording;
+            TrackTempRequest trackTempRequest = combinedRequest.Track;
+            WorkTempRequest workTempRequest = combinedRequest.Work;
+            RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
 
             // Tài nguyên từ S3
             await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
@@ -423,6 +425,16 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
                 // Đẩy hls playlist lên S3
                 await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+
+                // Kiểm tra và lên lịch phát hành track nếu cần thiết
+                if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
+                {
+                    DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
+                    BackgroundJob.Schedule<IBackgoundService>(
+                        x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
+                        releaseTime
+                    );
+                }
 
                 // Upload fingerprint lên EmySound
                 if (stream.CanSeek && stream.Position != 0)
@@ -492,6 +504,16 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
         }
 
         return false;
+    }
+
+    private static bool ShouldScheduleTrackRelease(ReleaseInfo releaseInfo)
+    {
+        // Chỉ schedule job khi:
+        // 1. IsReleased = false (track chưa được phát hành)
+        // 2. ReleaseStatus != Official (không phải là official)
+        return !releaseInfo.IsReleased &&
+               releaseInfo.ReleaseStatus != ReleaseStatus.Official &&
+               releaseInfo.ReleaseDate.HasValue;
     }
 
     public async Task<bool> UpdateFavoriteCountAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)

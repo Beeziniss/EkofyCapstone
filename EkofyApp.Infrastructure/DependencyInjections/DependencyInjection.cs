@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Authentication;
@@ -22,8 +23,8 @@ using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
-using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Reports;
+using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
@@ -52,6 +53,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.ApprovalHistories;
 using EkofyApp.Infrastructure.Services.ArtistPackages;
 using EkofyApp.Infrastructure.Services.Artists;
 using EkofyApp.Infrastructure.Services.Auth;
@@ -66,8 +68,8 @@ using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
 using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
-using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Reports;
+using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.Tracks;
@@ -108,8 +110,6 @@ using Stripe;
 using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
-using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
-using EkofyApp.Infrastructure.Services.ApprovalHistories;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
 public static class DependencyInjection
@@ -166,7 +166,9 @@ public static class DependencyInjection
             AccountV2SigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_ACCOUNT_V2 is not set in the environment"),
             CustomerSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CUSTOMER") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CUSTOMER is not set in the environment"),
             SubscriptionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION is not set in the environment"),
-            CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment")
+            CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
+            InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
+            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
         };
 
         services.AddSingleton(stripeSetting);
@@ -697,7 +699,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
 
         // PaymentTransaction
-        BsonSerializer.RegisterSerializer(typeof(PaymentStatus), new EnumMemberSerializer<PaymentStatus>());
+        BsonSerializer.RegisterSerializer(typeof(PaymentTransactionStatus), new EnumMemberSerializer<PaymentTransactionStatus>());
         BsonSerializer.RegisterSerializer(typeof(TransactionStatus), new EnumMemberSerializer<TransactionStatus>());
 
         // Common
@@ -707,7 +709,10 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
-        
+
+        // Payout Trasnsaction
+        BsonSerializer.RegisterSerializer(typeof(PayoutTransactionStatus), new EnumMemberSerializer<PayoutTransactionStatus>());
+
         // Report
         BsonSerializer.RegisterSerializer(typeof(ReportStatus), new EnumMemberSerializer<ReportStatus>());
         BsonSerializer.RegisterSerializer(typeof(ReportType), new EnumMemberSerializer<ReportType>());
@@ -724,6 +729,10 @@ public static class DependencyInjection
 
         //Artist Package
         BsonSerializer.RegisterSerializer(typeof(ArtistPackageStatus), new EnumMemberSerializer<ArtistPackageStatus>());
+
+        // User Engagement
+        BsonSerializer.RegisterSerializer(typeof(UserEngagementTargetType), new EnumMemberSerializer<UserEngagementTargetType>());
+        BsonSerializer.RegisterSerializer(typeof(UserEngagementAction), new EnumMemberSerializer<UserEngagementAction>());
     }
 
     public static void AddHangfire(this IServiceCollection service)

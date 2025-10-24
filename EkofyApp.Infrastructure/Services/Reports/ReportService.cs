@@ -207,6 +207,8 @@ public sealed class ReportService(
                     throw new BadRequestCustomException("Suspension days must be greater than 0");
                 }
 
+                DateTimeOffset suspensionExpiry = HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value);
+
                 // Update user status
                 User userSuspended = await _unitOfWork.GetCollection<User>()
                     .FindOneAndUpdateAsync(
@@ -220,7 +222,7 @@ public sealed class ReportService(
                                 Reason = request.Note,
                                 RestrictedAt = HelperMethod.GetUtcPlus7TimeOffset(),
                                 Expired = request.SuspensionDays.HasValue
-                                            ? HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value)
+                                            ? suspensionExpiry
                                             : null
                             })
                             .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
@@ -235,7 +237,7 @@ public sealed class ReportService(
                     );
 
                 // Xóa restriction sau khi hết hạn
-                BackgroundJob.Enqueue<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(userId));
+                BackgroundJob.Schedule<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(userId), suspensionExpiry);
 
                 // Gửi email
                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.TemporarySuspension, userSuspended.Email, userSuspended.FullName, userSuspended.Email, request.Note!, HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value).ToString("dd/MM/yyyy HH:mm:ss")));
@@ -247,16 +249,24 @@ public sealed class ReportService(
 
                 foreach (RestrictionActionDetail restrictionActionDetail in request.RestrictionActionDetails)
                 {
+                    DateTimeOffset? restrictionExpiry = request.SuspensionDays.HasValue
+                            ? HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value)
+                            : null;
+
                     accountRestrictions.Add(new Restriction
                     {
                         Type = RestrictionType.Suspended,
                         Action = restrictionActionDetail.RestrictionAction,
                         Reason = restrictionActionDetail.Note,
                         RestrictedAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                        Expired = request.SuspensionDays.HasValue
-                            ? HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value)
-                            : null
+                        Expired = restrictionExpiry
                     });
+
+                    if (restrictionExpiry != null)
+                    {
+                        // Xóa restriction sau khi hết hạn
+                        BackgroundJob.Schedule<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(userId), restrictionExpiry.Value);
+                    }
                 }
 
                 User userRestrictedEntitlement = await _unitOfWork.GetCollection<User>()
@@ -274,9 +284,6 @@ public sealed class ReportService(
                                 .Include(u => u.FullName)
                         }
                     );
-
-                // Xóa restriction sau khi hết hạn
-                BackgroundJob.Enqueue<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(userId));
 
                 // Gửi email
                 // TODO: Thêm email template riêng cho restriction

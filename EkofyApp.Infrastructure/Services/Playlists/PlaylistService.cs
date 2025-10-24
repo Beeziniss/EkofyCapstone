@@ -104,7 +104,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
 
     public async Task AddToPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest)
     {
-        string listenerId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         Playlist? playlist = await _unitOfWork.GetCollection<Playlist>()
             .Find(x => x.Id == addToPlaylistRequest.PlaylistId)
@@ -117,7 +117,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         {
             await _unitOfWork.GetCollection<Playlist>().InsertOneAsync(new Playlist()
             {
-                UserId = listenerId,
+                UserId = userId,
                 Name = addToPlaylistRequest.PlaylistName!,
                 NameUnsigned = HelperMethod.ToUnsigned(addToPlaylistRequest.PlaylistName!),
                 TracksInfo =

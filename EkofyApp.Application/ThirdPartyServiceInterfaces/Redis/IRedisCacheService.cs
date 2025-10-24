@@ -42,4 +42,12 @@ public interface IRedisCacheService
     string[] GetAllKeysByPattern(string pattern);
     Task<HashEntry[]?> HashGetAllAsync(string key);
     Task HashDecrementAsync(string key, string field, long decrementBy = 1);
+
+    // Redis List Operations
+    Task<long> ListPushAsync(string key, string value, TimeSpan? expiry = null);
+    Task<long> ListPushRangeAsync(string key, IEnumerable<string> values, TimeSpan? expiry = null);
+    Task<string[]> ListRangeAsync(string key, long start = 0, long stop = -1);
+    Task<long> ListRemoveAsync(string key, string value, long count = 0);
+    Task<long> ListLengthAsync(string key);
+    Task<bool> ListContainsAsync(string key, string value);
 }
