@@ -32,7 +32,11 @@ jobs:
      context: .
      file: ./Dockerfile
      push: true
-     tags: ${{ secrets.DOCKERHUB_REPO_NAME }}:${{ steps.set_tag.outputs.tag }}
+     cache-from: type=registry,ref=${{ secrets.DOCKERHUB_REPO_NAME }}:latest
+     cache-to: type=inline
+     tags: |
+       ${{ secrets.DOCKERHUB_REPO_NAME }}:${{ steps.set_tag.outputs.tag }}
+       ${{ secrets.DOCKERHUB_REPO_NAME }}:latest
      
  pull-and-deploy:
   runs-on: ubuntu-latest
