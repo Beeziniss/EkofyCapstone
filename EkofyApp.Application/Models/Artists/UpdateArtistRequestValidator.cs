@@ -7,11 +7,10 @@ public sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArtis
     public UpdateArtistRequestValidator()
     {
         RuleFor(x => x.StageName)
-            .NotEmpty().WithMessage("DisplayName is required.")
-            .MaximumLength(100).WithMessage("DisplayName must not exceed 100 characters.");
+            .MaximumLength(100).WithMessage("StageName must not exceed 100 characters.");
 
         RuleFor(x => x.Biography)
-            .MaximumLength(1000).WithMessage("Bio must not exceed 1000 characters.")
+            .MaximumLength(10000).WithMessage("Bio must not exceed 10000 characters.")
             .When(x => !string.IsNullOrEmpty(x.Biography));
 
         RuleFor(x => x.AvatarImage)
@@ -41,8 +40,8 @@ public sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArtis
             .IsInEnum().When(x => x.Gender != null).WithMessage("Gender must be valid value");
 
         RuleFor(x => x.BirthDate)
-            .NotEmpty().WithMessage("Date of Birth is required")
-            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 18).WithMessage("Date of Birth must be at least 14 years old")
-            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
+            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 18).WithMessage("Date of Birth must be at least 18 years old")
+            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date")
+            .When(x => x.BirthDate != null);
     }
 }
