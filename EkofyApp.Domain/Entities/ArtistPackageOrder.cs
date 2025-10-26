@@ -26,16 +26,16 @@ public sealed class ArtistPackageOrder : TimeStamped, IEntityCustom
     public ArtistPackageOrderStatus Status { get; set; } = ArtistPackageOrderStatus.Pending;
     
     #region Order Details
-    public string OrderDescription { get; set; } = null!; // Yêu cầu của client
+    public string? OrderDescription { get; set; } = null!; // Yêu cầu của client
     public List<string> RequirementFiles { get; set; } = []; // Files client upload (brief, reference, etc)
-    public Dictionary<string, string> CustomRequirements { get; set; } = []; // Custom fields
+    //public Dictionary<string, string> CustomRequirements { get; set; } = []; // Custom fields
     #endregion
 
     #region Delivery
     public List<string> DeliveryFiles { get; set; } = []; // Files provider giao
     public string? DeliveryNotes { get; set; }
-    public DateTimeOffset? DeliveryDate { get; set; }
-    public DateTimeOffset EstimatedDeliveryDate { get; set; }
+    public DateTimeOffset? DeliveryAt { get; set; }
+    public DateTimeOffset EstimatedDeliveryAt { get; set; }
     #endregion
 
     #region Revisions

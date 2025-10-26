@@ -889,7 +889,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 
                 Status = ArtistPackageOrderStatus.Pending,
                 OrderDescription = "Order created from escrow payment", // Will be updated by buyer
-                EstimatedDeliveryDate = HelperMethod.GetUtcPlus7TimeOffset().AddDays(estimatedDeliveryDays),
+                EstimatedDeliveryAt = HelperMethod.GetUtcPlus7TimeOffset().AddDays(estimatedDeliveryDays),
                 MaxRevisions = maxRevisions,
                 
                 EscrowPayment = paymentSplit // Embed PaymentSplit
