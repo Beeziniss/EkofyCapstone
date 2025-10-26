@@ -345,8 +345,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Tier == createCheckoutSessionRequest.SubscriptionTier &&
                 x.Status == SubscriptionStatus.Active)
-            //.Project<Subscription>(Builders<Subscription>.Projection
-            //    .Include(x => x.UserId))
+            .Project<Subscription>(Builders<Subscription>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Code))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
@@ -614,7 +615,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             Amount = amount,
             Currency = currency,
-            Method = "standard", // Standard payout (1-5 business days)
+            Method = "standard", // Payout tiêu chuẩn (1-5 ngày làm việc)
             Description = description ?? alternativeDescription
         }, requestOptions);
     }
@@ -637,7 +638,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             Amount = amount,
             Currency = currency,
-            Method = "instant", // Instant payout (within 30 minutes, higher fee)
+            Method = "instant", // Payout tức thì (trong 30 phút, phí cao hơn)
             Description = description ?? alternativeDescription
         }, requestOptions);
     }
@@ -652,6 +653,576 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         };
 
         return await balanceService.GetAsync(requestOptions);
+    }
+    #endregion
+
+    #region Refund Methods
+    /// <summary>
+    /// Tạo refund cho payment (full hoặc partial)
+    /// </summary>
+    public async Task<RefundResponse> CreateRefundAsync(CreateRefundRequest request)
+    {
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        // Lấy payment transaction
+        PaymentTransaction paymentTransaction = await _unitOfWork.GetCollection<PaymentTransaction>()
+            .Find(x => x.Id == request.PaymentTransactionId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Payment transaction with ID {request.PaymentTransactionId} not found");
+
+        // Kiểm tra payment đã được paid chưa
+        if (paymentTransaction.PaymentStatus != PaymentTransactionStatus.Paid)
+        {
+            throw new BadRequestCustomException("Cannot refund a payment that is not paid");
+        }
+
+        // Kiểm tra amount refund
+        decimal refundAmount;
+        RefundType refundType;
+
+        if (request.Amount.HasValue)
+        {
+            if (request.Amount.Value <= 0 || request.Amount.Value > paymentTransaction.Amount)
+            {
+                throw new BadRequestCustomException("Refund amount must be greater than 0 and not exceed the original payment amount");
+            }
+            refundAmount = request.Amount.Value;
+            refundType = request.Amount.Value == paymentTransaction.Amount ? RefundType.Full : RefundType.Partial;
+        }
+        else
+        {
+            refundAmount = paymentTransaction.Amount;
+            refundType = RefundType.Full;
+        }
+
+        // Kiểm tra đã có refund cho payment này chưa
+        var existingRefunds = await _unitOfWork.GetCollection<RefundTransaction>()
+            .Find(x => x.PaymentTransactionId == request.PaymentTransactionId && 
+                      (x.Status == RefundTransactionStatus.Succeeded || x.Status == RefundTransactionStatus.Pending))
+            .ToListAsync();
+
+        decimal totalRefundedAmount = existingRefunds.Sum(r => r.Amount);
+        if (totalRefundedAmount + refundAmount > paymentTransaction.Amount)
+        {
+            throw new BadRequestCustomException($"Total refund amount ({totalRefundedAmount + refundAmount}) cannot exceed original payment amount ({paymentTransaction.Amount})");
+        }
+
+        // Tạo refund với Stripe
+        var refundService = new RefundService();
+        var refundOptions = new RefundCreateOptions
+        {
+            PaymentIntent = paymentTransaction.StripePaymentId,
+            Amount = (long)(refundAmount * 100), // Convert to cents
+            Reason = request.Reason,
+            Metadata = request.Metadata,
+            ReverseTransfer = request.ReverseTransfer
+        };
+
+        Refund stripeRefund = await refundService.CreateAsync(refundOptions);
+
+        // Lưu refund transaction vào database
+        var refundTransaction = new RefundTransaction
+        {
+            UserId = paymentTransaction.UserId,
+            PaymentTransactionId = request.PaymentTransactionId,
+            StripeRefundId = stripeRefund.Id,
+            StripePaymentIntentId = paymentTransaction.StripePaymentId!,
+            StripeChargeId = stripeRefund.ChargeId,
+            Amount = refundAmount,
+            Currency = paymentTransaction.Currency,
+            Type = refundType,
+            Status = Enum.Parse<RefundTransactionStatus>(stripeRefund.Status, true),
+            Reason = request.Reason,
+            Description = request.Description,
+            Metadata = request.Metadata,
+            ProcessedByUserId = currentUserId,
+            ProcessedAt = HelperMethod.GetUtcPlus7TimeOffset()
+        };
+
+        await _unitOfWork.GetCollection<RefundTransaction>().InsertOneAsync(refundTransaction);
+
+        _logger.LogInformation("Refund created: {RefundId} for Payment: {PaymentId}, Amount: {Amount} {Currency}", 
+            stripeRefund.Id, paymentTransaction.StripePaymentId, refundAmount, paymentTransaction.Currency);
+
+        return new RefundResponse
+        {
+            Id = refundTransaction.Id,
+            StripeRefundId = stripeRefund.Id,
+            PaymentTransactionId = request.PaymentTransactionId,
+            StripePaymentIntentId = paymentTransaction.StripePaymentId!,
+            StripeChargeId = stripeRefund.ChargeId,
+            Amount = refundAmount,
+            Currency = paymentTransaction.Currency,
+            Type = refundType,
+            Status = refundTransaction.Status,
+            Reason = request.Reason,
+            Description = request.Description,
+            Metadata = request.Metadata,
+            ProcessedByUserId = currentUserId,
+            ProcessedAt = refundTransaction.ProcessedAt,
+            CreatedAt = refundTransaction.CreatedAt,
+            UpdatedAt = refundTransaction.UpdatedAt
+        };
+    }
+
+    /// <summary>
+    /// Lấy thông tin refund theo ID
+    /// </summary>
+    public async Task<RefundResponse?> GetRefundAsync(string refundTransactionId)
+    {
+        RefundTransaction? refundTransaction = await _unitOfWork.GetCollection<RefundTransaction>()
+            .Find(x => x.Id == refundTransactionId)
+            .FirstOrDefaultAsync();
+
+        if (refundTransaction == null)
+            return null;
+
+        return new RefundResponse
+        {
+            Id = refundTransaction.Id,
+            StripeRefundId = refundTransaction.StripeRefundId,
+            PaymentTransactionId = refundTransaction.PaymentTransactionId,
+            StripePaymentIntentId = refundTransaction.StripePaymentIntentId,
+            StripeChargeId = refundTransaction.StripeChargeId,
+            Amount = refundTransaction.Amount,
+            Currency = refundTransaction.Currency,
+            Type = refundTransaction.Type,
+            Status = refundTransaction.Status,
+            Reason = refundTransaction.Reason,
+            Description = refundTransaction.Description,
+            Metadata = refundTransaction.Metadata,
+            ProcessedByUserId = refundTransaction.ProcessedByUserId,
+            ProcessedAt = refundTransaction.ProcessedAt,
+            CreatedAt = refundTransaction.CreatedAt,
+            UpdatedAt = refundTransaction.UpdatedAt
+        };
+    }
+
+    /// <summary>
+    /// Lấy danh sách refunds
+    /// </summary>
+    public async Task<List<RefundResponse>> ListRefundsAsync(string? paymentTransactionId = null, int limit = 10, string? startingAfter = null)
+    {
+        var filterBuilder = Builders<RefundTransaction>.Filter;
+        var filter = filterBuilder.Empty;
+
+        if (!string.IsNullOrEmpty(paymentTransactionId))
+        {
+            filter &= filterBuilder.Eq(x => x.PaymentTransactionId, paymentTransactionId);
+        }
+
+        if (!string.IsNullOrEmpty(startingAfter))
+        {
+            filter &= filterBuilder.Lt(x => x.Id, startingAfter);
+        }
+
+        var refunds = await _unitOfWork.GetCollection<RefundTransaction>()
+            .Find(filter)
+            .SortByDescending(x => x.CreatedAt)
+            .Limit(limit)
+            .ToListAsync();
+
+        return refunds.Select(r => new RefundResponse
+        {
+            Id = r.Id,
+            StripeRefundId = r.StripeRefundId,
+            PaymentTransactionId = r.PaymentTransactionId,
+            StripePaymentIntentId = r.StripePaymentIntentId,
+            StripeChargeId = r.StripeChargeId,
+            Amount = r.Amount,
+            Currency = r.Currency,
+            Type = r.Type,
+            Status = r.Status,
+            Reason = r.Reason,
+            Description = r.Description,
+            Metadata = r.Metadata,
+            ProcessedByUserId = r.ProcessedByUserId,
+            ProcessedAt = r.ProcessedAt,
+            CreatedAt = r.CreatedAt,
+            UpdatedAt = r.UpdatedAt
+        }).ToList();
+    }
+    #endregion
+
+    #region Escrow Payment Methods (Split Payment)
+    /// <summary>
+    /// Tạo checkout session cho escrow payment với split payment configuration
+    /// </summary>
+    public async Task<CheckoutSessionResponse> CreateEscrowPaymentCheckoutSessionAsync(CreateEscrowPaymentRequest request)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        // Lấy thông tin user và artist package
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Id == userId)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.StripeCustomerId)
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found");
+
+        ArtistPackage artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
+            .Find(x => x.Id == request.ArtistPackageId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist package not found");
+
+        // Lấy thông tin artist và kiểm tra connected account
+        User artist = await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Id == artistPackage.ArtistId)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.StripeAccountId)
+                .Include(x => x.FullName))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
+
+        if (string.IsNullOrEmpty(artist.StripeAccountId))
+        {
+            throw new BadRequestCustomException("Artist must have a connected Stripe account to receive payments");
+        }
+
+        // Tính toán split percentages
+        decimal advancePercentage = request.AdvancePaymentPercentage ?? 30m;
+        decimal completionPercentage = request.CompletionPaymentPercentage ?? 60m;
+        decimal platformCommissionPercentage = request.PlatformCommissionPercentage ?? 10m;
+
+        // Validate percentages
+        if (advancePercentage + completionPercentage + platformCommissionPercentage != 100m)
+        {
+            throw new BadRequestCustomException("Payment split percentages must total 100%");
+        }
+
+        decimal totalAmount = artistPackage.Amount;
+        decimal advanceAmount = Math.Round(totalAmount * advancePercentage / 100, 2);
+        decimal completionAmount = Math.Round(totalAmount * completionPercentage / 100, 2);
+        decimal platformCommission = Math.Round(totalAmount * platformCommissionPercentage / 100, 2);
+
+        // Tạo checkout session với metadata cho escrow
+        var sessionOptions = new SessionCreateOptions
+        {
+            LineItems = new List<SessionLineItemOptions>
+            {
+                new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = artistPackage.Currency.ToString(),
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = $"Escrow Payment: {artistPackage.PackageName}",
+                            Description = $"Split payment - Advance: {advancePercentage}%, Completion: {completionPercentage}%, Platform: {platformCommissionPercentage}%",
+                        },
+                        UnitAmountDecimal = totalAmount * 100, // Convert to cents
+                    },
+                    Quantity = 1,
+                },
+            },
+            Customer = user.StripeCustomerId,
+            Mode = "payment",
+            SuccessUrl = request.SuccessUrl,
+            CancelUrl = request.CancelUrl,
+            PaymentIntentData = new SessionPaymentIntentDataOptions
+            {
+                CaptureMethod = "automatic", // Capture immediately but don't transfer yet
+                SetupFutureUsage = request.IsSavePaymentMethod ? "off_session" : null,
+                ReceiptEmail = request.IsReceiptEmail ? user.Email : null,
+            },
+            Metadata = new Dictionary<string, string>
+            {
+                { "is_escrow", "true" },
+                { "artist_package_id", request.ArtistPackageId },
+                { "artist_id", artistPackage.ArtistId },
+                { "buyer_id", userId },
+                { "advance_percentage", advancePercentage.ToString() },
+                { "completion_percentage", completionPercentage.ToString() },
+                { "platform_commission_percentage", platformCommissionPercentage.ToString() },
+                { "advance_amount", advanceAmount.ToString() },
+                { "completion_amount", completionAmount.ToString() },
+                { "platform_commission", platformCommission.ToString() },
+                { "artist_stripe_account", artist.StripeAccountId },
+                { "estimated_delivery_days", request.EstimatedDeliveryDays.ToString() },
+                { "max_revisions", request.MaxRevisions.ToString() }
+            }
+        };
+
+        var sessionService = new SessionService();
+        Session checkoutSession = await sessionService.CreateAsync(sessionOptions);
+
+        if (string.IsNullOrEmpty(checkoutSession.Url))
+        {
+            throw new NotFoundCustomException("Error while generating URL for checkout session");
+        }
+
+        // Tạo payment transaction record cho escrow
+        await _unitOfWork.GetCollection<PaymentTransaction>().InsertOneAsync(new PaymentTransaction
+        {
+            UserId = userId,
+            StripeCheckoutSessionId = checkoutSession.Id,
+            StripePaymentId = checkoutSession.PaymentIntentId,
+            StripePaymentMethod = checkoutSession.PaymentMethodTypes,
+            Amount = totalAmount,
+            Currency = artistPackage.Currency.ToString(),
+            PaymentStatus = PaymentTransactionStatus.Pending,
+            Status = TransactionStatus.Open
+        });
+
+        _logger.LogInformation("Escrow payment checkout session created: {SessionId} for Artist Package: {PackageId}", 
+            checkoutSession.Id, request.ArtistPackageId);
+
+        return new CheckoutSessionResponse
+        {
+            Id = checkoutSession.Id,
+            Url = checkoutSession.Url,
+            SuccessUrl = checkoutSession.SuccessUrl,
+            CancelUrl = checkoutSession.CancelUrl,
+            Status = checkoutSession.Status,
+            Mode = checkoutSession.Mode,
+            Created = checkoutSession.Created,
+            Expired = checkoutSession.ExpiresAt,
+        };
+    }
+
+    /// <summary>
+    /// Lấy thông tin escrow payment
+    /// </summary>
+    public async Task<EscrowPaymentResponse> GetEscrowPaymentAsync(string orderId)
+    {
+        ArtistPackageOrder order = await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .Find(x => x.Id == orderId && x.IsEscrowPayment)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Escrow order not found");
+
+        if (order.EscrowPayment == null)
+        {
+            throw new BadRequestCustomException("Order does not have escrow payment configuration");
+        }
+
+        return new EscrowPaymentResponse
+        {
+            Id = order.Id,
+            OrderId = order.Id,
+            PaymentTransactionId = order.PaymentTransactionId,
+            StripePaymentIntentId = order.EscrowPayment.StripePaymentIntentId,
+            TotalAmount = order.EscrowPayment.TotalAmount,
+            AdvancePaymentAmount = order.EscrowPayment.AdvancePaymentAmount,
+            CompletionPaymentAmount = order.EscrowPayment.CompletionPaymentAmount,
+            PlatformCommissionAmount = order.EscrowPayment.PlatformCommissionAmount,
+            Currency = order.EscrowPayment.Currency,
+            Status = order.EscrowPayment.Status,
+            OrderStatus = order.Status,
+            AdvancePaymentReleasedAt = order.EscrowPayment.AdvancePaymentReleasedAt,
+            OrderCompletedAt = order.EscrowPayment.OrderCompletedAt,
+            AutoReleaseDate = order.EscrowPayment.AutoReleaseDate,
+            BuyerId = order.ClientId,
+            ArtistId = order.ProviderId,
+            ArtistPackageId = order.ArtistPackageId,
+            CreatedAt = order.CreatedAt,
+            UpdatedAt = order.UpdatedAt
+        };
+    }
+
+    /// <summary>
+    /// Lấy danh sách escrow payments
+    /// </summary>
+    public async Task<List<EscrowPaymentResponse>> ListEscrowPaymentsAsync(string? userId = null, int limit = 10)
+    {
+        var filterBuilder = Builders<ArtistPackageOrder>.Filter;
+        var filter = filterBuilder.And(
+            filterBuilder.Ne(x => x.EscrowPayment, null), // Only escrow orders
+            filterBuilder.Eq(x => x.IsEscrowPayment, true)
+        );
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            filter &= filterBuilder.Or(
+                filterBuilder.Eq(x => x.ClientId, userId),
+                filterBuilder.Eq(x => x.ProviderId, userId)
+            );
+        }
+
+        var orders = await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .Find(filter)
+            .SortByDescending(x => x.CreatedAt)
+            .Limit(limit)
+            .ToListAsync();
+
+        return orders.Select(order => new EscrowPaymentResponse
+        {
+            Id = order.Id,
+            OrderId = order.Id,
+            PaymentTransactionId = order.PaymentTransactionId,
+            StripePaymentIntentId = order.EscrowPayment?.StripePaymentIntentId ?? "",
+            TotalAmount = order.EscrowPayment?.TotalAmount ?? 0,
+            AdvancePaymentAmount = order.EscrowPayment?.AdvancePaymentAmount ?? 0,
+            CompletionPaymentAmount = order.EscrowPayment?.CompletionPaymentAmount ?? 0,
+            PlatformCommissionAmount = order.EscrowPayment?.PlatformCommissionAmount ?? 0,
+            Currency = order.EscrowPayment?.Currency ?? "usd",
+            Status = order.EscrowPayment?.Status ?? EscrowTransactionStatus.Pending,
+            OrderStatus = order.Status,
+            AdvancePaymentReleasedAt = order.EscrowPayment?.AdvancePaymentReleasedAt,
+            OrderCompletedAt = order.EscrowPayment?.OrderCompletedAt,
+            AutoReleaseDate = order.EscrowPayment?.AutoReleaseDate,
+            BuyerId = order.ClientId,
+            ArtistId = order.ProviderId,
+            ArtistPackageId = order.ArtistPackageId,
+            CreatedAt = order.CreatedAt,
+            UpdatedAt = order.UpdatedAt
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Release advance payment (30%) cho artist khi order được confirm
+    /// </summary>
+    public async Task<EscrowPaymentResponse> ReleaseAdvancePaymentAsync(string orderId)
+    {
+        ArtistPackageOrder order = await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .Find(x => x.Id == orderId && x.IsEscrowPayment)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Escrow order not found");
+
+        if (order.EscrowPayment == null)
+        {
+            throw new BadRequestCustomException("Order does not have escrow payment configuration");
+        }
+
+        if (order.EscrowPayment.Status != EscrowTransactionStatus.Pending)
+        {
+            throw new BadRequestCustomException("Advance payment can only be released for pending escrow transactions");
+        }
+
+        if (order.EscrowPayment.AdvancePaymentReleasedAt.HasValue)
+        {
+            throw new BadRequestCustomException("Advance payment has already been released");
+        }
+
+        // Tạo transfer cho advance payment
+        var transferService = new TransferService();
+        var transferOptions = new TransferCreateOptions
+        {
+            Amount = (long)(order.EscrowPayment.AdvancePaymentAmount * 100), // Convert to cents
+            Currency = order.EscrowPayment.Currency,
+            Destination = order.EscrowPayment.ArtistStripeAccountId,
+            Description = $"Advance payment for order - {order.EscrowPayment.AdvancePaymentPercentage}%",
+            Metadata = new Dictionary<string, string>
+            {
+                { "order_id", orderId },
+                { "payment_type", "advance" },
+                { "artist_id", order.ProviderId },
+                { "buyer_id", order.ClientId }
+            }
+        };
+
+        Transfer transfer = await transferService.CreateAsync(transferOptions);
+
+        // Cập nhật order với advance payment info
+        var updateDefinition = Builders<ArtistPackageOrder>.Update
+            .Set(x => x.EscrowPayment.StripeAdvanceTransferId, transfer.Id)
+            .Set(x => x.EscrowPayment.AdvancePaymentReleasedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            .Set(x => x.EscrowPayment.Status, EscrowTransactionStatus.PartialReleased)
+            .Set(x => x.Status, ArtistPackageOrderStatus.InProgress)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .UpdateOneAsync(x => x.Id == orderId, updateDefinition);
+
+        _logger.LogInformation("Advance payment released: {TransferId} for Order: {OrderId}, Amount: {Amount} {Currency}", 
+            transfer.Id, orderId, order.EscrowPayment.AdvancePaymentAmount, order.EscrowPayment.Currency);
+
+        return await GetEscrowPaymentAsync(orderId);
+    }
+
+    /// <summary>
+    /// Release completion payment (60%) cho artist khi order hoàn thành
+    /// </summary>
+    public async Task<EscrowPaymentResponse> ReleaseCompletionPaymentAsync(string orderId)
+    {
+        ArtistPackageOrder order = await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .Find(x => x.Id == orderId && x.IsEscrowPayment)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Escrow order not found");
+
+        if (order.EscrowPayment == null)
+        {
+            throw new BadRequestCustomException("Order does not have escrow payment configuration");
+        }
+
+        if (order.EscrowPayment.Status != EscrowTransactionStatus.PartialReleased)
+        {
+            throw new BadRequestCustomException("Completion payment can only be released after advance payment");
+        }
+
+        if (order.EscrowPayment.CompletionPaymentReleasedAt.HasValue)
+        {
+            throw new BadRequestCustomException("Completion payment has already been released");
+        }
+
+        // Tạo transfer cho completion payment
+        var transferService = new TransferService();
+        var transferOptions = new TransferCreateOptions
+        {
+            Amount = (long)(order.EscrowPayment.CompletionPaymentAmount * 100), // Convert to cents
+            Currency = order.EscrowPayment.Currency,
+            Destination = order.EscrowPayment.ArtistStripeAccountId,
+            Description = $"Completion payment for order - {order.EscrowPayment.CompletionPaymentPercentage}%",
+            Metadata = new Dictionary<string, string>
+            {
+                { "order_id", orderId },
+                { "payment_type", "completion" },
+                { "artist_id", order.ProviderId },
+                { "buyer_id", order.ClientId }
+            }
+        };
+
+        Transfer transfer = await transferService.CreateAsync(transferOptions);
+
+        // Cập nhật order với completion payment info
+        var updateDefinition = Builders<ArtistPackageOrder>.Update
+            .Set(x => x.EscrowPayment.StripeCompletionTransferId, transfer.Id)
+            .Set(x => x.EscrowPayment.CompletionPaymentReleasedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            .Set(x => x.EscrowPayment.OrderCompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            .Set(x => x.EscrowPayment.Status, EscrowTransactionStatus.Completed)
+            .Set(x => x.Status, ArtistPackageOrderStatus.Completed)
+            .Set(x => x.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .UpdateOneAsync(x => x.Id == orderId, updateDefinition);
+
+        _logger.LogInformation("Completion payment released: {TransferId} for Order: {OrderId}, Amount: {Amount} {Currency}", 
+            transfer.Id, orderId, order.EscrowPayment.CompletionPaymentAmount, order.EscrowPayment.Currency);
+
+        return await GetEscrowPaymentAsync(orderId);
+    }
+
+    /// <summary>
+    /// Confirm order completion bởi buyer - trigger release completion payment
+    /// </summary>
+    public async Task<EscrowPaymentResponse> ConfirmOrderCompletionAsync(ConfirmOrderCompletionRequest request)
+    {
+        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        ArtistPackageOrder order = await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .Find(x => x.Id == request.OrderId && x.IsEscrowPayment)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Escrow order not found");
+
+        // Chỉ buyer mới có thể confirm completion
+        if (order.ClientId != currentUserId)
+        {
+            throw new ForbiddenCustomException("Only the buyer can confirm order completion");
+        }
+
+        if (order.Status != ArtistPackageOrderStatus.SubmittedForReview)
+        {
+            throw new BadRequestCustomException("Order must be submitted for review before completion can be confirmed");
+        }
+
+        // Cập nhật order với delivery files và review
+        var orderUpdateDefinition = Builders<ArtistPackageOrder>.Update
+            .Set(x => x.Status, ArtistPackageOrderStatus.Completed)
+            .Set(x => x.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            .Set(x => x.ReviewedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            .Set(x => x.ClientRating, request.BuyerRating)
+            .Set(x => x.ClientReview, request.BuyerReview)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        await _unitOfWork.GetCollection<ArtistPackageOrder>()
+            .UpdateOneAsync(x => x.Id == order.Id, orderUpdateDefinition);
+
+        // Tự động release completion payment
+        return await ReleaseCompletionPaymentAsync(order.Id);
     }
     #endregion
 }

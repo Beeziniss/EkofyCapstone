@@ -18,6 +18,7 @@ namespace EkofyApp.Domain.Entities
         public int EstimateDeliveryDays { get; set; }
         public string? Description { get; set; }
         public List<Metadata> ServiceDetails { get; set; } = [];
+        public int MaxRevisions { get; set; }
         public ArtistPackageStatus Status { get; set; }
 
         // vì package được đánh theo version nên sẽ ko có xóa hay chỉnh sửa để tránh mấy khóa liên quan, cũng không cần biết thông tin ngày tạo

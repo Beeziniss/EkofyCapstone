@@ -27,17 +27,17 @@ public sealed class HelperMethod
     public static DateTime GetUtcPlus7Time()
     {
         #region Chỉ chạy được trên local nếu publish thì sẽ lỗi
-        // Get the current UTC time
+        // Lấy thời gian UTC hiện tại
         //DateTime utcNow = DateTime.UtcNow;
 
-        //// Define the UTC+7 time zone
+        //// Định nghĩa time zone UTC+7
         //TimeZoneInfo timeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
 
-        //// Convert the UTC time to UTC+7
+        //// Chuyển đổi thời gian UTC thành UTC+7
         //DateTime utcPlus7Now = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timeZone);
         #endregion
 
-        // Get the current UTC time and add a 7-hour offset
+        // Lấy thời gian UTC hiện tại và cộng thêm offset 7 giờ
         DateTime utcPlus7Now = DateTime.UtcNow.AddHours(7);
 
         return utcPlus7Now;
@@ -45,9 +45,9 @@ public sealed class HelperMethod
 
     public static DateOnly GetUtcPlus7DateOnly()
     {
-        // Get the current UTC time and add a 7-hour offset
+        // Lấy thời gian UTC hiện tại và cộng thêm offset 7 giờ
         DateTime utcPlus7Now = DateTime.UtcNow.AddHours(7);
-        // Return the DateOnly part of the UTC+7 time
+        // Trả về phần DateOnly của thời gian UTC+7
         return DateOnly.FromDateTime(utcPlus7Now);
     }
 
@@ -161,7 +161,7 @@ public sealed class HelperMethod
 
         DateTime now = DateTime.UtcNow.AddHours(7);
 
-        // Validate that the date of birth is in the past
+        // Kiểm tra xem ngày sinh có ở quá khứ không
         if (dateOfBirth > now)
         {
             throw new BadRequestCustomException("Date of birth must be in the past.");
@@ -225,7 +225,7 @@ public sealed class HelperMethod
     public static string RegexPatternAlphaNumericWithSpace() => @"^[\p{L}0-9 ]+$";
     public static string RegexPatternAlphaNumericWithSpecific() => @"^[\p{L}0-9 ,./\-_]+$";
     public static string RegexPatternIdentityCardNumber() => @"^\d{9}|\d{12}$";
-    public static string RegexPatternPhoneNumber() => @"^(0|\+84)(32|33|34|35|36|37|38|39|86|96|97|98|81|82|83|84|85|88|91|94|70|76|77|78|79|89|90|93|52|56|58|92|059|099|095)[0-9]{7}$"; // WTF IS THIS COPILOT
+    public static string RegexPatternPhoneNumber() => @"^(0|\+84)(32|33|34|35|36|37|38|39|86|96|97|98|81|82|83|84|85|88|91|94|70|76|77|78|79|89|90|93|52|56|58|92|059|099|095)[0-9]{7}$"; // Cái gì vậy trời ơi
 
     // 32|33|34|35|36|37|38|39|86|96|97|98 |  # Viettel
     // 81|82|83|84|85|88|91|94 |              # Vinaphone

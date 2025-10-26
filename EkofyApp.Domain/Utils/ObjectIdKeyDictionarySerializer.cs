@@ -17,9 +17,9 @@ public sealed class ObjectIdKeyDictionarySerializer : SerializerBase<Dictionary<
         context.Writer.WriteStartDocument();
         foreach (KeyValuePair<string, bool> kvp in value)
         {
-            ObjectId objectId = ObjectId.Parse(kvp.Key); // Convert string key to ObjectId
-            //context.Writer.WriteObjectId(objectId); // Write ObjectId as field name
-            context.Writer.WriteName(objectId.ToString()); // Write ObjectId as field name
+            ObjectId objectId = ObjectId.Parse(kvp.Key); // Chuyển đổi string key thành ObjectId
+            //context.Writer.WriteObjectId(objectId); // Ghi ObjectId làm field name
+            context.Writer.WriteName(objectId.ToString()); // Ghi ObjectId làm field name
             context.Writer.WriteBoolean(kvp.Value);
         }
         context.Writer.WriteEndDocument();
@@ -31,8 +31,8 @@ public sealed class ObjectIdKeyDictionarySerializer : SerializerBase<Dictionary<
         context.Reader.ReadStartDocument();
         while (context.Reader.ReadBsonType() != BsonType.EndOfDocument)
         {
-            //string objectIdKey = context.Reader.ReadObjectId().ToString(); // ObjectId stored as string
-            string objectIdKey = context.Reader.ReadName(); // ObjectId stored as string
+            //string objectIdKey = context.Reader.ReadObjectId().ToString(); // ObjectId được lưu dưới dạng string
+            string objectIdKey = context.Reader.ReadName(); // ObjectId được lưu dưới dạng string
             bool value = context.Reader.ReadBoolean();
             dict[objectIdKey] = value;
         }

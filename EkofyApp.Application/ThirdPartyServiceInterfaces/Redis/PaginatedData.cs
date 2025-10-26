@@ -1,7 +1,7 @@
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 
 /// <summary>
-/// Contains paginated data with total count
+/// Chứa dữ liệu phân trang với tổng số
 /// </summary>
 /// <typeparam name="T">The type of items</typeparam>
 public sealed class PaginatedData<T>

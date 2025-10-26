@@ -48,7 +48,7 @@ public sealed class WorkService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             throw new InvalidOperationException("Cannot create a new recording within the last 3 days of the month.");
         }
 
-        // Check for duplicate users
+        // Kiểm tra users trùng lặp
         // Fe lo
         //var duplicateUsers = splits.GroupBy(s => s.UserId)
         //    .Where(g => g.Count() > 1)

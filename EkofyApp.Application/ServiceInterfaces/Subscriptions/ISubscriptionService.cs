@@ -11,14 +11,14 @@ public interface ISubscriptionService
     Task DeprecateSubscriptionAsync(string subscriptionId);
 
     /// <summary>
-    /// Creates a new subscription for the user.
+    /// Tạo đăng ký mới cho user.
     /// </summary>
     /// <param name="userId">The ID of the user.</param>
     /// <param name="subscriptionCode">The code of the subscription.</param>
     /// <returns>A task that represents the asynchronous operation, containing a boolean indicating success.</returns>
     //Task<bool> CreateSubscriptionAsync(string userId, string subscriptionCode);
     /// <summary>
-    /// Cancels an existing subscription for the user.
+    /// Hủy đăng ký hiện tại cho user.
     /// </summary>
     /// <param name="userId">The ID of the user.</param>
     /// <returns>A task that represents the asynchronous operation, containing a boolean indicating success.</returns>

@@ -13,7 +13,7 @@ namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
         Task ApproveArtistPackageAsync(string id);
         Task DeleteArtistPackageAsync(string id);
 
-        // New methods for Redis functionality
+        // Phương thức mới cho chức năng Redis
         Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
         Task RejectArtistPackageAsync(string id);
     }

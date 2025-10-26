@@ -8,7 +8,7 @@ public interface IRoyaltyReportService
     IQueryable<RoyaltyReport> GetRoyaltyReports();
     Task<long> GetTotalCountOfRoyaltyReportsAsync(int month, int year, CancellationToken ct = default);
     
-    // Payout methods
+    // Phương thức payout
     Task<bool> ProcessPayoutForArtistAsync(string artistId, decimal amount, bool isInstant = false, CancellationToken ct = default);
     Task<bool> ProcessPayoutsForAllArtistsAsync(int month, int year, bool isInstant = false, CancellationToken ct = default);
 }

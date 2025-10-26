@@ -14,14 +14,14 @@ public sealed record class PendingArtistRegistrationRequest
     public UserGender Gender { get; init; }
     public string PhoneNumber { get; init; } = null!;
     
-    // Artist specific information
+    // Thông tin cụ thể của nghệ sĩ
     public string StageName { get; init; } = null!;
     public string StageNameUnsigned { get; init; } = null!;
     public ArtistType ArtistType { get; init; }
     public string? AvatarImage { get; init; }
     public List<ArtistMember> Members { get; init; } = [];
 
-    public List<LegalDocument> LegalDocuments { get; set; } = []; // List of legal documents associated with the artist, e.g., contracts, agreements, etc.
+    public List<LegalDocument> LegalDocuments { get; set; } = []; // Danh sách tài liệu pháp lý liên quan đến nghệ sĩ, ví dụ: hợp đồng, thỏa thuận, v.v.
 
     public IdentityCard IdentityCard { get; init; } = null!;
     

@@ -86,7 +86,7 @@ public sealed class AudioConvertPathOptions
         return segmentFolderPath;
     }
 
-    // Factory static methods
+    // Các phương thức static factory
     public static AudioConvertPathOptions ForConvertToWav()
     {
         if (HelperMethod.IsWindows())

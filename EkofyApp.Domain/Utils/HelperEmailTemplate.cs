@@ -142,8 +142,8 @@ public sealed class HelperEmailTemplate
 	}
 
 	/// <summary>
-	/// Email template for verifying OTP.
-	/// Expected parameters:
+	/// Template email để xác minh OTP.
+	/// Tham số cần thiết:
 	/// 0 - Full Name
 	/// 1 - OTP Code
 	/// </summary>
@@ -239,8 +239,8 @@ public sealed class HelperEmailTemplate
 	}
 
 	/// <summary>
-	/// Email template for reset password OTP.
-	/// Expected parameters:
+	/// Template email để reset password OTP.
+	/// Tham số cần thiết:
 	/// 0 - Full Name
 	/// 1 - OTP Code
 	/// </summary>
@@ -336,9 +336,9 @@ public sealed class HelperEmailTemplate
 	}
 
 	/// <summary>
-	/// Email template for password changed notification.
-	/// Expected parameters:
-	/// 0 - Full Name
+	/// Template email để thông báo thay đổi mật khẩu.
+	/// Tham số cần thiết:
+	/// 0 - Họ tên đầy đủ
 	/// 1 - Email
 	/// </summary>
 	/// <param name="parameters"></param>
@@ -424,8 +424,8 @@ public sealed class HelperEmailTemplate
 	}
 
     /// <summary>
-    /// Report warning email template.
-	/// Expected parameters:
+    /// Template email cảnh báo báo cáo.
+	/// Tham số cần thiết:
 	/// 0 - Full Name
 	/// 1 - Email
 	/// 2 - Reason
@@ -482,8 +482,8 @@ public sealed class HelperEmailTemplate
 	}
 
     /// <summary>
-    /// Temporary suspension email template.
-	/// Expected parameters:
+    /// Template email đình chỉ tạm thời.
+	/// Tham số cần thiết:
 	/// 0 - Full Name
 	/// 1 - Email
 	/// 2 - Reason
@@ -541,8 +541,8 @@ public sealed class HelperEmailTemplate
 	}
 
     /// <summary>
-    /// Permanent ban email template.
-	/// Expected parameters:
+    /// Template email cấm vĩnh viễn.
+	/// Tham số cần thiết:
 	/// 0 - Full Name
 	/// 1 - Email
 	/// 2 - Reason

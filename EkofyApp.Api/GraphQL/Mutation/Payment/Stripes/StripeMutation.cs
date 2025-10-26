@@ -41,6 +41,41 @@ public sealed class StripeMutation(IStripeService stripeService)
         return await _stripeService.CreateSubscriptionCheckoutSession(createCheckoutSessionRequest);
     }
 
+    [AuthorizeRoles("Admin")]
+    public async Task<RefundResponse> CreateRefundAsync(CreateRefundRequest request)
+    {
+        return await _stripeService.CreateRefundAsync(request);
+    }
+
+    [AuthorizeRoles("Listener,Artist")]
+    public async Task<CheckoutSessionResponse> CreateEscrowPaymentCheckoutSessionAsync(CreateEscrowPaymentRequest request)
+    {
+        if (!await _stripeService.IsCustomerIdExisted())
+        {
+            await _stripeService.CreateCustomerAsync();
+        }
+
+        return await _stripeService.CreateEscrowPaymentCheckoutSessionAsync(request);
+    }
+
+    [AuthorizeRoles("Listener")]
+    public async Task<EscrowPaymentResponse> ConfirmOrderCompletionAsync(ConfirmOrderCompletionRequest request)
+    {
+        return await _stripeService.ConfirmOrderCompletionAsync(request);
+    }
+
+    [AuthorizeRoles("Admin")]
+    public async Task<EscrowPaymentResponse> ReleaseAdvancePaymentAsync(string orderId)
+    {
+        return await _stripeService.ReleaseAdvancePaymentAsync(orderId);
+    }
+
+    [AuthorizeRoles("Admin")]
+    public async Task<EscrowPaymentResponse> ReleaseCompletionPaymentAsync(string orderId)
+    {
+        return await _stripeService.ReleaseCompletionPaymentAsync(orderId);
+    }
+
     //public bool TransferToArtist(string artistAccountId, long amount)
     //{
     //    TransferResponse transferResponse = _stripeService.TransferToArtist(artistAccountId, amount);

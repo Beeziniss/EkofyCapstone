@@ -43,7 +43,7 @@ public interface IRedisCacheService
     Task<HashEntry[]?> HashGetAllAsync(string key);
     Task HashDecrementAsync(string key, string field, long decrementBy = 1);
 
-    // Redis List Operations
+    // Các thao tác Redis List
     Task<long> ListPushAsync(string key, string value, TimeSpan? expiry = null);
     Task<long> ListPushRangeAsync(string key, IEnumerable<string> values, TimeSpan? expiry = null);
     Task<string[]> ListRangeAsync(string key, long start = 0, long stop = -1);

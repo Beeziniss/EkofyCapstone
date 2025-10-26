@@ -9,7 +9,7 @@ public interface IArtistService
     IQueryable<Artist> GetArtistsQueryable();
     Task UpdateProfileAsync(UpdateArtistRequest updateArtistRequest);
     
-    // Artist Registration Approval Methods
+    // Phương thức phê duyệt đăng ký nghệ sĩ
     Task<PaginatedData<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
     Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);

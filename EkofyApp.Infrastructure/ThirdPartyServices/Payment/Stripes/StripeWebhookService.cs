@@ -3,6 +3,7 @@ using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -15,16 +16,101 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using StackExchange.Redis;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
-public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeService> logger, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, StripeSetting stripeSetting) : IStripeWebhookService
+public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeService> logger, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, StripeSetting stripeSetting, IRedisCacheService redisCacheService) : IStripeWebhookService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<StripeService> _logger = logger;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
     private readonly IEffectiveEntitlementService _effectiveEntitlementService = effectiveEntitlementService;
     private readonly StripeSetting _stripeSetting = stripeSetting;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
+
+    #region Idempotency Methods
+
+    /// <summary>
+    /// Kiểm tra xem event có nên được xử lý không.
+    /// - Nếu đã processed → return true (skip)
+    /// - Nếu chưa processed nhưng đã retry >= 3 lần → mark as processed và return true (skip)
+    /// - Nếu chưa processed và retry < 3 lần → return false (continue processing)
+    /// </summary>
+    private async Task<bool> ShouldSkipEventAsync(string eventId)
+    {
+        try
+        {
+            // Kiểm tra xem đã processed chưa
+            string processedKey = $"stripe_webhook_processed:{eventId}";
+            if (await _redisCacheService.ExistsAsync(processedKey))
+            {
+                return true; // Đã processed, skip
+            }
+
+            // Kiểm tra retry count
+            string retryKey = $"stripe_webhook_retry:{eventId}";
+            const int maxRetries = 3;
+            
+            // Increment retry counter với TTL 24 giờ
+            long retryCount = await _redisCacheService.HashIncrementAsync(retryKey, "count", 1);
+            
+            // Set TTL cho retry counter (24 hours) cho lần đầu
+            if (retryCount == 1)
+            {
+                await _redisCacheService.SetExpirationAsync(retryKey, TimeSpan.FromHours(24));
+            }
+            
+            if (retryCount >= maxRetries)
+            {
+                _logger.LogWarning($"Event {eventId} has failed {retryCount} times. Marking as processed to prevent further retries.");
+                
+                // Tự động đánh dấu đã xử lý để ngăn retry tiếp
+                await MarkEventAsProcessedAsync(eventId, "failed_max_retries", "auto_marked");
+                
+                // Dọn dẹp retry counter
+                await _redisCacheService.RemoveAsync(retryKey);
+                
+                return true; // Bỏ qua xử lý
+            }
+            
+            _logger.LogInformation($"Event {eventId} retry attempt {retryCount}/{maxRetries}");
+            return false; // Tiếp tục xử lý
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Failed to check event status for {eventId}: {ex.Message}. Continuing with processing.");
+            return false; // Tiếp tục xử lý nếu Redis fail
+        }
+    }
+
+    /// <summary>
+    /// Đánh dấu event đã được xử lý thành công
+    /// TTL: 30 ngày (theo khuyến nghị Stripe)
+    /// </summary>
+    private async Task MarkEventAsProcessedAsync(string eventId, string eventType, string? webhookEndpoint = null)
+    {
+        try
+        {
+            string redisKey = $"stripe_webhook_processed:{eventId}";
+            string redisValue = $"{eventType}|{webhookEndpoint}|{HelperMethod.GetUtcPlus7TimeOffset():yyyy-MM-dd HH:mm:ss}";
+
+            // TTL 30 ngày theo khuyến nghị Stripe
+            TimeSpan ttl = TimeSpan.FromDays(30);
+
+            await _redisCacheService.SetStringAsync(redisKey, redisValue, ttl);
+        }
+        catch (StripeException stripeEx)
+        {
+            _logger.LogError($"Failed to mark event {eventId} as processed in Redis: {stripeEx.Message}");
+        }
+        catch (RedisException redisEx)
+        {
+            _logger.LogError($"Redis error while marking event {eventId} as processed: {redisEx.Message}");
+        }
+    }
+
+    #endregion
 
     // TODO: Xử lý webhook từ Stripe cho Customer (tạm thời chỉ log ra)
     // Resolved: Hoàn thành xử lý webhook Customer
@@ -35,6 +121,12 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             try
             {
                 Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.CustomerSigningSecret);
+
+                // Kiểm tra xem event có nên skip không (đã processed hoặc retry quá 3 lần)
+                if (await ShouldSkipEventAsync(stripeEvent.Id))
+                {
+                    return; // Bỏ qua xử lý
+                }
 
                 // Gọi hàm xử lý sự kiện tùy chỉnh
                 switch (stripeEvent.Type)
@@ -108,7 +200,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                             string status = stripeSubscription.Status; // canceled, incomplete_expired, incomplete, trialing, active, past_due
 
-                            // Case: Hủy vào cuối kỳ hạn
+                            // Hủy vào cuối kỳ hạn
                             if (status == "active" && stripeSubscription.CancelAtPeriodEnd == true)
                             {
                                 _logger.LogInformation($"Subscription {stripeSubscription.Id} will be canceled at the end of the period for user {user.Email}.");
@@ -133,7 +225,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                             string status = stripeSubscription.Status; // canceled, incomplete_expired, incomplete, trialing, active, past_due
 
-                            // Case 1: Hủy ngay lập tức (có thể do thẻ hết hạn, không đủ tiền, v.v.)
+                            // Hủy ngay lập tức (có thể do thẻ hết hạn, không đủ tiền, v.v.)
                             // Khi user đã hủy đúng kỳ hạn thì event với status này sẽ được bắn ra vào đúng ngày PeriodEnd
                             // Và thêm điều kiện là CancelAtPeriodEnd = true
                             // Nhưng do đây là hủy currentSubscription nên không cần kiểm tra CancelAtPeriodEnd
@@ -149,7 +241,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
                             }
 
-                            // Case 2: Stripe không tự động charge được và phải thử lại nhiều lần
+                            // Stripe không tự động charge được và phải thử lại nhiều lần
                             // Cái này hình như để ở customer.currentSubscription.updated
                             // Ngày 14/09 sẽ biết kết quả -> Kiểm tra trong dashboard webhook của Stripe
                             // Chưa biết được vì đang sandbox nên lúc nào cũng thanh toán thành công
@@ -165,6 +257,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     default:
                         break;
                 }
+
+                // Đánh dấu event đã được xử lý thành công
+                await MarkEventAsProcessedAsync(stripeEvent.Id, stripeEvent.Type, "customers");
             }
             catch (StripeException e)
             {
@@ -180,9 +275,16 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             try
             {
                 Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.InvoiceSigningSecret);
+                
+                // Kiểm tra xem event có nên skip không (đã processed hoặc retry quá 3 lần)
+                if (await ShouldSkipEventAsync(stripeEvent.Id))
+                {
+                    return; // Bỏ qua xử lý
+                }
+
                 switch (stripeEvent.Type)
                 {
-                    // Case này thường xảy ra khi gia hạn currentSubscription và nó chỉ xảy ra khi thanh toán tự động thành công
+                    // Thường xảy ra khi gia hạn currentSubscription và nó chỉ xảy ra khi thanh toán tự động thành công
                     // Nhưng lúc này event là InvoicePaid thay vì CustomerSubscriptionUpdated
                     // TODO: Thêm xử lý InvoicePaid
                     case EventTypes.InvoicePaid:
@@ -329,6 +431,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     default:
                         break;
                 }
+
+                // Đánh dấu event đã được xử lý thành công
+                await MarkEventAsProcessedAsync(stripeEvent.Id, stripeEvent.Type, "invoice");
             }
             catch (StripeException e)
             {
@@ -344,13 +449,23 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
         {
             Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.AccountV2SigningSecret);
 
-            _logger.LogInformation($"Webhook event received: {stripeEvent.Type}");
+            // Kiểm tra xem event có nên skip không (đã processed hoặc retry quá 3 lần)
+            // Note: Tạm thời sử dụng sync check vì method này không async
+            bool shouldSkip = Task.Run(async () => await ShouldSkipEventAsync(stripeEvent.Id)).Result;
+            if (shouldSkip)
+            {
+                return; // Bỏ qua xử lý
+            }
 
             if (stripeEvent.Type == EventTypes.AccountUpdated)
             {
                 Account account = stripeEvent.Data.Object as Account ?? throw new ArgumentNullCustomException("NULL");
                 _logger.LogInformation($"Account updated: {account.Id}, Email: {account.Email}, ChargesEnabled: {account.ChargesEnabled}");
             }
+
+            // Đánh dấu event đã được xử lý thành công
+            // Note: Tạm thời sử dụng sync mark vì method này không async
+            Task.Run(async () => await MarkEventAsProcessedAsync(stripeEvent.Id, stripeEvent.Type, "v1/accounts"));
         }
         catch (StripeException e)
         {
@@ -365,11 +480,15 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             try
             {
                 Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.CheckoutSessionSigningSecret);
+                
+                // Kiểm tra xem event có nên skip không (đã processed hoặc retry quá 3 lần)
+                if (await ShouldSkipEventAsync(stripeEvent.Id))
+                {
+                    return; // Bỏ qua xử lý
+                }
+
                 if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
                 {
-                    //_logger.LogInformation("Handling Checkout Session Completed event.");
-                    //return;
-
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
 
                     // Cập nhật PaymentTransaction
@@ -381,6 +500,13 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                     PaymentTransaction transaction = await _unitOfWork.GetCollection<PaymentTransaction>().FindOneAndUpdateAsync(session, Builders<PaymentTransaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
+
+                    // Kiểm tra nếu đây là escrow payment
+                    if (checkoutSession.Metadata.TryGetValue("is_escrow", out string? value) && Convert.ToBoolean(value))
+                    {
+                        await HandleEscrowPaymentAsync(session, checkoutSession, transaction);
+                        return; // Escrow payment không cần xử lý subscription/one-off logic
+                    }
 
                     OneOffSnapshot? oneOffSnapshot = null;
                     SubscriptionSnapshot? subscriptionSnapshot = null;
@@ -418,7 +544,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             SubscriptionTier = subscription.Tier,
                             SubscriptionStatus = subscription.Status,
 
-                            // Subscription Plan
+                            // Gói đăng ký
                             SubscriptionPlanPrices = subscriptionPlan.SubscriptionPlanPrices,
                             StripeProductId = subscriptionPlan.StripeProductId,
                             StripeProductActive = subscriptionPlan.StripeProductActive,
@@ -462,6 +588,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         To = "Ekofy" // Tạm thời
                     });
                 }
+
+                // Đánh dấu event đã được xử lý thành công
+                await MarkEventAsProcessedAsync(stripeEvent.Id, stripeEvent.Type, "checkout-session");
             }
             catch (StripeException e)
             {
@@ -470,20 +599,27 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
         });
     }
 
-    // Handle payout webhook events from Stripe
+    // Xử lý payout webhook events từ Stripe
     public async Task HandleWebhookPayoutAsync(string json, string stripeSignature)
     {
         try
         {
             Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.PayoutSigningSecret);
+            
+            // Kiểm tra xem event có nên skip không (đã processed hoặc retry quá 3 lần)
+            if (await ShouldSkipEventAsync(stripeEvent.Id))
+            {
+                return; // Bỏ qua xử lý
+            }
+
             Payout payout = stripeEvent.Data.Object as Payout ?? throw new ArgumentNullCustomException("Payout is NULL");
 
-            // Handle different payout events
+            // Xử lý các sự kiện payout khác nhau
             switch (stripeEvent.Type)
             {
                 case EventTypes.PayoutPaid:
                     {
-                        // Update payout transactions that are in pending or in_transit status to paid
+                        // Cập nhật payout transactions từ pending hoặc in_transit status thành paid
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
                             .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
@@ -503,7 +639,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                 case EventTypes.PayoutFailed:
                     {
-                        // Update payout transactions that are in pending or in_transit status to failed
+                        // Cập nhật payout transactions từ pending hoặc in_transit status thành failed
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
                             .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
@@ -523,7 +659,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                 case EventTypes.PayoutCanceled:
                     {
-                        // Update payout transactions that are in pending status to canceled
+                        // Cập nhật payout transactions từ pending status thành canceled
                         // Note: Only pending payouts can be canceled, not in_transit ones
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
                             .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
@@ -543,8 +679,8 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                 case EventTypes.PayoutUpdated:
                     {
-                        // Handle status transitions: pending → in_transit
-                        // This is typically when payout moves from pending to in_transit
+                        // Xử lý chuyển trạng thái: pending → in_transit
+                        // Thường xảy ra khi payout chuyển từ pending thành in_transit
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
                             .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
@@ -561,6 +697,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         break;
                     }
             }
+
+            // Đánh dấu event đã được xử lý thành công
+            await MarkEventAsProcessedAsync(stripeEvent.Id, stripeEvent.Type, "payout");
         }
         catch (StripeException e)
         {
@@ -569,6 +708,260 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
         catch (Exception ex)
         {
             throw new ExternalServiceCustomException($"Error processing payout webhook: {ex.Message}");
+        }
+    }
+
+    // Xử lý refund webhook events từ Stripe
+    public async Task HandleWebhookRefundAsync(string json, string stripeSignature)
+    {
+        try
+        {
+            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.RefundWebhookSecret);
+
+            // Kiểm tra xem event có nên được xử lý không
+            if (await ShouldSkipEventAsync(stripeEvent.Id))
+            {
+                _logger.LogInformation("Skipping already processed refund webhook event: {EventId}", stripeEvent.Id);
+                return;
+            }
+
+            Refund refund = stripeEvent.Data.Object as Refund ?? throw new ArgumentNullCustomException("Refund object is NULL");
+
+            switch (stripeEvent.Type)
+            {
+                case EventTypes.ChargeRefunded:
+                    {
+                        // Cập nhật trạng thái refund thành succeeded
+                        UpdateDefinition<RefundTransaction> updateDefinition = Builders<RefundTransaction>.Update
+                            .Set(x => x.Status, RefundTransactionStatus.Succeeded)
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                        UpdateResult updateResult = await _unitOfWork.GetCollection<RefundTransaction>()
+                            .UpdateOneAsync(
+                                x => x.StripeRefundId == refund.Id,
+                                updateDefinition);
+
+                        if (updateResult.ModifiedCount == 0)
+                        {
+                            _logger.LogWarning("No refund transaction found for Stripe Refund ID: {RefundId}", refund.Id);
+                        }
+
+                        _logger.LogInformation("Refund succeeded: {RefundId}", refund.Id);
+                        break;
+                    }
+
+                case EventTypes.ChargeRefundUpdated:
+                    {
+                        // Cập nhật trạng thái refund
+                        var refundStatus = Enum.Parse<RefundTransactionStatus>(refund.Status, true);
+                        
+                        UpdateDefinition<RefundTransaction> updateDefinition = Builders<RefundTransaction>.Update
+                            .Set(x => x.Status, refundStatus)
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                        UpdateResult updateResult = await _unitOfWork.GetCollection<RefundTransaction>()
+                            .UpdateOneAsync(
+                                x => x.StripeRefundId == refund.Id,
+                                updateDefinition);
+
+                        if (updateResult.ModifiedCount == 0)
+                        {
+                            _logger.LogWarning("No refund transaction found for Stripe Refund ID: {RefundId}", refund.Id);
+                        }
+
+                        _logger.LogInformation("Refund updated: {RefundId}, Status: {Status}", refund.Id, refund.Status);
+                        break;
+                    }
+
+                case EventTypes.ChargeDisputeCreated:
+                    {
+                        // Xử lý dispute (chargeback) - tạo refund record cho dispute
+                        Dispute dispute = stripeEvent.Data.Object as Dispute ?? throw new ArgumentNullCustomException("Dispute object is NULL");
+                        
+                        // Tìm payment transaction từ charge ID
+                        PaymentTransaction? paymentTransaction = await _unitOfWork.GetCollection<PaymentTransaction>()
+                            .Find(x => x.StripePaymentId != null && x.StripePaymentId.Contains(dispute.ChargeId))
+                            .FirstOrDefaultAsync();
+
+                        if (paymentTransaction != null)
+                        {
+                            // Tạo refund transaction cho dispute
+                            var disputeRefund = new RefundTransaction
+                            {
+                                UserId = paymentTransaction.UserId,
+                                PaymentTransactionId = paymentTransaction.Id,
+                                StripeRefundId = dispute.Id, // Sử dụng dispute ID
+                                StripePaymentIntentId = paymentTransaction.StripePaymentId!,
+                                StripeChargeId = dispute.ChargeId,
+                                Amount = Convert.ToDecimal(dispute.Amount) / 100, // Convert from cents
+                                Currency = dispute.Currency,
+                                Type = RefundType.Full, // Dispute thường là full refund
+                                Status = RefundTransactionStatus.Pending, // Dispute đang pending
+                                Reason = dispute.Reason,
+                                Description = $"Dispute: {dispute.Reason}",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    { "dispute_id", dispute.Id },
+                                    { "dispute_reason", dispute.Reason },
+                                    { "is_dispute", "true" }
+                                }
+                            };
+
+                            await _unitOfWork.GetCollection<RefundTransaction>().InsertOneAsync(disputeRefund);
+                            _logger.LogInformation("Dispute created and refund record added: {DisputeId} for Charge: {ChargeId}", dispute.Id, dispute.ChargeId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Payment transaction not found for dispute charge: {ChargeId}", dispute.ChargeId);
+                        }
+
+                        break;
+                    }
+            }
+
+            // Đánh dấu event đã được xử lý thành công
+            await MarkEventAsProcessedAsync(stripeEvent.Id, stripeEvent.Type, "refund");
+        }
+        catch (StripeException e)
+        {
+            throw new ExternalServiceCustomException($"Stripe refund webhook error: {e}");
+        }
+        catch (Exception ex)
+        {
+            throw new ExternalServiceCustomException($"Error processing refund webhook: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Xử lý escrow payment khi checkout session completed
+    /// </summary>
+    private async Task HandleEscrowPaymentAsync(IClientSessionHandle session, CheckoutOption.Session checkoutSession, PaymentTransaction transaction)
+    {
+        try
+        {
+            // Parse metadata từ checkout session
+            var metadata = checkoutSession.Metadata;
+            var artistPackageId = metadata["artist_package_id"];
+            var artistId = metadata["artist_id"];
+            var buyerId = metadata["buyer_id"];
+            var artistStripeAccount = metadata["artist_stripe_account"];
+            
+            var advancePercentage = decimal.Parse(metadata["advance_percentage"]);
+            var completionPercentage = decimal.Parse(metadata["completion_percentage"]);
+            var platformCommissionPercentage = decimal.Parse(metadata["platform_commission_percentage"]);
+            
+            var advanceAmount = decimal.Parse(metadata["advance_amount"]);
+            var completionAmount = decimal.Parse(metadata["completion_amount"]);
+            var platformCommission = decimal.Parse(metadata["platform_commission"]);
+            
+            var estimatedDeliveryDays = int.Parse(metadata["estimated_delivery_days"]);
+            var maxRevisions = int.Parse(metadata["max_revisions"]);
+
+            // Tạo PaymentSplit embedded document
+            var paymentSplit = new PaymentSplit
+            {
+                StripePaymentIntentId = checkoutSession.PaymentIntentId!,
+                ArtistStripeAccountId = artistStripeAccount,
+                
+                TotalAmount = transaction.Amount,
+                AdvancePaymentAmount = advanceAmount,
+                CompletionPaymentAmount = completionAmount,
+                PlatformCommissionAmount = platformCommission,
+                
+                AdvancePaymentPercentage = advancePercentage,
+                CompletionPaymentPercentage = completionPercentage,
+                PlatformCommissionPercentage = platformCommissionPercentage,
+                
+                Currency = transaction.Currency,
+                Status = EscrowTransactionStatus.Pending,
+                
+                AutoReleaseDate = HelperMethod.GetUtcPlus7TimeOffset().AddDays(estimatedDeliveryDays + 7), // Auto release 7 days after estimated delivery
+                CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
+            };
+
+            // Tạo ArtistPackageOrder với embedded PaymentSplit
+            var order = new ArtistPackageOrder
+            {
+                ClientId = buyerId,
+                ProviderId = artistId,
+                ArtistPackageId = artistPackageId,
+                PaymentTransactionId = transaction.Id,
+                
+                Status = ArtistPackageOrderStatus.Pending,
+                OrderDescription = "Order created from escrow payment", // Will be updated by buyer
+                EstimatedDeliveryDate = HelperMethod.GetUtcPlus7TimeOffset().AddDays(estimatedDeliveryDays),
+                MaxRevisions = maxRevisions,
+                
+                EscrowPayment = paymentSplit // Embed PaymentSplit
+            };
+
+            await _unitOfWork.GetCollection<ArtistPackageOrder>().InsertOneAsync(session, order);
+
+            // Tự động release advance payment (30%)
+            await ReleaseAdvancePaymentForEscrowAsync(order.Id);
+
+            _logger.LogInformation("Escrow payment processed successfully. Order ID: {OrderId}, Amount: {Amount}", 
+                order.Id, transaction.Amount);
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing escrow payment for checkout session: {CheckoutSessionId}", checkoutSession.Id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Release advance payment cho escrow transaction (called from webhook)
+    /// </summary>
+    private async Task ReleaseAdvancePaymentForEscrowAsync(string orderId)
+    {
+        try
+        {
+            ArtistPackageOrder order = await _unitOfWork.GetCollection<ArtistPackageOrder>()
+                .Find(x => x.Id == orderId && x.IsEscrowPayment)
+                .FirstOrDefaultAsync();
+
+            if (order?.EscrowPayment == null) return;
+
+            // Tạo transfer cho advance payment
+            var transferService = new TransferService();
+            var transferOptions = new TransferCreateOptions
+            {
+                Amount = (long)(order.EscrowPayment.AdvancePaymentAmount * 100), // Convert to cents
+                Currency = order.EscrowPayment.Currency,
+                Destination = order.EscrowPayment.ArtistStripeAccountId,
+                Description = $"Advance payment for order - {order.EscrowPayment.AdvancePaymentPercentage}%",
+                Metadata = new Dictionary<string, string>
+                {
+                    { "order_id", orderId },
+                    { "payment_type", "advance" },
+                    { "artist_id", order.ProviderId },
+                    { "buyer_id", order.ClientId }
+                }
+            };
+
+            Transfer transfer = await transferService.CreateAsync(transferOptions);
+
+            // Cập nhật order với advance payment info
+            var updateDefinition = Builders<ArtistPackageOrder>.Update
+                .Set(x => x.EscrowPayment.StripeAdvanceTransferId, transfer.Id)
+                .Set(x => x.EscrowPayment.AdvancePaymentReleasedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                .Set(x => x.EscrowPayment.Status, EscrowTransactionStatus.PartialReleased)
+                .Set(x => x.Status, ArtistPackageOrderStatus.InProgress)
+                .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+            await _unitOfWork.GetCollection<ArtistPackageOrder>()
+                .UpdateOneAsync(x => x.Id == orderId, updateDefinition);
+
+            _logger.LogInformation("Advance payment auto-released: {TransferId} for Order: {OrderId}, Amount: {Amount} {Currency}", 
+                transfer.Id, orderId, order.EscrowPayment.AdvancePaymentAmount, order.EscrowPayment.Currency);
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error releasing advance payment for order: {OrderId}", orderId);
+            throw;
         }
     }
 }

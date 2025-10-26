@@ -15,7 +15,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     private readonly IDatabase _redisDb = redisDb;
     private readonly ILogger<RedisCacheService> _logger = logger;
 
-    // Configure JsonSerializerOptions to serialize enums as strings
+    // Cấu hình JsonSerializerOptions để serialize enums thành strings
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -323,13 +323,13 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
     {
         try
         {
-            // Convert Dictionary to HashEntry array
+            // Chuyển đổi Dictionary thành HashEntry array
             HashEntry[] hashEntries = fields.Select(kvp => new HashEntry(kvp.Key, kvp.Value is null ? RedisValue.Null : kvp.Value)).ToArray();
 
-            // Set multiple hash fields at once
+            // Thiết lập nhiều hash fields cùng lúc
             await _redisDb.HashSetAsync(key, hashEntries);
 
-            // Set expiration if provided
+            // Thiết lập expiration nếu được cung cấp
             if (expiry.HasValue)
             {
                 await _redisDb.KeyExpireAsync(key, expiry.Value);
@@ -631,10 +631,10 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
                         PendingArtistPackageResponse? request = JsonSerializer.Deserialize<PendingArtistPackageResponse>(value!, _jsonOptions);
                         if (request != null)
                         {
-                            // Get TTL for this key
+                            // Lấy TTL cho key này
                             TimeSpan? ttl = await GetTTLAsync(key);
                             
-                            // Create a new response with TTL information
+                            // Tạo response mới với thông tin TTL
                             var requestWithTtl = request with { TimeToLive = ttl };
                             allRequests.Add(requestWithTtl);
                         }

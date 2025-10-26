@@ -97,10 +97,10 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
             using var autoStream = new MemoryStream(fileBytes);
 
             // Duyệt tự động
-            await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            //await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
             // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
-            //await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
             return true;
         }

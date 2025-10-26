@@ -23,8 +23,21 @@ public interface IStripeService
     void TransferGroupArtist(string[] artistAccountIds, long amount, string groupId = "default");
     TransferResponse TransferToArtist(string artistAccountId, long amount);
     
-    // Payout methods
+    // Phương thức payout
     Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
     Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
     Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId);
+    
+    // Phương thức refund
+    Task<RefundResponse> CreateRefundAsync(CreateRefundRequest request);
+    Task<RefundResponse?> GetRefundAsync(string refundTransactionId);
+    Task<List<RefundResponse>> ListRefundsAsync(string? paymentTransactionId = null, int limit = 10, string? startingAfter = null);
+    
+    // Phương thức escrow payment (split payment)
+    Task<CheckoutSessionResponse> CreateEscrowPaymentCheckoutSessionAsync(CreateEscrowPaymentRequest request);
+    Task<EscrowPaymentResponse> GetEscrowPaymentAsync(string escrowTransactionId);
+    Task<List<EscrowPaymentResponse>> ListEscrowPaymentsAsync(string? userId = null, int limit = 10);
+    Task<EscrowPaymentResponse> ReleaseAdvancePaymentAsync(string escrowTransactionId);
+    Task<EscrowPaymentResponse> ReleaseCompletionPaymentAsync(string escrowTransactionId);
+    Task<EscrowPaymentResponse> ConfirmOrderCompletionAsync(ConfirmOrderCompletionRequest request);
 }

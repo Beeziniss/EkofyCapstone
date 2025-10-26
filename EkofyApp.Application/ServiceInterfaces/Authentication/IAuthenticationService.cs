@@ -21,10 +21,10 @@ public interface IAuthenticationService
     Task ResendOtpAsync(string email);
     Task VerifyOtpAsync(string email, string providedOtp);
     
-    // Password Reset Methods
+    // Phương thức reset mật khẩu
     Task ForgotPasswordAsync(ForgotPasswordRequest forgotPasswordRequest);
     Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest);
     
-    // Change Password Method
+    // Phương thức thay đổi mật khẩu
     Task ChangePasswordAsync(ChangePasswordRequest changePasswordRequest);
 }

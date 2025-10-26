@@ -153,7 +153,7 @@ public static class DependencyInjection
 
     public static void AddStripeExtension(this IServiceCollection services)
     {
-        // Load Stripes settings from environment variables
+        // Load cài đặt Stripes từ environment variables
         string stripeApiKey = Environment.GetEnvironmentVariable("STRIPE_API_KEY") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_API_KEY is not set in the environment");
 
         string secretKey = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_SECRET_KEY is not set in the environment");
@@ -168,7 +168,8 @@ public static class DependencyInjection
             CustomerSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CUSTOMER") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CUSTOMER is not set in the environment"),
             CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
             InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
-            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
+            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment"),
+            RefundWebhookSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_REFUND") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_REFUND is not set in the environment")
         };
 
         services.AddSingleton(stripeSetting);
@@ -261,12 +262,12 @@ public static class DependencyInjection
 
     public static void AddGrpcClient(this IServiceCollection services)
     {
-        // Register gRPC client with DI
+        // Đăng ký gRPC client với DI
         services.AddGrpcClient<AudioAnalyzer.AudioAnalyzerClient>(options =>
         {
             options.Address = new Uri(Environment.GetEnvironmentVariable("GRPC_CLIENT") ?? throw new UnconfiguredEnvironmentCustomException("GRPC_CLIENT is not set or configured"));
 
-            // Set the maximum message size for gRPC
+            // Thiết lập kích thước message tối đa cho gRPC
             options.ChannelOptionsActions.Add(channelOptions =>
             {
                 // 50MB
@@ -278,18 +279,18 @@ public static class DependencyInjection
 
     public static void AddDatabase(this IServiceCollection services)
     {
-        // Load MongoDB settings from environment variables
+        // Load cài đặt MongoDB từ environment variables
         string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") ?? throw new UnconfiguredEnvironmentCustomException("Connection String Database is not set in the environment variables");
         string databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME") ?? throw new UnconfiguredEnvironmentCustomException("Database DisplayName is not set in the environment variables");
 
-        // Register the MongoDB settings as a singleton
+        // Đăng ký cài đặt MongoDB như singleton
         MongoDbSetting mongoDbSettings = new()
         {
             ConnectionString = connectionString,
             DatabaseName = databaseName
         };
 
-        // Register the MongoDBSetting with DI
+        // Đăng ký MongoDBSetting với DI
         services.AddSingleton(mongoDbSettings);
 
         // Register MongoClient as singleton, sharing the connection across all usages
@@ -336,7 +337,7 @@ public static class DependencyInjection
         });
         //services.AddSingleton<IMongoClient>(_lazyClient.Value);
 
-        // Register IMongoDatabase as a scoped service
+        // Đăng ký IMongoDatabase như scoped service
         services.AddScoped(sp =>
         {
             IMongoClient client = sp.GetRequiredService<IMongoClient>();
@@ -363,7 +364,7 @@ public static class DependencyInjection
 
     public static void AddServices(this IServiceCollection services)
     {
-        // Business Services
+        // Các dịch vụ nghiệp vụ
         services.AddScoped<ITrackService, TrackService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
@@ -397,10 +398,10 @@ public static class DependencyInjection
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         //services.AddScoped<IChatService, ChatService>();
 
-        // GraphQL Services
+        // Dịch vụ GraphQL
         services.AddScoped<IChatGraphQLService, ChatGraphQLService>();
 
-        // Third Party Services
+        // Dịch vụ bên thứ ba
         services.AddScoped<IFfmpegService, FfmpegService>();
     }
 
