@@ -12,7 +12,7 @@ public sealed class CreatePriceRequestValidator : AbstractValidator<CreatePriceR
             .Matches(x => HelperMethod.RegexPatternAlphaNumericWithSpecific());
 
         RuleFor(x => x.Interval)
-            .NotEmpty().WithMessage("Interval is required.")
+            //.NotEmpty().WithMessage("Interval is required.")
             .IsInEnum().WithMessage("Interval must be one of the following values: day, week, month, or year.");
 
         RuleFor(x => x.IntervalCount)
