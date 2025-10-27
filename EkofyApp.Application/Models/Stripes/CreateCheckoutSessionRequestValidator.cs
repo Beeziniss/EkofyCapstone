@@ -17,7 +17,7 @@ public sealed class CreateCheckoutSessionRequestValidator : AbstractValidator<Cr
         //    .GreaterThan(0).WithMessage("Subscription version must be greater than 0.");
 
         RuleFor(x => x.Period)
-            .NotEmpty().WithMessage("Period is required")
+            //.NotEmpty().WithMessage("Period is required")
             .IsInEnum().WithMessage("Must be valid data");
 
         RuleFor(x => x.SuccessUrl)
