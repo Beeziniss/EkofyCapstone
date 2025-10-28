@@ -10,6 +10,7 @@ public interface IStripeService
     AccountLinkResponse CreateAccountOnboardingLink(string refreshUrl, string returnUrl);
     AccountLink CreateAccountOnboardingLinkTest(string refreshUrl, string returnUrl);
     Task<Customer> CreateCustomerAsync();
+    Task CreateCustomConnectedAccount();
     Task CreateExpressConnectedAccount();
     Task<Account> CreateExpressConnectedAccountTest();
     Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreatePaymentCheckoutSessionRequest createPaymentCheckoutSessionRequest);

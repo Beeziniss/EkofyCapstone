@@ -12,6 +12,17 @@ public sealed class StripeMutation(IStripeService stripeService, IUserSubscripti
     private readonly IStripeService _stripeService = stripeService;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
 
+    public async Task<AccountLinkResponse> CreateCustomConnectedAccountAsync()
+    {
+        await _stripeService.CreateCustomConnectedAccount();
+
+        AccountLinkResponse accountLink = _stripeService.CreateAccountOnboardingLink(
+            refreshUrl: "https://google.com?refresh=1",
+            returnUrl: "https://google.com?return-1");
+
+        return accountLink;
+    }
+
     public async Task<AccountLinkResponse> CreateExpressConnectedAccountAsync(string refreshUrl = "https://ekofy.com/refresh", string returnUrl = "https://ekofy.com/return")
     {
         await _stripeService.CreateExpressConnectedAccount();
