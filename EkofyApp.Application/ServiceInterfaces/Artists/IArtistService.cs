@@ -11,6 +11,7 @@ public interface IArtistService
     
     // Artist Registration Approval Methods
     Task<PaginatedData<PendingArtistRegistrationResponse>> GetPendingRegistrationsAsync(int pageNumber = 1, int pageSize = 20);
+    Task<PendingArtistRegistrationResponse> GetPendingRegistrationByIdAsync(string artistRegistrationId);
     Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     IQueryable<Artist> SearchArtists(string stageName);

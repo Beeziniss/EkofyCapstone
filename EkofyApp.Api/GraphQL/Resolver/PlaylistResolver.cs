@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Domain.Entities;
 using HotChocolate.Data;
 using MongoDB.Driver;
@@ -41,5 +42,10 @@ public sealed class PlaylistResolver
         IEnumerable<string> trackIds = playlist.TracksInfo.Select(t => t.TrackId).ToList();
 
         return unitOfWork.GetCollection<Track>().AsQueryable().Where(t => trackIds.Contains(t.Id));
+    }
+
+    public async Task<bool> CheckPlaylistInFavoriteAsync([Parent] Playlist playlist, [Service] IPlaylistService playlistService)
+    {
+        return await playlistService.CheckPlaylistInFavoriteAsync(playlist.Id);
     }
 }

@@ -4,8 +4,9 @@ using EkofyApp.Domain.Entities;
 namespace EkofyApp.Application.ServiceInterfaces.Playlists;
 public interface IPlaylistService
 {
-    Task AddToFavoriteAsync(AddToPlaylistRequest addToPlaylistRequest);
+    Task AddToFavoriteAsync(string playlistId, bool isAdding);
     Task AddToPlaylistAsync(AddToPlaylistRequest addToPlaylistRequest);
+    Task<bool> CheckPlaylistInFavoriteAsync(string playlistId);
     Task CreatePlaylistAsync(CreatePlaylistRequest createPlaylistRequest);
     Task DeletePlaylistAsync(string playlistId);
     IQueryable<Playlist> GetPlaylists();

@@ -16,12 +16,13 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<float[]> GenerateEmbeddingsAsync(string term);
         Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20);
         Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20);
+        Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracks();
         Task<bool> CheckTrackInFavoriteAsync(string trackId);
         Task ReleaseScheduledTrackAsync(string trackId);
         IQueryable<Track> SearchTracks(string searchTerm);
-        Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue);
+        Task<long> UpdateFavoriteCountAsync(string trackId, bool isAdding);
         Task UpdateStreamCount(string trackId);
     }
 }
