@@ -518,8 +518,7 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
 
     public async Task<bool> UpdateFavoriteCountAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
     {
-        long incrementValue = isAdding ? 1 : -1;
-        long favoriteCountUpdated = await _trackService.UpdateFavoriteCountAsync(trackId, incrementValue);
+        long favoriteCountUpdated = await _trackService.UpdateFavoriteCountAsync(trackId, isAdding);
         await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
         return true;
     }

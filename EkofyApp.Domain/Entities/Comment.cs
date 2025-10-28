@@ -2,7 +2,6 @@ using EkofyApp.Domain.Base;
 using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using System;
 
 namespace EkofyApp.Domain.Entities;
 public sealed class Comment : TimeStamped, IEntityCustom

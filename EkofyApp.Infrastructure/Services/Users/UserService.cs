@@ -2,6 +2,7 @@
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -9,14 +10,18 @@ using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Users;
-public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IUserService
+public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, ILogger<UserService> logger) : IUserService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
+    private readonly ILogger<UserService> _logger = logger;
 
     public IQueryable<User> GetUsers()
     {
@@ -199,6 +204,8 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                         break;
                     }
             }
+
+            await AddUserFollowingCacheAsync(currentUserId, request.TargetId);
         });
     }
 
@@ -288,6 +295,8 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                         break;
                     }
             }
+
+            await RemoveUserFollowingCacheAsync(currentUserId, request.TargetId);
         });
     }
 
@@ -517,4 +526,151 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             //}
         });
     }
+
+    #region Caching
+    public async Task<bool> CheckUserFollowingAsync(string userFollowingId)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        try
+        {
+            string cacheKey = $"favorite_following:{userId}";
+
+            // Check if cache exists and has items
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+
+            if (listLength > 0)
+            {
+                // Cache hit - check if following exists in Redis list
+                return await _redisCacheService.ListContainsAsync(cacheKey, userFollowingId);
+            }
+
+            // Cache miss - populate from database
+            if(Enum.Parse<UserRole>(role, true) == UserRole.Artist)
+            {
+                await EnsureCachePopulatedAsync(userId, UserEngagementTargetType.Artist);
+            }
+            else if(Enum.Parse<UserRole>(role, true) == UserRole.Listener)
+            {
+                await EnsureCachePopulatedAsync(userId, UserEngagementTargetType.Listener);
+            }
+
+            // Check again after population
+            return await _redisCacheService.ListContainsAsync(cacheKey, userFollowingId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check if track {PlaylistId} is in favorite for user {UserId}", userFollowingId, userId);
+            return false;
+        }
+    }
+
+    private async Task<bool> EnsureCachePopulatedAsync(string userId, UserEngagementTargetType userEngagementTargetType)
+    {
+        try
+        {
+            string cacheKey = $"favorite_following:{userId}";
+
+            // Check if cache already exists
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+            if (listLength > 0)
+            {
+                return true; // Cache already populated
+            }
+
+            // Fetch favorite playlist from database
+            List<string> favoritePlaylistIds = await _unitOfWork.GetCollection<UserEngagement>()
+                .Find(x => x.ActorId == userId && x.TargetType == userEngagementTargetType && x.Action == UserEngagementAction.Follow)
+                .Project(x => x.TargetId)
+                .ToListAsync();
+
+            if (favoritePlaylistIds.Count > 0)
+            {
+                // Populate cache with track IDs
+                await _redisCacheService.ListPushRangeAsync(cacheKey, favoritePlaylistIds, TimeSpan.FromHours(1));
+
+                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} playlists", userId, favoritePlaylistIds.Count);
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to populate favorite cache for user {UserId}", userId);
+            return false;
+        }
+    }
+
+    private async Task AddUserFollowingCacheAsync(string userId, string userFollowingId)
+    {
+        try
+        {
+            string cacheKey = $"favorite_following:{userId}";
+
+            // Check if cache exists
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+
+            if (listLength > 0)
+            {
+                // Cache exists - check if following already exists to avoid duplicates
+                bool exists = await _redisCacheService.ListContainsAsync(cacheKey, userFollowingId);
+
+                if (!exists)
+                {
+                    // Get current TTL to preserve it
+                    var remainingTtl = await _redisCacheService.GetTTLAsync(cacheKey);
+                    var ttlToSet = remainingTtl ?? TimeSpan.FromHours(1);
+
+                    // Add following to the beginning of the list
+                    await _redisCacheService.ListPushAsync(cacheKey, userFollowingId, ttlToSet);
+                }
+            }
+            else
+            {
+                // Cache doesn't exist - create new list with this following
+                await _redisCacheService.ListPushAsync(cacheKey, userFollowingId, TimeSpan.FromHours(1));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add track {FollowingId} to favorite cache for user {UserId}", userFollowingId, userId);
+        }
+    }
+
+    private async Task RemoveUserFollowingCacheAsync(string userId, string userFollowingId)
+    {
+        try
+        {
+            string cacheKey = $"favorite_following:{userId}";
+
+            // Check if cache exists
+            long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
+
+            if (listLength > 0)
+            {
+                // Get current TTL to preserve it
+                var remainingTtl = await _redisCacheService.GetTTLAsync(cacheKey);
+
+                // Remove following from list (removes all occurrences)
+                long removedCount = await _redisCacheService.ListRemoveAsync(cacheKey, userFollowingId, 0);
+
+                if (removedCount > 0)
+                {
+                    // Restore TTL if there are still items in the list
+                    long newLength = await _redisCacheService.ListLengthAsync(cacheKey);
+                    if (newLength > 0 && remainingTtl.HasValue)
+                    {
+                        await _redisCacheService.SetExpirationAsync(cacheKey, remainingTtl);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove track {FollowingId} from favorite cache for user {UserId}", userFollowingId, userId);
+        }
+    }
+    #endregion
 }

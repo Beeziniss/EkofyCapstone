@@ -213,10 +213,10 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     }
 
     #region Favorite Tracks
-    public async Task<long> UpdateFavoriteCountAsync(string trackId, long incrementValue)
+    public async Task<long> UpdateFavoriteCountAsync(string trackId, bool isAdding)
     {
         Track trackUpdated = await _unitOfWork.GetCollection<Track>()
-        .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, incrementValue),
+        .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, 1),
         new FindOneAndUpdateOptions<Track>
         {
             // Trả về tài liệu sau khi cập nhật
@@ -229,8 +229,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
         string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        // Nếu decrementValue là âm, tức là người dùng bỏ thích bài hát
-        if (incrementValue < 0)
+        // Nếu isAdding false, tức là người dùng bỏ thích bài hát
+        if (!isAdding)
         {
             // Xóa track khỏi cache yêu thích của users
             await RemoveTrackFromFavoriteCacheAsync(userId, trackId);
