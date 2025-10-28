@@ -85,11 +85,7 @@ public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, IL
                 // Workaround vì lười làm webhook
                 // Cũng không hẳn vì webhook setup khá tốn nhiều bước
                 // Để tiện cho việc demo và test thì workaround vậy
-                Configuration existedConfiguration = configService.Get(configuration.Id);
-                if (existedConfiguration == null)
-                {
-                    throw new UnprocessableEntityCustomException($"BillingPortalConfiguration UserId with {configuration.Id} does not exist.");
-                }
+                Configuration existedConfiguration = configService.Get(configuration.Id) ?? throw new UnprocessableEntityCustomException($"BillingPortalConfiguration UserId with {configuration.Id} does not exist.");
 
                 await _unitOfWork.GetCollection<BillingPortalConfiguration>().InsertOneAsync(new BillingPortalConfiguration
                 {

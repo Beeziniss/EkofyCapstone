@@ -23,7 +23,7 @@ public sealed class ApprovalHistoryService(IUnitOfWork unitOfWork) : IApprovalHi
             TargetOwnerId = approvalHistoryRequest.TargetOwnerId,
             TargetId = approvalHistoryRequest.TargetId,
             ApprovalType = approvalHistoryRequest.ApprovalType,
-            ApprovedBy = approvalHistoryRequest.ActionByUserId,
+            ApprovedByUserId = approvalHistoryRequest.ActionByUserId,
             ActionAt = approvalHistoryRequest.ActionAt,
             Action = approvalHistoryRequest.Action,
             Notes = approvalHistoryRequest.Notes,

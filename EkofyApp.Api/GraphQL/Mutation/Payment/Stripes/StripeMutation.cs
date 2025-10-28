@@ -1,14 +1,16 @@
 ﻿using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.Models.Stripes;
+using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Payment.Stripes;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class StripeMutation(IStripeService stripeService)
+public sealed class StripeMutation(IStripeService stripeService, IUserSubscriptionService userSubscriptionService)
 {
     private readonly IStripeService _stripeService = stripeService;
+    private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
 
     public async Task<AccountLinkResponse> CreateExpressConnectedAccountAsync(string refreshUrl = "https://ekofy.com/refresh", string returnUrl = "https://ekofy.com/return")
     {
@@ -37,6 +39,9 @@ public sealed class StripeMutation(IStripeService stripeService)
         {
             await _stripeService.CreateCustomerAsync();
         }
+
+        // Kiểm trả xem người dùng đã có subscription chưa
+        await _userSubscriptionService.VerifyUserSubscriptionAsync();
 
         return await _stripeService.CreateSubscriptionCheckoutSession(createCheckoutSessionRequest);
     }
