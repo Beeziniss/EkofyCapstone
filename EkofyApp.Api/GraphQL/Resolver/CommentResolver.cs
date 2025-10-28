@@ -20,6 +20,22 @@ public sealed class CommentResolver
     [UseProjection]
     [UseFiltering]
     [UseSorting]
+    public IQueryable<Listener> GetListener([Parent] Comment comment, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<Listener>().AsQueryable().Where(x => x.UserId == comment.CommenterId);
+    }
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Artist> GetArtist([Parent] Comment comment, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<Artist>().AsQueryable().Where(x => x.UserId == comment.CommenterId);
+    }
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
     public IQueryable<Track> GetTrack([Parent] Comment comment, [Service] IUnitOfWork unitOfWork)
     {
         if(comment.CommentType != CommentType.Track)

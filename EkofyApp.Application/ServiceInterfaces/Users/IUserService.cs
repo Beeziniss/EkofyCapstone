@@ -15,4 +15,5 @@ public interface IUserService
     Task FollowUserAsync(UserEngagementRequest request);
     Task UnfollowUserAsync(UserEngagementRequest request);
     Task DeleteUserManualAsync(string userId);
+    Task<bool> CheckUserFollowingAsync(string userFollowingId);
 }

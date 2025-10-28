@@ -1,13 +1,8 @@
-﻿using EkofyApp.Api.GraphQL.DataLoader;
-using EkofyApp.Application.ServiceInterfaces;
-using EkofyApp.Application.ServiceInterfaces.Playlists;
+﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
-using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
-using EkofyApp.Domain.Exceptions;
 using HotChocolate.Data;
 using MongoDB.Driver;
-using System.Threading.Tasks;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 

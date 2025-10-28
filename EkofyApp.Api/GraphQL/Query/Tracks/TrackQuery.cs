@@ -44,9 +44,7 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
-    //[UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
-    [UseFiltering]
     public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
     {
         return await _trackService.GetPendingTrackUploadRequestsAsync(pageNumber, pageSize);
