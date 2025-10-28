@@ -2,10 +2,12 @@
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums.Subcriptions;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.UserSubscriptions;
 public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IUserSubscriptionService
@@ -50,5 +52,28 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
             .Set(x => x.CanceledAt, canceledAt)
             .Set(x => x.IsActive, status)
             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+    }
+
+    public async Task VerifyUserSubscriptionAsync()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string currentSubscriptionId = await _unitOfWork.GetCollection<UserSubscription>()
+            .Find(x => x.UserId == userId && x.IsActive == true)
+            .Project(x => x.SubscriptionId)
+            .FirstOrDefaultAsync();
+
+        SubscriptionTier currentSubscriptionTier = await _unitOfWork.GetCollection<Subscription>()
+            .Find(x => x.Id == currentSubscriptionId)
+            .Project(x => x.Tier)
+            .FirstOrDefaultAsync();
+
+        SubscriptionTier tier = Enum.Parse<UserRole>(role, true) == UserRole.Listener ? SubscriptionTier.Premium : SubscriptionTier.Pro;
+
+        if (tier == currentSubscriptionTier)
+        {
+            throw new ConflictCustomException("You already have subscription premium/pro.");
+        }
     }
 }

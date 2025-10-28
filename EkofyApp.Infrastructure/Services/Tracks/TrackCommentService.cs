@@ -162,10 +162,10 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
                 .ToListAsync();
 
             // Map root comment and replies with user information
-            var rootCommentResponse = await MapToResponseAsync(rootComment);
-            var repliesWithUserInfo = new List<CommentResponse>();
+            CommentResponse rootCommentResponse = await MapToResponseAsync(rootComment);
+            List<CommentResponse> repliesWithUserInfo = new List<CommentResponse>();
 
-            foreach (var reply in previewReplies)
+            foreach (Comment reply in previewReplies)
             {
                 repliesWithUserInfo.Add(await MapToResponseAsync(reply));
             }
