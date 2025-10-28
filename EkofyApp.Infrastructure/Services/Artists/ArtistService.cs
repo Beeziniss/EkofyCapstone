@@ -262,6 +262,44 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return paginatedData;
     }
 
+    public async Task<PendingArtistRegistrationResponse> GetPendingRegistrationByIdAsync(string artistRegistrationId)
+    {
+        string redisKey = $"artist:{artistRegistrationId}:pendingRegistration";
+        
+        ICacheResult<PendingArtistRegistrationRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistRegistrationRequest>(redisKey);
+        
+        if (!cacheResult.Success || cacheResult.Value == null)
+        {
+            throw new NotFoundCustomException($"Artist registration with ID {artistRegistrationId} not found or expired.");
+        }
+
+        PendingArtistRegistrationRequest pending = cacheResult.Value;
+        
+        return new PendingArtistRegistrationResponse
+        {
+            Id = pending.UserId,
+            Email = pending.Email,
+            FullName = pending.FullName,
+            StageName = pending.StageName,
+            StageNameUnsigned = pending.StageNameUnsigned,
+            ArtistType = pending.ArtistType,
+            Gender = pending.Gender,
+            BirthDate = pending.BirthDate,
+            PhoneNumber = pending.PhoneNumber,
+            AvatarImage = pending.AvatarImage,
+            Members = pending.Members,
+            RequestedAt = pending.RequestedAt,
+            TimeToLive = cacheResult.TimeToLive,
+            IdentityCardNumber = pending.IdentityCard.Number,
+            IdentityCardFullName = pending.IdentityCard.FullName,
+            IdentityCardDateOfBirth = pending.IdentityCard.DateOfBirth,
+            PlaceOfOrigin = pending.IdentityCard.PlaceOfOrigin,
+            PlaceOfResidence = pending.IdentityCard.PlaceOfResidence.AddressLine ?? string.Empty,
+            FrontImageUrl = pending.IdentityCard.FrontImage,
+            BackImageUrl = pending.IdentityCard.BackImage,
+        };
+    }
+
     public async Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest)
     {
         string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
