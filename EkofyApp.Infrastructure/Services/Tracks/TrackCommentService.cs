@@ -137,7 +137,7 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
     {
         // Get total thread count
         long totalThreads = await _unitOfWork.GetCollection<Comment>()
-  .CountDocumentsAsync(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted);
+            .CountDocumentsAsync(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted);
 
         // Build sort definition based on request
         SortDefinition<Comment> sortDefinition = GetSortDefinition(request.SortOrder);
@@ -156,10 +156,10 @@ public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAcce
         {
             // Get a few top-level replies for preview (e.g., first 3)
             List<Comment> previewReplies = await _unitOfWork.GetCollection<Comment>()
-         .Find(c => c.ParentCommentId == rootComment.Id && !c.IsDeleted)
-            .SortBy(c => c.CreatedAt)
-            .Limit(3)
-            .ToListAsync();
+                .Find(c => c.ParentCommentId == rootComment.Id && !c.IsDeleted)
+                .SortBy(c => c.CreatedAt)
+                //.Limit(3)
+                .ToListAsync();
 
             // Map root comment and replies with user information
             var rootCommentResponse = await MapToResponseAsync(rootComment);
