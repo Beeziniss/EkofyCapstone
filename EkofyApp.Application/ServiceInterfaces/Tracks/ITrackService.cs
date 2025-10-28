@@ -16,6 +16,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<float[]> GenerateEmbeddingsAsync(string term);
         Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20);
         Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20);
+        Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId);
         Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
         IQueryable<Track> GetTracks();
         Task<bool> CheckTrackInFavoriteAsync(string trackId);

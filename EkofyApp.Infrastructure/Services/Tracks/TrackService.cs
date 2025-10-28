@@ -212,6 +212,18 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return paginatedData;
     }
 
+    public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId)
+    {
+        ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
+        
+        if (!cacheResult.Success || cacheResult.Value == null)
+        {
+            throw new NotFoundCustomException($"Upload request with ID {uploadId} not found or expired.");
+        }
+
+        return cacheResult.Value;
+    }
+
     #region Favorite Tracks
     public async Task<long> UpdateFavoriteCountAsync(string trackId, bool isAdding)
     {

@@ -1,5 +1,4 @@
-﻿using EkofyApp.Application.Models.TrackComments;
-using EkofyApp.Application.Models.Tracks;
+﻿using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
@@ -48,6 +47,13 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
     public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
     {
         return await _trackService.GetPendingTrackUploadRequestsAsync(pageNumber, pageSize);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
+    [UseProjection]
+    public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId)
+    {
+        return await _trackService.GetPendingTrackUploadRequestByIdAsync(uploadId);
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]

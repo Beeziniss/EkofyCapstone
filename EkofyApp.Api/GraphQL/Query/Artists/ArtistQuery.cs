@@ -36,9 +36,14 @@ public sealed class ArtistQuery(IArtistService artistService)
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorRoles)]
-    [UseFiltering]
     public async Task<PaginatedData<PendingArtistRegistrationResponse>> GetPendingArtistRegistrationsAsync(int pageNumber = 1, int pageSize = 20)
     {
         return await _artistService.GetPendingRegistrationsAsync(pageNumber, pageSize);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.ModeratorRoles)]
+    public async Task<PendingArtistRegistrationResponse> GetPendingArtistRegistrationByIdAsync(string artistRegistrationId)
+    {
+        return await _artistService.GetPendingRegistrationByIdAsync(artistRegistrationId);
     }
 }
