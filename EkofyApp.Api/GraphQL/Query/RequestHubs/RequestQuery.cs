@@ -14,6 +14,4 @@ public class RequestQuery(IRequestHubService requestHubService)
         return _requestHubService.GetRequestsQueryable();
     }
 
-
-
 }
