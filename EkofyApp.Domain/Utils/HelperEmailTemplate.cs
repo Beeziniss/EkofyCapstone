@@ -1,23 +1,25 @@
 ﻿namespace EkofyApp.Domain.Utils;
 public sealed class HelperEmailTemplate
 {
-	public static string SubjectVerifyOtp() => "Ekofy - Verify OTP Code";
-	public static string SubjectRegisterNotification() => "Ekofy - Registration Notification";
-	public static string SubjectRegisterApprove() => "Ekofy - Registration Approved";
-	public static string SubjectRegisterReject() => "Ekofy - Registration Rejected";
-	public static string SubjectResetPassword() => "Ekofy - Reset Password OTP";
-	public static string SubjectPasswordChanged() => "Ekofy - Password Changed";
-	public static string SubjectReportWarning() => "Ekofy - Warning Report";
-	public static string SubjectTemporarySuspension() => "Ekofy - Temporary Suspension";
-	public static string SubjectPermanentBan() => "Ekofy - Permanent Ban";
+    public static string SubjectVerifyOtp() => "Ekofy - Verify OTP Code";
+    public static string SubjectRegisterNotification() => "Ekofy - Registration Notification";
+    public static string SubjectRegisterApprove() => "Ekofy - Registration Approved";
+    public static string SubjectRegisterReject() => "Ekofy - Registration Rejected";
+    public static string SubjectResetPassword() => "Ekofy - Reset Password OTP";
+    public static string SubjectPasswordChanged() => "Ekofy - Password Changed";
+    public static string SubjectReportWarning() => "Ekofy - Warning Report";
+    public static string SubjectTemporarySuspension() => "Ekofy - Temporary Suspension";
+    public static string SubjectPermanentBan() => "Ekofy - Permanent Ban";
+    public static string SubjectSubscriptionCancelled() => "Ekofy - Subscription Cancellation Notice";
+    public static string SubjectSubscriptionResumed() => "Ekofy - Subscription Resumed";
 
     public static string RegisterNotification(string[] paramaters)
-	{
-		// Định nghĩa parameters
-		string fullName = paramaters[0];
-		string email = paramaters[1];
+    {
+        // Định nghĩa parameters
+        string fullName = paramaters[0];
+        string email = paramaters[1];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
@@ -56,15 +58,15 @@ public sealed class HelperEmailTemplate
   </body>
 </html>
 ";
-	}
+    }
 
-	public static string RegisterApprove(string[] paramaters)
-	{
-		// Định nghĩa parameters
-		string fullName = paramaters[0];
-		string email = paramaters[1];
+    public static string RegisterApprove(string[] paramaters)
+    {
+        // Định nghĩa parameters
+        string fullName = paramaters[0];
+        string email = paramaters[1];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
@@ -99,16 +101,16 @@ public sealed class HelperEmailTemplate
   
   </body>
 </html>";
-	}
+    }
 
-	public static string RegisterReject(string[] paramaters)
-	{
-		// Định nghĩa parameters
-		string fullName = paramaters[0];
-		string email = paramaters[1];
-		string reason = paramaters[2];
+    public static string RegisterReject(string[] paramaters)
+    {
+        // Định nghĩa parameters
+        string fullName = paramaters[0];
+        string email = paramaters[1];
+        string reason = paramaters[2];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <!-- REJECT ARTIST -->
@@ -139,23 +141,23 @@ public sealed class HelperEmailTemplate
 
 </body>
 </html>";
-	}
+    }
 
-	/// <summary>
-	/// Email template for verifying OTP.
-	/// Expected parameters:
-	/// 0 - Full Name
-	/// 1 - OTP Code
-	/// </summary>
-	/// <param name="parameters"></param>
-	/// <returns></returns>
-	public static string VerifyOtp(string[] parameters)
-	{
-		// Định nghĩa parameters
-		string fullName = parameters[0];
-		string otp = parameters[1];
+    /// <summary>
+    /// Email template for verifying OTP.
+    /// Expected parameters:
+    /// 0 - Full Name
+    /// 1 - OTP Code
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string VerifyOtp(string[] parameters)
+    {
+        // Định nghĩa parameters
+        string fullName = parameters[0];
+        string otp = parameters[1];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 			<html lang=""en"">
 				<head>
 					<meta charset=""UTF-8"" />
@@ -236,23 +238,23 @@ public sealed class HelperEmailTemplate
 					</div>
 				</body>
 			</html>";
-	}
+    }
 
-	/// <summary>
-	/// Email template for reset password OTP.
-	/// Expected parameters:
-	/// 0 - Full Name
-	/// 1 - OTP Code
-	/// </summary>
-	/// <param name="parameters"></param>
-	/// <returns></returns>
-	public static string ResetPasswordOtp(string[] parameters)
-	{
-		// Định nghĩa parameters
-		string fullName = parameters[0];
-		string otp = parameters[1];
+    /// <summary>
+    /// Email template for reset password OTP.
+    /// Expected parameters:
+    /// 0 - Full Name
+    /// 1 - OTP Code
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string ResetPasswordOtp(string[] parameters)
+    {
+        // Định nghĩa parameters
+        string fullName = parameters[0];
+        string otp = parameters[1];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 			<html lang=""en"">
 				<head>
 					<meta charset=""UTF-8"" />
@@ -333,23 +335,23 @@ public sealed class HelperEmailTemplate
 					</div>
 				</body>
 			</html>";
-	}
+    }
 
-	/// <summary>
-	/// Email template for password changed notification.
-	/// Expected parameters:
-	/// 0 - Full Name
-	/// 1 - Email
-	/// </summary>
-	/// <param name="parameters"></param>
-	/// <returns></returns>
-	public static string PasswordChanged(string[] parameters)
-	{
-		// Định nghĩa parameters
-		string fullName = parameters[0];
-		string email = parameters[1];
+    /// <summary>
+    /// Email template for password changed notification.
+    /// Expected parameters:
+    /// 0 - Full Name
+    /// 1 - Email
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string PasswordChanged(string[] parameters)
+    {
+        // Định nghĩa parameters
+        string fullName = parameters[0];
+        string email = parameters[1];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 			<html lang=""en"">
 				<head>
 					<meta charset=""UTF-8"" />
@@ -421,7 +423,7 @@ public sealed class HelperEmailTemplate
 					</div>
 				</body>
 			</html>";
-	}
+    }
 
     /// <summary>
     /// Report warning email template.
@@ -433,13 +435,13 @@ public sealed class HelperEmailTemplate
     /// <param name="parameters"></param>
     /// <returns></returns>
     public static string ReportWarning(string[] parameters)
-	{
-		// Định nghĩa các tham số
-		string fullName = parameters[0];
-		string email = parameters[1];
-		string reason = parameters[2];
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string reason = parameters[2];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
@@ -479,7 +481,7 @@ public sealed class HelperEmailTemplate
 </body>
 </html>
 ";
-	}
+    }
 
     /// <summary>
     /// Temporary suspension email template.
@@ -492,14 +494,14 @@ public sealed class HelperEmailTemplate
     /// <param name="parameters"></param>
     /// <returns></returns>
     public static string TemporarySuspension(string[] parameters)
-	{
-		// Định nghĩa các tham số
-		string fullName = parameters[0];
-		string email = parameters[1];
-		string reason = parameters[2];
-		string suspendedUntil = parameters[3];
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string reason = parameters[2];
+        string suspendedUntil = parameters[3];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
@@ -538,7 +540,7 @@ public sealed class HelperEmailTemplate
   
   </body>
 </html>";
-	}
+    }
 
     /// <summary>
     /// Permanent ban email template.
@@ -550,13 +552,13 @@ public sealed class HelperEmailTemplate
     /// <param name="parameters"></param>
     /// <returns></returns>
     public static string PermanentBan(string[] parameters)
-	{
-		// Định nghĩa các tham số
-		string fullName = parameters[0];
-		string email = parameters[1];
-		string reason = parameters[2];
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string reason = parameters[2];
 
-		return @$"<!doctype html>
+        return @$"<!doctype html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
@@ -595,5 +597,117 @@ public sealed class HelperEmailTemplate
 
 </body>
 </html>";
-	}
+    }
+
+    /// <summary>
+	/// Subscription cancelled email template.
+    /// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Period End At (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string SubscriptionCancelled(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string periodEndAt = parameters[2];
+
+        return @$"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Subscription Cancellation Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- SUBSCRIPTION CANCELLATION -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We would like to confirm that your Premium subscription associated with the email <strong>{email}</strong> has been successfully set to cancel at the end of the current billing cycle.
+      </p>
+      <p>
+        This means you will continue to enjoy all Premium features until your subscription ends on <strong>{periodEndAt}</strong>. After that, your account will revert to a free plan unless you choose to resume subscription.
+      </p>
+      <p>
+        If this was a mistake or you change your mind, you can reactivate your Premium plan anytime before the end of your current period.
+      </p>
+      <p>
+        We're grateful to have had you as a Premium member and hope to serve you again in the future.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Thank you for being part of <strong>Ekofy</strong>.<br><br>
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>
+";
+    }
+
+    /// <summary>
+    /// Subscription resumed email template.
+    /// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Period End At (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string SubscriptionResumed(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string periodEndAt = parameters[2];
+
+        return $@"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Subscription Resumed Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- SUBSCRIPTION RESUMED -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We’re happy to let you know that your Premium subscription associated with the email <strong>{email}</strong> has been successfully resumed.
+      </p>
+      <p>
+        You will continue to enjoy all Premium features without interruption. Your next billing date is <strong>{periodEndAt}</strong>.
+      </p>
+      <p>
+        Thank you for choosing to continue your journey with Ekofy. We’re excited to have you back!
+      </p>
+      <p style=""font-size: 0.9em"">
+        All the best,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>
+";
+    }
 }

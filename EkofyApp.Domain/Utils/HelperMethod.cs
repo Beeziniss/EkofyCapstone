@@ -94,6 +94,11 @@ public sealed class HelperMethod
         TimeZoneInfo tzInfo = TimeZoneInfo.FindSystemTimeZoneById(tzId);
         return TimeZoneInfo.ConvertTime(dateTime, tzInfo);
     }
+
+    public static string NormalizeToStringUtcPlus7(DateTimeOffset dateTimeOffset)
+    {
+        return dateTimeOffset.ToString("dd-MM-yyyy HH:mm:ss");
+    }
     #endregion
 
     #region Operation System Handle

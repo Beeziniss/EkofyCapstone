@@ -516,10 +516,10 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                releaseInfo.ReleaseDate.HasValue;
     }
 
-    public async Task<bool> UpdateFavoriteCountAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
+    public async Task<bool> AddToFavoriteTrackAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
     {
-        long favoriteCountUpdated = await _trackService.UpdateFavoriteCountAsync(trackId, isAdding);
-        await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
+        long favoriteCountUpdated = await _trackService.AddToFavoriteTrackAsync(trackId, isAdding);
+        //await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
         return true;
     }
 }

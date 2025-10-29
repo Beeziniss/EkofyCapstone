@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
@@ -12,6 +13,7 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
 using Grpc.Core;
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -79,6 +81,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             {
                                 UserId = stripeSubscription.Metadata["user_id"],
                                 SubscriptionId = stripeSubscription.Metadata["subscription_id"],
+                                StripeSubscriptionId = stripeSubscription.Id,
                                 PeriodStart = HelperMethod.GetUtcPlus7TimeOffset(),
                                 PeriodEnd = periodEnd,
                             });
@@ -103,8 +106,15 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             User user = await _unitOfWork.GetCollection<User>().Find(x => x.StripeCustomerId == stripeSubscription.CustomerId)
                                 .Project<User>(Builders<User>.Projection
                                     .Include(x => x.Id)
-                                    .Include(x => x.Email))
+                                    .Include(x => x.Email)
+                                    .Include(x => x.FullName))
                                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.CustomerId}");
+
+                            DateTimeOffset periodEndAt = await _unitOfWork.GetCollection<UserSubscription>()
+                                .Find(x => x.StripeSubscriptionId == stripeSubscription.Id && x.IsActive == true)
+                                .Project(x => x.PeriodEnd)
+                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user subscription with the subscription {stripeSubscription.Id}");
+                            string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(periodEndAt);
 
                             string status = stripeSubscription.Status; // canceled, incomplete_expired, incomplete, trialing, active, past_due
 
@@ -112,6 +122,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             if (status == "active" && stripeSubscription.CancelAtPeriodEnd == true)
                             {
                                 _logger.LogInformation($"Subscription {stripeSubscription.Id} will be canceled at the end of the period for user {user.Email}.");
+                                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                                 // Không cần dùng background job để kiểm tra và hủy gói currentSubscription vào đúng ngày PeriodEnd
                                 // Có thể gửi email nhắc nhở user vào khoảng n ngày trước PeriodEnd
                                 // Vì vào đúng ngày PeriodEnd, Stripe sẽ gửi webhook CustomerSubscriptionDeleted với status = "canceled"
@@ -143,6 +154,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                 await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                 // Tạo mới UserSubscription mỗi lần có thanh toán thành công
+                                // StripeSubscription Id null
                                 await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
 
                                 // Hạ cấp quyền entitlements về Free
@@ -296,7 +308,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                             await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                             // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, latestSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
+                                            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, latestSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
 
                                             // Cấp quyền entitlements về currentSubscription tương ứng
                                             await _effectiveEntitlementService.RebuildTierAsync(session, userId, UserRole.Listener, latestSubscriptionId);
@@ -308,7 +320,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                         // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                        await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, currentSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
+                                        await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, currentSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
 
                                         // Cấp quyền entitlements về currentSubscription tương ứng
                                         await _effectiveEntitlementService.RebuildTierAsync(session, userId, UserRole.Listener, currentSubscriptionId);
