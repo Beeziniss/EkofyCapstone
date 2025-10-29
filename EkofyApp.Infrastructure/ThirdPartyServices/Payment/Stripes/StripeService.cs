@@ -13,7 +13,6 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Stripe;
 using Stripe.Checkout;
-using Stripe.Identity;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
@@ -606,6 +605,46 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Created = checkoutSession.Created,
             Expired = checkoutSession.ExpiresAt,
         };
+    }
+
+
+    public async Task CancelSubscriptionAtPeriodEndAsync()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string stripeSubscriptionId = await _unitOfWork.GetCollection<UserSubscription>()
+            .Find(x => x.UserId == userId && x.IsActive == true)
+            .Project(x => x.StripeSubscriptionId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found your current subscription.");
+
+        SubscriptionService subscriptionService = new();
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, new SubscriptionUpdateOptions
+        {
+            CancelAtPeriodEnd = true
+        });
+    }
+
+    public async Task ResumeSubscriptionAsync()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        UserSubscription userSubscription = await _unitOfWork.GetCollection<UserSubscription>()
+            .Find(x => x.UserId == userId && x.IsActive == true)
+            .Project<UserSubscription>(Builders<UserSubscription>.Projection
+                .Include(x => x.StripeSubscriptionId)
+                .Include(x => x.PeriodEnd))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found your current subscription.");
+
+        if (userSubscription.PeriodEnd < HelperMethod.GetUtcPlus7TimeOffset().AddDays(3))
+        {
+            throw new ConflictCustomException("You can only resume your subscription at least 3 days before it ends.");
+        }
+
+        SubscriptionService subscriptionService = new();
+        await subscriptionService.UpdateAsync(userSubscription.StripeSubscriptionId, new SubscriptionUpdateOptions
+        {
+            CancelAtPeriodEnd = false
+        });
     }
 
     // Chuyển tiền cho Artist

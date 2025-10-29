@@ -13,6 +13,7 @@ public sealed class UserSubscription : TimeStamped, IEntityCustom
     public string UserId { get; set; } = null!; // Unique identifier for the user
     [BsonRepresentation(BsonType.ObjectId)]
     public string SubscriptionId { get; set; } = null!; // Unique identifier for the subscription plan
+    public string? StripeSubscriptionId { get; set; } // Unique identifier for the each subscription
 
     public DateTimeOffset PeriodStart { get; set; } // Start date of the subscription period
     public DateTimeOffset? PeriodEnd { get; set; } // End date of the subscription period

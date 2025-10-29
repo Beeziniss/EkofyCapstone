@@ -15,7 +15,7 @@ public sealed class TrackMutationExtension : ObjectTypeExtension<TrackMutation>
         descriptor.Field(x => x.RejectTrackUploadRequestAsync(default!, default!))
             .Authorize(HelperRoleBase.ModeratorRolesArray);
 
-        descriptor.Field(x => x.UpdateFavoriteCountAsync(default!, default!, default!, default!))
+        descriptor.Field(x => x.AddToFavoriteTrackAsync(default!, default!, default!, default!))
             .Authorize(HelperRoleBase.ListenerArtistRolesArray);
     }
 }

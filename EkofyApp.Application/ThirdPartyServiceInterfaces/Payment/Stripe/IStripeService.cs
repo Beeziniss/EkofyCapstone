@@ -28,4 +28,6 @@ public interface IStripeService
     Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
     Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
     Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId);
+    Task CancelSubscriptionAtPeriodEndAsync();
+    Task ResumeSubscriptionAsync();
 }

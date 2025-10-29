@@ -37,6 +37,16 @@ public class TrackQuery(ITrackService trackService, ITrackCommentService trackCo
     [UseProjection]
     [UseFiltering]
     [UseSorting<Track>]
+    public IQueryable<Track> GetFavoriteTracks()
+    {
+        return _trackService.GetFavoriteTracks();
+    }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Track>]
     public IQueryable<Track> SearchTracks(string name)
     {
         return _trackService.SearchTracks(name);

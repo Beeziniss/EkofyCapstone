@@ -18,6 +18,8 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.WarningReport => HelperEmailTemplate.ReportWarning,
             EmailTemplateType.TemporarySuspension => HelperEmailTemplate.TemporarySuspension,
             EmailTemplateType.PermanentBan => HelperEmailTemplate.PermanentBan,
+            EmailTemplateType.SubscriptionCancelled => HelperEmailTemplate.SubscriptionCancelled,
+            EmailTemplateType.SubscriptionResumed => HelperEmailTemplate.SubscriptionResumed,
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -37,6 +39,8 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.WarningReport => HelperEmailTemplate.SubjectReportWarning(),
             EmailTemplateType.TemporarySuspension => HelperEmailTemplate.SubjectTemporarySuspension(),
             EmailTemplateType.PermanentBan => HelperEmailTemplate.SubjectPermanentBan(),
+            EmailTemplateType.SubscriptionCancelled => HelperEmailTemplate.SubjectSubscriptionCancelled(),
+            EmailTemplateType.SubscriptionResumed => HelperEmailTemplate.SubjectSubscriptionResumed(),
             _ => "Ekofy Notification"
         };
     }

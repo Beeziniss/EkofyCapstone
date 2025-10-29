@@ -12,7 +12,7 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
     private readonly IStripeService _stripeService = stripeService;
     private readonly IStripeWebhookService _stripeWebhookService = stripeWebhookService;
 
-    [HttpPost("customers")]
+    [AllowAnonymous, HttpPost("customers")]
     public async Task<IActionResult> HandleWebhookCustomerAsync()
     {
         string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
@@ -28,7 +28,7 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
         return Ok("StripeController is working!");
     }
 
-    [HttpPost("/v1/accounts")]
+    [AllowAnonymous, HttpPost("/v1/accounts")]
     public async Task<IActionResult> HandleWebhookAccountAsync()
     {
         string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();

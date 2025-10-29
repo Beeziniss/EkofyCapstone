@@ -57,6 +57,18 @@ public sealed class StripeMutation(IStripeService stripeService, IUserSubscripti
         return await _stripeService.CreateSubscriptionCheckoutSession(createCheckoutSessionRequest);
     }
 
+    public async Task<bool> CancelSubscriptionAtPeriodEndAsync()
+    {
+        await _stripeService.CancelSubscriptionAtPeriodEndAsync();
+        return true;
+    }
+
+    public async Task<bool> ResumeSubscriptionAsync()
+    {
+        await _stripeService.ResumeSubscriptionAsync();
+        return true;
+    }
+
     //public bool TransferToArtist(string artistAccountId, long amount)
     //{
     //    TransferResponse transferResponse = _stripeService.TransferToArtist(artistAccountId, amount);

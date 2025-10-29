@@ -27,6 +27,16 @@ public sealed class PlaylistQuery(IPlaylistService playlistService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<Playlist>]
+    public IQueryable<Playlist> GetFavoritePlaylists()
+    {
+        return _playlistService.GetFavoritePlaylists();
+    }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Playlist>]
     public IQueryable<Playlist> SearchPlaylists(string name)
     {
         return _playlistService.SearchPlaylists(name);

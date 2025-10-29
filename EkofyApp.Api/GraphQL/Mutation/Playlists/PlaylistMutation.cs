@@ -22,9 +22,9 @@ public sealed class PlaylistMutation(IPlaylistService playlistService)
         return true;
     }
 
-    public async Task<bool> AddToFavoriteAsync(string playlistId, bool isAdding)
+    public async Task<bool> AddToFavoritePlaylistAsync(string playlistId, bool isAdding)
     {
-        await _playlistService.AddToFavoriteAsync(playlistId, isAdding);
+        await _playlistService.AddToFavoritePlaylistAsync(playlistId, isAdding);
         return true;
     }
 
