@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL;
+using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
@@ -95,6 +96,10 @@ public sealed class Program
             // Initialize Royalty Policy
             //IRoyaltyPolicyService royaltyPolicyService = scope.ServiceProvider.GetRequiredService<IRoyaltyPolicyService>();
             //royaltyPolicyService.InitializePolicyAsync().GetAwaiter().GetResult();
+
+            // Initialize Escrow Commission Policy
+            //IEscrowCommissionPolicyService escrowCommissionPolicyService = scope.ServiceProvider.GetRequiredService<IEscrowCommissionPolicyService>();
+            //escrowCommissionPolicyService.InitializePolicyAsync().GetAwaiter().GetResult();
 
             // Initialize Legal Policy
             //ILegalPolicyService legalPolicyService = scope.ServiceProvider.GetRequiredService<ILegalPolicyService>();
