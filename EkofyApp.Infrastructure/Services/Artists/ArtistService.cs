@@ -36,6 +36,14 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return _unitOfWork.GetCollection<Artist>().AsQueryable();
     }
 
+    public async Task<string> GetArtistStageNameByArtistIdAsync(string artistId)
+    {
+        return await _unitOfWork.GetCollection<Artist>()
+            .Find(x => x.Id == artistId)
+            .Project(x => x.StageName)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found artist {artistId}");
+    }
+
     public IQueryable<Artist> SearchArtists(string stageName)
     {
         IQueryable<Artist> query = _unitOfWork.GetCollection<Artist>().AsQueryable();
