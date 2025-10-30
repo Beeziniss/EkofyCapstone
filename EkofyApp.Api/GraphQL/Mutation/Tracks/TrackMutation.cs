@@ -357,153 +357,167 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
     // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
     public async Task<bool> ApproveTrackUploadRequestAsync(string uploadId)
     {
-        // Lưu xuống database
-        if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
+        try
         {
-            string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
-            WavFileResponse wavFileResponse = default!;
-
-            if (combinedRequest is null)
+            // Lưu xuống database
+            if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
             {
-                throw new NotFoundCustomException("Upload request not found");
+                string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+                WavFileResponse wavFileResponse = default!;
+
+                if (combinedRequest is null)
+                {
+                    throw new NotFoundCustomException("Upload request not found");
+                }
+
+                TrackTempRequest trackTempRequest = combinedRequest.Track;
+                WorkTempRequest workTempRequest = combinedRequest.Work;
+                RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
+
+                // Tài nguyên từ S3
+                await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
+                {
+                    byte[] originalBytes;
+                    using (MemoryStream originalStream = new())
+                    {
+                        await stream.CopyToAsync(originalStream);
+                        originalBytes = originalStream.ToArray();
+                    }
+
+                    using MemoryStream ffmpegStream = new(originalBytes);
+                    using MemoryStream emyStream = new(originalBytes);
+
+                    string tempName = ObjectId.GenerateNewId().ToString();
+
+                    // Convert sang WAV
+                    AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
+
+                    // Convert file sang định dạng wav
+                    wavFileResponse = await _ffmpegService.ConvertToWavAsync(ffmpegStream, tempName, audioConvertPathOptionsWav);
+
+                    // Tạo hls từ file wav
+                    AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
+                    string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+
+                    //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
+                    AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+
+                    // Xác định mood của track dựa trên đặc trưng âm thanh
+                    IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+                    IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+
+                    string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+                    float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
+
+                    TrackTempResponse trackTempResponse = new()
+                    {
+                        Id = trackTempRequest.Id,
+                        Name = trackTempRequest.Name,
+                        Description = trackTempRequest.Description,
+                        MainArtistIds = trackTempRequest.MainArtistIds,
+                        FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
+                        CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
+                        Tags = trackTempRequest.Tags,
+                        CoverImage = trackTempRequest.CoverImage,
+                        PreviewVideo = trackTempRequest.PreviewVideo,
+                        IsExplicit = trackTempRequest.IsExplicit,
+                        Lyrics = trackTempRequest.Lyrics,
+                        ReleaseInfo = trackTempRequest.ReleaseInfo,
+
+                        //AudioFingerprint = audioFingerprint,
+                        AudioFeature = audioAnalysisResponse,
+                        AlternativeDescription = alternativeDescription,
+                        EmbeddingVector = embeddingVector,
+
+                        CreatedBy = trackTempRequest.CreatedBy,
+                    };
+
+                    await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+
+                    // Đẩy hls playlist lên S3
+                    await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+
+                    // Kiểm tra và lên lịch phát hành track nếu cần thiết
+                    //if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
+                    //{
+                    //    DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
+                    //    BackgroundJob.Schedule<IBackgoundService>(
+                    //        x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
+                    //        releaseTime
+                    //    );
+                    //}
+
+                    // Upload fingerprint lên EmySound
+                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
+
+                    // Xóa folder, file tạm sau khi upload lên S3
+                    //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+                    if (Directory.Exists(outputHlsPath))
+                    {
+                        Directory.Delete(outputHlsPath, true);
+                    }
+                    if (File.Exists(wavFileResponse.OutputWavPath))
+                    {
+                        File.Delete(wavFileResponse.OutputWavPath);
+                    }
+                });
+
+                // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
+                // Resolved: Đã xóa tag trên S3 và xóa request trên redis
+                await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
+                await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
+
+                // Lưu snapshot
+                // Track
+                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+                {
+                    TargetOwnerId = trackTempRequest.CreatedBy,
+                    TargetId = trackTempRequest.Id,
+                    ApprovalType = ApprovalType.TrackUpload,
+                    ActionByUserId = currentUserId,
+                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                    Action = HistoryActionType.Approved,
+                    Notes = null,
+                    Snapshot = trackTempRequest,
+                });
+
+                // Work
+                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+                {
+                    TargetId = workTempRequest.Id,
+                    ApprovalType = ApprovalType.WorkUpload,
+                    ActionByUserId = currentUserId,
+                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                    Action = HistoryActionType.Approved,
+                    Notes = null,
+                    Snapshot = workTempRequest,
+                });
+
+                // Recording
+                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+                {
+                    TargetId = recordingTempRequest.Id,
+                    ApprovalType = ApprovalType.RecordingUpload,
+                    ActionByUserId = currentUserId,
+                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                    Action = HistoryActionType.Approved,
+                    Notes = null,
+                    Snapshot = recordingTempRequest,
+                });
+
+                return true;
             }
 
-            TrackTempRequest trackTempRequest = combinedRequest.Track;
-            WorkTempRequest workTempRequest = combinedRequest.Work;
-            RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
 
-            // Tài nguyên từ S3
-            await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
-            {
-                string tempName = ObjectId.GenerateNewId().ToString();
-
-                // Convert sang WAV
-                AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
-
-                // Convert file sang định dạng wav
-                wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
-
-                // Tạo hls từ file wav
-                AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
-                string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
-
-                //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
-                AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
-
-                // Xác định mood của track dựa trên đặc trưng âm thanh
-                IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
-                IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
-
-                string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
-                float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
-
-                TrackTempResponse trackTempResponse = new()
-                {
-                    Id = trackTempRequest.Id,
-                    Name = trackTempRequest.Name,
-                    Description = trackTempRequest.Description,
-                    MainArtistIds = trackTempRequest.MainArtistIds,
-                    FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
-                    CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
-                    Tags = trackTempRequest.Tags,
-                    CoverImage = trackTempRequest.CoverImage,
-                    PreviewVideo = trackTempRequest.PreviewVideo,
-                    IsExplicit = trackTempRequest.IsExplicit,
-                    Lyrics = trackTempRequest.Lyrics,
-                    ReleaseInfo = trackTempRequest.ReleaseInfo,
-
-                    //AudioFingerprint = audioFingerprint,
-                    AudioFeature = audioAnalysisResponse,
-                    AlternativeDescription = alternativeDescription,
-                    EmbeddingVector = embeddingVector,
-
-                    CreatedBy = trackTempRequest.CreatedBy,
-                };
-
-                await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
-
-                // Đẩy hls playlist lên S3
-                await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
-
-                // Kiểm tra và lên lịch phát hành track nếu cần thiết
-                if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
-                {
-                    DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
-                    BackgroundJob.Schedule<IBackgoundService>(
-                        x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
-                        releaseTime
-                    );
-                }
-
-                // Upload fingerprint lên EmySound
-                if (stream.CanSeek && stream.Position != 0)
-                {
-                    //stream.Seek(0, SeekOrigin.Begin);
-                    stream.Position = 0;
-                }
-
-                string trackId = await _emySoundService.UploadTrackFingerprintAsync(stream, trackTempRequest.Id, trackTempRequest.Name, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
-
-                // Xóa folder, file tạm sau khi upload lên S3
-                //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
-                if (Directory.Exists(outputHlsPath))
-                {
-                    Directory.Delete(outputHlsPath, true);
-                }
-                if (File.Exists(wavFileResponse.OutputWavPath))
-                {
-                    File.Delete(wavFileResponse.OutputWavPath);
-                }
-            });
-
-            // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
-            // Resolved: Đã xóa tag trên S3 và xóa request trên redis
-            await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
-            await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
-
-            // Lưu snapshot
-            // Track
-            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            {
-                TargetOwnerId = trackTempRequest.CreatedBy,
-                TargetId = trackTempRequest.Id,
-                ApprovalType = ApprovalType.TrackUpload,
-                ActionByUserId = currentUserId,
-                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Approved,
-                Notes = null,
-                Snapshot = trackTempRequest,
-            });
-
-            // Work
-            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            {
-                TargetId = workTempRequest.Id,
-                ApprovalType = ApprovalType.WorkUpload,
-                ActionByUserId = currentUserId,
-                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Approved,
-                Notes = null,
-                Snapshot = workTempRequest,
-            });
-
-            // Recording
-            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            {
-                TargetId = recordingTempRequest.Id,
-                ApprovalType = ApprovalType.RecordingUpload,
-                ActionByUserId = currentUserId,
-                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Approved,
-                Notes = null,
-                Snapshot = recordingTempRequest,
-            });
-
-            return true;
+            return false;
         }
 
-        return false;
     }
 
     private static bool ShouldScheduleTrackRelease(ReleaseInfo releaseInfo)

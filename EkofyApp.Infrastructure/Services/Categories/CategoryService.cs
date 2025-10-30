@@ -50,23 +50,6 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
         return [];
     }
 
-    private string TranslateMoods(IEnumerable<MoodType> moods)
-    {
-        return string.Join(", ", moods.Select(mood => mood switch
-        {
-            MoodType.Happy => "Vui tươi, Hạnh phúc",
-            MoodType.Calm => "Bình yên, Giản dị",
-            MoodType.Sad => "Buồn bã",
-            MoodType.Angry => "Giận dữ, Tức giận",
-            MoodType.Relaxed => "Thư giãn",
-            MoodType.Energetic => "Tràn đầy năng lượng",
-            MoodType.Dark => "Tối tăm, U ám",
-            MoodType.Romantic => "Lãng mạn",
-            MoodType.Chill => "Chill, Thoải mái",
-            _ => "Không xác định"
-        }));
-    }
-
     #region Mood Detection
     public IEnumerable<MoodType> DetectMoods(AudioFeature feature)
     {
@@ -217,10 +200,33 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
                 ? "âm thanh biến thiên, hơi gắt"
                 : "giai điệu trung tính, dễ nghe";
 
-        string moodDesc = TranslateMoods(moods);
+        string moodDesc = "Chung";
+        if (moods != null && moods.Any())
+        {
+            moodDesc = TranslateMoods(moods);
+        }
 
         return $"Bài hát này có nhịp độ {tempoDesc}, {energyDesc}, {danceabilityDesc}, " +
                $"{acousticnessDesc}, {modeDesc}, {spectralDesc}, và {mfccDesc}. " +
                $"Tổng thể, bài hát gợi lên tâm trạng: {moodDesc}.";
+    }
+
+    private string TranslateMoods(IEnumerable<MoodType> moods)
+    {
+        return !moods.Any()
+            ? "Không xác định"
+            : string.Join(", ", moods.Select(mood => mood switch
+        {
+            MoodType.Happy => "Vui tươi, Hạnh phúc",
+            MoodType.Calm => "Bình yên, Giản dị",
+            MoodType.Sad => "Buồn bã",
+            MoodType.Angry => "Giận dữ, Tức giận",
+            MoodType.Relaxed => "Thư giãn",
+            MoodType.Energetic => "Tràn đầy năng lượng",
+            MoodType.Dark => "Tối tăm, U ám",
+            MoodType.Romantic => "Lãng mạn",
+            MoodType.Chill => "Chill, Thoải mái",
+            _ => "Không xác định"
+        }));
     }
 }
