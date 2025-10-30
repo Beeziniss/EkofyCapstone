@@ -414,7 +414,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         }
         else if (HelperMethod.IsLinux())
         {
-            privateKeyPath = Path.GetFullPath(Path.Combine("/app/PrivateKey", "private_key.pem"));
+            privateKeyPath = Path.GetFullPath(Path.Combine("/app/PrivateKeys", "private_key.pem"));
         }
         else
         {
@@ -462,7 +462,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         }
         else if (HelperMethod.IsLinux())
         {
-            privateKeyPath = Path.GetFullPath(Path.Combine("/app/PrivateKey", "private_key.pem"));
+            privateKeyPath = Path.GetFullPath(Path.Combine("/app/PrivateKeys", "private_key.pem"));
         }
         else
         {
