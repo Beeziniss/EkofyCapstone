@@ -22,7 +22,8 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<bool> CheckTrackInFavoriteAsync(string trackId);
         Task ReleaseScheduledTrackAsync(string trackId);
         IQueryable<Track> SearchTracks(string searchTerm);
-        Task<long> UpdateFavoriteCountAsync(string trackId, bool isAdding);
+        Task<long> AddToFavoriteTrackAsync(string trackId, bool isAdding);
         Task UpdateStreamCount(string trackId);
+        IQueryable<Track> GetFavoriteTracks();
     }
 }

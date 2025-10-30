@@ -85,9 +85,31 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        string email = await _unitOfWork.GetCollection<User>()
+        User user = await _unitOfWork.GetCollection<User>()
             .Find(x => x.Id == userId)
-            .Project(x => x.Email)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email)
+                .Include(x => x.FullName)
+                .Include(x => x.BirthDate)
+                .Include(x => x.PhoneNumber)
+                .Include(x => x))
+            .FirstOrDefaultAsync();
+
+        // Tách tên
+        string[] names = user.FullName.Split(' ');
+        string lastName = names[^1];
+        string firstName = string.Join(" ", names.Take(names.Length - 1));
+
+        // Chuẩn hóa số điện thoại Singapore
+        string singaporePhone = user.PhoneNumber!.StartsWith("0")
+            ? string.Concat("+65", user.PhoneNumber.AsSpan(1))
+            : "+65" + user.PhoneNumber;
+
+        Artist artist = await _unitOfWork.GetCollection<Artist>()
+            .Find(x => x.UserId == userId)
+            .Project<Artist>(Builders<Artist>.Projection
+                .Include(x => x.IdentityCard))
             .FirstOrDefaultAsync();
 
         AccountService accountService = new();
@@ -95,8 +117,69 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             Type = "express",  // Express phổ biến nhất
             Country = "SG",   // Sandbox test US/EU (VN không hỗ trợ)
-            Email = email,
+            Email = user.Email,
             DefaultCurrency = CurrencyType.sgd.ToString(),
+            BusinessType = "individual",
+            //TosAcceptance = new AccountTosAcceptanceOptions
+            //{
+            //    Date = HelperMethod.GetUtcPlus7TimeOffset().DateTime,
+            //    Ip = "127.0.0.1"
+            //},
+            Capabilities = new AccountCapabilitiesOptions
+            {
+                Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
+                //CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
+            },
+            BusinessProfile = new AccountBusinessProfileOptions
+            {
+                Mcc = "5815", // Mã MCC cho "Computer Software Stores"
+                ProductDescription = "Platform for artists to share and monetize their work.",
+            },
+
+            Individual = new AccountIndividualOptions()
+            {
+                FirstName = firstName,
+                LastName = lastName,
+                Email = user.Email,
+                Phone = singaporePhone,
+                IdNumber = "000000000", // Dùng số này sẽ tự pass KYC
+                Dob = new DobOptions
+                {
+                    Day = user.BirthDate.Day,
+                    Month = user.BirthDate.Month,
+                    Year = user.BirthDate.Year
+                },
+                Address = new AddressOptions
+                {
+                    Line1 = "address_full_match",
+                    City = "Singapore",
+                    Country = "SG",
+                    PostalCode = "238838"
+                },
+                Relationship = new AccountIndividualRelationshipOptions
+                {
+                    Owner = true,
+                    Title = "Artist",
+                    PercentOwnership = 100,
+                    Director = true,
+                    Executive = true,
+                },
+                FullNameAliases = null,
+                Verification = new AccountIndividualVerificationOptions
+                {
+                    Document = new AccountIndividualVerificationDocumentOptions
+                    {
+                        Front = "file_identity_document_success" // Test token để pass
+                    },
+                    // If you need to set AdditionalDocument, do so here
+                    // AdditionalDocument = new AccountIndividualVerificationAdditionalDocumentOptions { ... }
+                }
+            },
+            //ExtraParams = new Dictionary<string, object>
+            //{
+            //    { "nationality", "SG" }, // ISO 3166-1 alpha-2 country code
+            //    { "full_name_aliases", Array.Empty<string>() } // nếu bạn không muốn dùng thuộc tính có sẵn
+            //},
             Settings = new AccountSettingsOptions
             {
                 Payouts = new AccountSettingsPayoutsOptions
@@ -122,6 +205,23 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             throw new NotFoundCustomException("Cannot create express connected account.");
         }
+
+        // Thêm tài khoản ngân hàng Việt Nam
+        AccountExternalAccountCreateOptions bankAccountOptions = new()
+        {
+            ExternalAccount = new AccountExternalAccountBankAccountOptions
+            {
+                Country = "SG",
+                Currency = CurrencyType.sgd.ToString(),
+                AccountHolderName = user.FullName,
+                AccountHolderType = "individual",
+                RoutingNumber = "1100-000", // 8 chữ số
+                AccountNumber = "000123456" // 1-17 chữ số
+            }
+        };
+
+        AccountExternalAccountService externalAccountService = new();
+        await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
 
         return;
     }
@@ -460,6 +560,46 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Created = checkoutSession.Created,
             Expired = checkoutSession.ExpiresAt,
         };
+    }
+
+
+    public async Task CancelSubscriptionAtPeriodEndAsync()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string stripeSubscriptionId = await _unitOfWork.GetCollection<UserSubscription>()
+            .Find(x => x.UserId == userId && x.IsActive == true)
+            .Project(x => x.StripeSubscriptionId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found your current subscription.");
+
+        SubscriptionService subscriptionService = new();
+        await subscriptionService.UpdateAsync(stripeSubscriptionId, new SubscriptionUpdateOptions
+        {
+            CancelAtPeriodEnd = true
+        });
+    }
+
+    public async Task ResumeSubscriptionAsync()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        UserSubscription userSubscription = await _unitOfWork.GetCollection<UserSubscription>()
+            .Find(x => x.UserId == userId && x.IsActive == true)
+            .Project<UserSubscription>(Builders<UserSubscription>.Projection
+                .Include(x => x.StripeSubscriptionId)
+                .Include(x => x.PeriodEnd))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found your current subscription.");
+
+        if (userSubscription.PeriodEnd < HelperMethod.GetUtcPlus7TimeOffset().AddDays(3))
+        {
+            throw new ConflictCustomException("You can only resume your subscription at least 3 days before it ends.");
+        }
+
+        SubscriptionService subscriptionService = new();
+        await subscriptionService.UpdateAsync(userSubscription.StripeSubscriptionId, new SubscriptionUpdateOptions
+        {
+            CancelAtPeriodEnd = false
+        });
     }
 
     // Chuyển tiền cho Artist

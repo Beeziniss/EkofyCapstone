@@ -37,6 +37,23 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return _unitOfWork.GetCollection<Track>().AsQueryable();
     }
 
+    public IQueryable<Track> GetFavoriteTracks()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        List<string> favoriteTrackIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(x => x.ActorId == userId && x.TargetType == UserEngagementTargetType.Track && x.Action == UserEngagementAction.Like)
+            .Project(x => x.TargetId)
+            .ToList();
+
+        IQueryable<Track> query = _unitOfWork.GetCollection<Track>()
+            .Find(x => favoriteTrackIds.Contains(x.Id))
+            .ToEnumerable()
+            .AsQueryable();
+
+        return query;
+    }
+
     public IQueryable<Track> SearchTracks(string name)
     {
         IQueryable<Track> query = _unitOfWork.GetCollection<Track>().AsQueryable();
@@ -215,7 +232,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId)
     {
         ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
-        
+
         if (!cacheResult.Success || cacheResult.Value == null)
         {
             throw new NotFoundCustomException($"Upload request with ID {uploadId} not found or expired.");
@@ -225,7 +242,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     }
 
     #region Favorite Tracks
-    public async Task<long> UpdateFavoriteCountAsync(string trackId, bool isAdding)
+    public async Task<long> AddToFavoriteTrackAsync(string trackId, bool isAdding)
     {
         Track trackUpdated = await _unitOfWork.GetCollection<Track>()
         .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, 1),
@@ -254,7 +271,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             .InsertOneAsync(new UserEngagement
             {
                 ActorId = userId,
-                ActorType = Enum.Parse<UserRole>(role) == UserRole.Listener ?  UserEngagementTargetType.Listener : UserEngagementTargetType.Artist,
+                ActorType = Enum.Parse<UserRole>(role) == UserRole.Listener ? UserEngagementTargetType.Listener : UserEngagementTargetType.Artist,
                 TargetId = trackId,
                 TargetType = UserEngagementTargetType.Track,
                 Action = UserEngagementAction.Like,

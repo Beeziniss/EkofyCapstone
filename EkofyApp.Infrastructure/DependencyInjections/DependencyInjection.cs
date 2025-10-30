@@ -27,6 +27,7 @@ using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces.TopTracks;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Transactions;
@@ -72,6 +73,7 @@ using EkofyApp.Infrastructure.Services.Reports;
 using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
+using EkofyApp.Infrastructure.Services.TopTracks;
 using EkofyApp.Infrastructure.Services.Tracks;
 using EkofyApp.Infrastructure.Services.Transactions;
 using EkofyApp.Infrastructure.Services.Users;
@@ -395,6 +397,8 @@ public static class DependencyInjection
         services.AddScoped<ITrackCommentService, TrackCommentService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
+        services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
+        services.AddScoped<ITopTrackService, TopTrackService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -712,6 +716,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
+        BsonSerializer.RegisterSerializer(typeof(PolicyStatus), new EnumMemberSerializer<PolicyStatus>());
 
         // Payout Trasnsaction
         BsonSerializer.RegisterSerializer(typeof(PayoutTransactionStatus), new EnumMemberSerializer<PayoutTransactionStatus>());

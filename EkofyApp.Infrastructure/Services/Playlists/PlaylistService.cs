@@ -26,6 +26,23 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         return _unitOfWork.GetCollection<Playlist>().AsQueryable();
     }
 
+    public IQueryable<Playlist> GetFavoritePlaylists()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        List<string> favoritePlaylistIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(x => x.ActorId == userId && x.TargetType == UserEngagementTargetType.Playlist && x.Action == UserEngagementAction.Like)
+            .Project(x => x.TargetId)
+            .ToList();
+
+        IQueryable<Playlist> query = _unitOfWork.GetCollection<Playlist>()
+            .Find(x => favoritePlaylistIds.Contains(x.Id))
+            .ToEnumerable()
+            .AsQueryable();
+
+        return query;
+    }
+
     public IQueryable<Playlist> SearchPlaylists(string name)
     {
         IQueryable<Playlist> query = _unitOfWork.GetCollection<Playlist>().AsQueryable();
@@ -155,7 +172,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             .UpdateOneAsync(x => x.Id == playlist.Id, updateDefinition);
     }
 
-    public async Task AddToFavoriteAsync(string playlistId, bool isAdding)
+    public async Task AddToFavoritePlaylistAsync(string playlistId, bool isAdding)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
         string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");

@@ -41,6 +41,28 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
         });
     }
 
+    public async Task CreateUserSubscriptionAsync(IClientSessionHandle? session, string userId, string subscriptionId, string stripeSubscriptionId, DateTimeOffset periodStart, DateTimeOffset? periodEnd = null)
+    {
+        // Mặc định nếu không có subscriptionId thì sẽ lấy gói Free
+        if (string.IsNullOrEmpty(subscriptionId))
+        {
+            // Hiện tại gói Free là duy nhất, không cần xet version
+            subscriptionId = await _unitOfWork.GetCollection<Subscription>()
+                .Find(x => x.Tier == SubscriptionTier.Free && x.Status == SubscriptionStatus.Active)
+                .Project(x => x.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        await _unitOfWork.GetCollection<UserSubscription>().InsertOneAsync(session, new UserSubscription()
+        {
+            UserId = userId,
+            SubscriptionId = subscriptionId,
+            StripeSubscriptionId = stripeSubscriptionId,
+            PeriodStart = periodStart,
+            PeriodEnd = periodEnd,
+        });
+    }
+
     public async Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, string userId, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status)
     {
         // TODO: Làm sao để biết là document nào mới đúng là đang cần tìm
