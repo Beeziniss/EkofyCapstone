@@ -22,9 +22,10 @@ public interface IEmySoundApi
     Task<string> UploadTrackAsync(
         [AliasAs("file")] StreamPart file,
         [AliasAs("MediaType")] string mediaType,
-        [AliasAs("UserId")] string trackId,
+        [AliasAs("Id")] string trackId,
         [AliasAs("Title")] string trackName,
-        [AliasAs("Artist")] string artistId
+        [AliasAs("Artist")] string artistName,
+        [AliasAs("ArtistId")] string artistId
     );
 
 }

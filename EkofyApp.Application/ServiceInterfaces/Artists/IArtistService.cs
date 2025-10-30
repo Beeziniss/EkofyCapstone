@@ -15,4 +15,5 @@ public interface IArtistService
     Task ApproveArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     Task RejectArtistRegistrationAsync(ArtistRegistrationApprovalRequest approvalRequest);
     IQueryable<Artist> SearchArtists(string stageName);
+    Task<string> GetArtistStageNameByArtistIdAsync(string artistId);
 }

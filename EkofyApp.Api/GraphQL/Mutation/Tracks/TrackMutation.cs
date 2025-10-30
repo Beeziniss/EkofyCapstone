@@ -6,6 +6,7 @@ using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
+using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
@@ -28,9 +29,10 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class TrackMutation(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IHttpContextAccessor httpContextAccessor)
+public sealed class TrackMutation(ITrackService trackService, IArtistService artistService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IHttpContextAccessor httpContextAccessor)
 {
     private readonly ITrackService _trackService = trackService;
+    private readonly IArtistService _artistService = artistService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonS3Service _amazonS3Service = amazonS3Service;
     private readonly IFfmpegService _ffmpegService = ffmpegService;
@@ -388,6 +390,9 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                     using MemoryStream ffmpegStream = new(originalBytes);
                     using MemoryStream emyStream = new(originalBytes);
 
+                    ffmpegStream.Position = 0;
+                    emyStream.Position = 0;
+
                     string tempName = ObjectId.GenerateNewId().ToString();
 
                     // Convert sang WAV
@@ -449,7 +454,8 @@ public sealed class TrackMutation(ITrackService trackService, IRedisCacheService
                     //}
 
                     // Upload fingerprint lên EmySound
-                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
+                    string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempRequest.CreatedBy);
+                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
 
                     // Xóa folder, file tạm sau khi upload lên S3
                     //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);

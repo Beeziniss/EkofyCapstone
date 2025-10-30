@@ -10,10 +10,10 @@ public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
 {
     private readonly IEmySoundApi _emySoundApi = emySoundApi;
 
-    public async Task<string> UploadTrackFingerprintAsync(Stream stream, string trackId, string trackName, string artistId)
+    public async Task<string> UploadTrackFingerprintAsync(Stream stream, string trackId, string trackName, string artistName, string artistId)
     {
         StreamPart streamPart = new(stream, $"{trackName}.mp3", "audio/mpeg");
-        string response = await _emySoundApi.UploadTrackAsync(streamPart, MediaType.Audio.ToString(), trackId, trackName, artistId);
+        string response = await _emySoundApi.UploadTrackAsync(streamPart, MediaType.Audio.ToString(), trackId, trackName, artistName, artistId);
         return response;
     }
 
