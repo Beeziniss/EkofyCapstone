@@ -377,6 +377,13 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             {
                 { "is_subscription", "false" },
                 { "package_id", artistPackage.Id },
+                // Client Id = User Id từ payment transaction
+                { "provider_id", artistPackage.ArtistId },
+                { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId },
+                { "package_order_description", createPaymentCheckoutSessionRequest.PackageOrderDescription ?? string.Empty },
+                { "deadline", HelperMethod.NormalizeToStringUtcPlus7(createPaymentCheckoutSessionRequest.Deadline) },
+                // Requirement Files thì sẽ add sau tức là dùng .metdata add thêm string vào
+                // Deliveries thì không cần
                 { "package_name", artistPackage.PackageName },
                 { "package_amount", artistPackage.Amount.ToString() },
                 { "package_currency", artistPackage.Currency.ToString() },
