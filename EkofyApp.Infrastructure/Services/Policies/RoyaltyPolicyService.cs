@@ -5,6 +5,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Policies;
@@ -36,8 +37,6 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         // Tìm phiên bản trước (nếu có)
         RoyaltyPolicy previousPolicy = await _unitOfWork.GetCollection<RoyaltyPolicy>()
             .Find(x => x.Version == (version.HasValue ? version : activePolicy.Version - 1))
-            .Project<RoyaltyPolicy>(Builders<RoyaltyPolicy>.Projection
-                .Exclude(x => x.EffectiveAt))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("No previous version available to downgrade to.");
 
         // Cập nhật trạng thái của các phiên bản
@@ -50,17 +49,7 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         });
 
         // Cập nhật lại cache trong Redis
-        Dictionary<string, string?> policyDictionary = new()
-        {
-            { "rate_per_stream", previousPolicy.RatePerStream.ToString() },
-            { "currency", previousPolicy.Currency.ToString() },
-            { "recording_percentage", previousPolicy.RecordingPercentage.ToString() },
-            { "work_percentage", previousPolicy.WorkPercentage.ToString() },
-            { "version", previousPolicy.Version.ToString() },
-            { "status", previousPolicy.Status.ToString() }
-        };
-
-        await _redisCacheService.HashSetAsync("royalty_policy:active", policyDictionary);
+        await UpdateRedisCacheAsync(previousPolicy);
     }
 
     public async Task CreateRoyalPolicyAsync(CreateRoyalPolicyRequest createRoyalPolicyRequest)
@@ -86,22 +75,98 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         // TODO: Lên lịch công bố chính sách sau n ngày
     }
 
+    public async Task UpdateRoyalPolicyAsync(UpdateRoyalPolicyRequest updateRequest)
+    {
+        // Tìm policy đang pending theo version
+        RoyaltyPolicy policy = await _unitOfWork.GetCollection<RoyaltyPolicy>()
+            .Find(x => x.Version == updateRequest.Version)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"No pending policy found with version {updateRequest.Version}");
+
+        List<UpdateDefinition<RoyaltyPolicy>> updates = [];
+        UpdateDefinitionBuilder<RoyaltyPolicy> builder = Builders<RoyaltyPolicy>.Update;
+
+        if (updateRequest.RatePerStream.HasValue)
+        {
+            updates.Add(builder.Set(x => x.RatePerStream, updateRequest.RatePerStream.Value));
+        }
+
+        if (updateRequest.Currency.HasValue)
+        {
+            updates.Add(builder.Set(x => x.Currency, updateRequest.Currency.Value));
+        }
+
+        if (updateRequest.RecordingPercentage.HasValue)
+        {
+            updates.Add(builder.Set(x => x.RecordingPercentage, updateRequest.RecordingPercentage.Value));
+        }
+
+        if (updateRequest.WorkPercentage.HasValue)
+        {
+            updates.Add(builder.Set(x => x.WorkPercentage, updateRequest.WorkPercentage.Value));
+        }
+
+        if (updates.Count == 0)
+        {
+            throw new BadRequestCustomException("No valid fields provided to update.");
+        }
+
+        UpdateDefinition<RoyaltyPolicy> updateDefinition = builder.Combine(updates);
+
+        await _unitOfWork.GetCollection<RoyaltyPolicy>().UpdateOneAsync(x => x.Id == policy.Id, updateDefinition);
+
+        // Cập nhật lại trong cache
+        await UpdateRedisCacheAsync(policy);
+    }
+
+    public async Task SwitchToLatestVersionAsync()
+    {
+        // Lấy bản đang active
+        RoyaltyPolicy activePolicy = await _unitOfWork.GetCollection<RoyaltyPolicy>()
+            .Find(x => x.Status == PolicyStatus.Active)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("No active royalty policy found to disable.");
+
+        // Lấy version cao nhất
+        RoyaltyPolicy newestPolicy = await _unitOfWork.GetCollection<RoyaltyPolicy>()
+            .Find(_ => true)
+            .SortByDescending(x => x.Version)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("No royalty policies found in system.");
+
+        // Kiểm tra: nếu bản active đã là bản mới nhất thì không được disable
+        if (activePolicy.Version >= newestPolicy.Version)
+        {
+            throw new BadRequestCustomException("Cannot disable the latest active version.");
+        }
+
+        // Bản mới nhất phải ở trạng thái Pending để có thể kích hoạt
+        if (newestPolicy.Status != PolicyStatus.Pending)
+        {
+            throw new BadRequestCustomException("The latest version is not in a pending state, cannot activate.");
+        }
+
+        // Transaction: disable bản hiện tại + active bản mới nhất
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            UpdateDefinitionBuilder<RoyaltyPolicy> update = Builders<RoyaltyPolicy>.Update;
+
+            // Disable bản active hiện tại
+            await _unitOfWork.GetCollection<RoyaltyPolicy>()
+                .UpdateOneAsync(session, x => x.Id == activePolicy.Id, update.Set(x => x.Status, PolicyStatus.Inactive));
+
+            // Enable bản mới nhất
+            await _unitOfWork.GetCollection<RoyaltyPolicy>()
+                .UpdateOneAsync(session, x => x.Id == newestPolicy.Id, update.Set(x => x.Status, PolicyStatus.Active));
+        });
+
+        // Cập nhật lại cache trong Redis
+        await UpdateRedisCacheAsync(newestPolicy);
+    }
+
     // Method for initializing policy when the system is first set up
     public async Task InitializePolicyAsync()
     {
         RoyaltyPolicy currentPolicy = await _unitOfWork.GetCollection<RoyaltyPolicy>().Find(x => x.Status == PolicyStatus.Active).FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any royal policy is active");
 
-        Dictionary<string, string?> policyDictionary = new()
-        {
-            { "rate_per_stream", currentPolicy.RatePerStream.ToString() },
-            { "currency", currentPolicy.Currency.ToString() },
-            { "recording_percentage", currentPolicy.RecordingPercentage.ToString() },
-            { "work_percentage", currentPolicy.WorkPercentage.ToString() },
-            { "version", currentPolicy.Version.ToString() },
-            { "status", currentPolicy.Status.ToString() }
-        };
-
-        await _redisCacheService.HashSetAsync("royalty_policy:active", policyDictionary);
+        await UpdateRedisCacheAsync(currentPolicy);
     }
 
     public async Task SeedDataAsync()
@@ -115,5 +180,22 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
             Version = 1,
             Status = PolicyStatus.Active,
         });
+
+        await InitializePolicyAsync();
+    }
+
+    private async Task UpdateRedisCacheAsync(RoyaltyPolicy policy)
+    {
+        Dictionary<string, string?> policyDictionary = new()
+        {
+            { "rate_per_stream", policy.RatePerStream.ToString() },
+            { "currency", policy.Currency.ToString() },
+            { "recording_percentage", policy.RecordingPercentage.ToString() },
+            { "work_percentage", policy.WorkPercentage.ToString() },
+            { "version", policy.Version.ToString() },
+            { "status", policy.Status.ToString() }
+        };
+
+        await _redisCacheService.HashSetAsync("royalty_policy:active", policyDictionary);
     }
 }

@@ -397,6 +397,7 @@ public static class DependencyInjection
         services.AddScoped<ITrackCommentService, TrackCommentService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
+        services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
         services.AddScoped<ITopTrackService, TopTrackService>();
         //services.AddScoped<IChatService, ChatService>();
 
@@ -715,6 +716,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PeriodTime), new EnumMemberSerializer<PeriodTime>());
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
+        BsonSerializer.RegisterSerializer(typeof(PolicyStatus), new EnumMemberSerializer<PolicyStatus>());
 
         // Payout Trasnsaction
         BsonSerializer.RegisterSerializer(typeof(PayoutTransactionStatus), new EnumMemberSerializer<PayoutTransactionStatus>());

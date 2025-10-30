@@ -81,7 +81,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         return account;
     }
 
-    public async Task CreateCustomConnectedAccount()
+    public async Task CreateExpressConnectedAccount()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
@@ -222,51 +222,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
         AccountExternalAccountService externalAccountService = new();
         await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
-
-        return;
-    }
-
-    public async Task CreateExpressConnectedAccount()
-    {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
-        string email = await _unitOfWork.GetCollection<User>()
-            .Find(x => x.Id == userId)
-            .Project(x => x.Email)
-            .FirstOrDefaultAsync();
-
-        AccountService accountService = new();
-        Account account = accountService.Create(new AccountCreateOptions
-        {
-            Type = "express",  // Express phổ biến nhất
-            Country = "SG",   // Sandbox test US/EU (VN không hỗ trợ)
-            Email = email,
-            DefaultCurrency = CurrencyType.sgd.ToString(),
-            Settings = new AccountSettingsOptions
-            {
-                Payouts = new AccountSettingsPayoutsOptions
-                {
-                    Schedule = new AccountSettingsPayoutsScheduleOptions
-                    {
-                        Interval = "manual" // Rút tiền thủ công
-                        //Interval = "monthly", // Tự động rút tiền hàng tháng,
-                        //DelayDays = 3, // sau 3 ngày
-                        //MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
-                    }
-                },
-            },
-        });
-
-        UpdateResult updateResult = await _unitOfWork.GetCollection<User>()
-            .UpdateOneAsync(
-                Builders<User>.Filter.Eq(x => x.Id, userId),
-                Builders<User>.Update.Set(x => x.StripeAccountId, account.Id)
-            );
-
-        if (updateResult.ModifiedCount == 0)
-        {
-            throw new NotFoundCustomException("Cannot create express connected account.");
-        }
 
         return;
     }

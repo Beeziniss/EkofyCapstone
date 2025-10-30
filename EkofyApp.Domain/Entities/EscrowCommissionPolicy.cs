@@ -4,16 +4,15 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class RoyaltyPolicy : TimeStamped, IEntityCustom
+public sealed class EscrowCommissionPolicy : TimeStamped, IEntityCustom
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!;
-    public decimal RatePerStream { get; set; }
     public CurrencyType Currency { get; set; } = CurrencyType.vnd;
-    public decimal RecordingPercentage { get; set; }
-    public decimal WorkPercentage { get; set; }
+    public decimal PlatformFeePercentage { get; set; }
 
     public long Version { get; set; }
-    public PolicyStatus Status { get; set; }
+
+    public PolicyStatus Status { get; set; } = PolicyStatus.Pending;
 }
