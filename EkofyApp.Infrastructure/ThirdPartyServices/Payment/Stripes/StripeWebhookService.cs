@@ -121,7 +121,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             // Case: Hủy vào cuối kỳ hạn
                             if (status == "active" && stripeSubscription.CancelAtPeriodEnd == true)
                             {
-                                _logger.LogInformation($"Subscription {stripeSubscription.Id} will be canceled at the end of the period for user {user.Email}.");
                                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                                 // Không cần dùng background job để kiểm tra và hủy gói currentSubscription vào đúng ngày PeriodEnd
                                 // Có thể gửi email nhắc nhở user vào khoảng n ngày trước PeriodEnd
@@ -450,26 +449,26 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         };
                     }
 
-                    // Tạo Invoice
-                    await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
-                    {
-                        UserId = transaction.UserId,
-                        PaymentTransactionId = transaction.Id,
+                    // TODO: Tạo package ordeer
 
-                        OneOffSnapshot = oneOffSnapshot,
-                        SubscriptionSnapshot = subscriptionSnapshot,
+                    //// Tạo Invoice
+                    //await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
+                    //{
+                    //    UserId = transaction.UserId,
+                    //    PaymentTransactionId = transaction.Id,
 
-                        OriginContext = checkoutSession.OriginContext,
+                    //    OneOffSnapshot = oneOffSnapshot,
+                    //    SubscriptionSnapshot = subscriptionSnapshot,
 
-                        FullName = checkoutSession.Customer.Name,
-                        Email = checkoutSession.Customer.Email,
-                        Country = "VN", // Tạm thời
-                        Amount = transaction.Amount,
-                        Currency = transaction.Currency,
+                    //    FullName = checkoutSession.Customer.Name,
+                    //    Email = checkoutSession.Customer.Email,
+                    //    Country = "VN", // Tạm thời
+                    //    Amount = transaction.Amount,
+                    //    Currency = transaction.Currency,
 
-                        From = checkoutSession.Customer.Email,
-                        To = "Ekofy" // Tạm thời
-                    });
+                    //    From = checkoutSession.Customer.Email,
+                    //    To = "Ekofy" // Tạm thời
+                    //});
                 }
             }
             catch (StripeException e)
