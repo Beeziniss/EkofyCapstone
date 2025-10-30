@@ -2,8 +2,10 @@
 {
     public sealed record RequestCreatingRequest
     {
-        public string Title { get; set; } = null!;
-        public string Description { get; set; } = null!;
-        public List<string>? Attachments { get; set; }
+        public string Title { get; init; } = null!;
+        public string Summary { get; init; } = null!;
+        public string DetailDescription { get; init; } = null!;
+        public DateOnly Deadline { get; init; }
+        public decimal Budget { get; init; }
     }
 }
