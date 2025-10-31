@@ -37,8 +37,7 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             }
 
             string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
-            query = query.Where(t => HelperMethod.ToUnsigned(t.Title).Contains(unsignedSearchTerm)
-                                   || HelperMethod.ToUnsigned(t.Summary).Contains(unsignedSearchTerm));
+            query = query.Where(t => (HelperMethod.ToUnsigned(t.Title).Contains(unsignedSearchTerm) || HelperMethod.ToUnsigned(t.Summary).Contains(unsignedSearchTerm)) && t.Status == RequestStatus.Open);
 
             return query;
         }
