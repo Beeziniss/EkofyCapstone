@@ -1,4 +1,6 @@
-﻿namespace EkofyApp.Application.Models.RequestHub
+﻿using EkofyApp.Domain.Enums;
+
+namespace EkofyApp.Application.Models.RequestHub
 {
     public record RequestUpdatingRequest
     {
@@ -8,7 +10,6 @@
         public string? DetailDescription { get; init; }
         public DateOnly? Deadline { get; init; }
         public decimal? Budget { get; init; }
-        public bool? IsClosed { get; init; }
-        public bool? IsDeleted { get; init; }
+        public RequestStatus? Status { get; init; }
     }
 }

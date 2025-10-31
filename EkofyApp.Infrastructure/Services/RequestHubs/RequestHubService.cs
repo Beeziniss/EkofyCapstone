@@ -2,6 +2,7 @@
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
@@ -19,6 +20,29 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             return _unitOfWork.GetCollection<RequestHub>().AsQueryable();
         }
 
+        public async Task<RequestHub?> GetRequestByIdAsync(string requestId)
+        {
+            return await _unitOfWork.GetCollection<RequestHub>()
+                                    .Find(rh => rh.Id == requestId && rh.Status == RequestStatus.Open)
+                                    .FirstOrDefaultAsync();
+        }
+
+        public IQueryable<RequestHub> SearchRequests(string searchTerm)
+        {
+            IQueryable<RequestHub> query = _unitOfWork.GetCollection<RequestHub>().AsQueryable();
+
+            if (string.IsNullOrEmpty(searchTerm))
+            {
+                return query;
+            }
+
+            string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
+            query = query.Where(t => HelperMethod.ToUnsigned(t.Title).Contains(unsignedSearchTerm)
+                                   || HelperMethod.ToUnsigned(t.Summary).Contains(unsignedSearchTerm));
+
+            return query;
+        }
+
         public async Task<bool> CreateRequestAsync(RequestCreatingRequest request)
         {
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -31,7 +55,8 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                 Summary = request.Summary,
                 DetailDescription = request.DetailDescription,
                 Deadline = request.Deadline,
-                Budget = request.Budget
+                Budget = request.Budget,
+                Status = RequestStatus.Open
             };
             // lưu request vừa mới tạo
             await _unitOfWork.GetCollection<RequestHub>().InsertOneAsync(requestHub);
@@ -43,18 +68,10 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             RequestHub requestHub = await _unitOfWork.GetCollection<RequestHub>()
-                                                     .Find(rh => rh.Id == request.Id)
+                                                     .Find(rh => rh.Id == request.Id && rh.Status == RequestStatus.Open)
                                                      .Project<RequestHub>(Builders<RequestHub>.Projection
-                                                        .Include(rh => rh.IsClosed)
-                                                        .Include(rh => rh.IsDeleted)
                                                         .Include(rh => rh.RequestUserId))
                                                      .FirstOrDefaultAsync();
-
-            //kiểm tra request có hợp lệ hay không, ko thì ném lỗi
-            if (requestHub.IsClosed || requestHub.IsDeleted)
-            {
-                throw new BadRequestCustomException("The request has been closed or deleted, cannot update anymoore!");
-            }
 
             //check xem bài request này có đúng là của người đang muốn sửa ko
             if(requestHub.RequestUserId != userId)
@@ -87,14 +104,10 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                 updatedFields.Add(updateBuilder.Set(rh => rh.Budget, request.Budget));
             }
 
-            //CHỖ NÀY PHẢI TỚI KHI TẠO ORDER REQUEST MỚI ĐÓNG LẠI (ĐÓNG -> KO CHO SỬA NỮA)
-            //if (request.IsClosed != null)
-            //{
-            //    updatedFields.Add(updateBuilder.Set(rh => rh.IsClosed, request.IsClosed));
-            //}
-            if (request.IsDeleted != null)
+            // CHỖ NÀY ĐỂ CẬP NHẬT TRẠNG THÁI CỦA REQUEST 
+            if (request.Status != null)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.IsDeleted, request.IsDeleted));
+                updatedFields.Add(updateBuilder.Set(rh => rh.Status, request.Status));
             }
 
             //cập nhật lại thời gian sửa đổi
@@ -109,5 +122,14 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             return result.ModifiedCount > 0;
         }
 
+        public async Task<bool> BlockRequestAsync(string requestId)
+        {
+            var update = Builders<RequestHub>.Update
+                                             .Set(rh => rh.Status, RequestStatus.Blocked)
+                                             .Set(rh => rh.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            var result = await _unitOfWork.GetCollection<RequestHub>()
+                             .UpdateOneAsync(rh => rh.Id == requestId, update);
+            return result.ModifiedCount > 0;
+        }
     }
 }

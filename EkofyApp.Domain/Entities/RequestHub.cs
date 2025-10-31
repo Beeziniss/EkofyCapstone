@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -17,7 +18,6 @@ namespace EkofyApp.Domain.Entities
         public string DetailDescription { get; set; } = null!;
         public decimal Budget { get; set; }
         public DateOnly Deadline { get; set; }
-        public bool IsClosed { get; set; }
-        public bool IsDeleted { get; set; }
+        public RequestStatus Status { get; set; }
     }
 }

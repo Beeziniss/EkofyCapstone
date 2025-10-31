@@ -10,6 +10,8 @@ namespace EkofyApp.Api.GraphQL.Mutation.RequestHubs
                 .Authorize(HelperRoleBase.ListenerRolesArray);
             descriptor.Field(x => x.UpdateRequestAsync(default!))
                 .Authorize(HelperRoleBase.ListenerRolesArray);
+            descriptor.Field(x => x.BlockRequestAsync(default!))
+                .Authorize(HelperRoleBase.ModeratorRolesArray);
         }
     }
 }
