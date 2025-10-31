@@ -6,9 +6,9 @@ namespace EkofyApp.Api.GraphQL.Mutation.Comments;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class CommentMutation(ITrackCommentService trackCommentService)
+public sealed class CommentMutation(ICommentService trackCommentService)
 {
-    private readonly ITrackCommentService _trackCommentService = trackCommentService;
+    private readonly ICommentService _trackCommentService = trackCommentService;
 
     #region Track Comment
     public async Task<bool> CreateTrackCommentAsync(CreateCommentRequest request)

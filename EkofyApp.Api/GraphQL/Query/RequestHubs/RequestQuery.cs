@@ -14,4 +14,13 @@ public class RequestQuery(IRequestHubService requestHubService)
         return _requestHubService.GetRequestsQueryable();
     }
 
+    public async Task<RequestHub?> GetRequestByIdAsync(string requestId)
+    {
+        return await _requestHubService.GetRequestByIdAsync(requestId);
+    }
+
+    public IQueryable<RequestHub> SearchRequests(string searchTerm)
+    {
+        return _requestHubService.SearchRequests(searchTerm);
+    }
 }

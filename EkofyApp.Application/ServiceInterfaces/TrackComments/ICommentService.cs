@@ -3,7 +3,7 @@ using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.TrackComments;
 
-public interface ITrackCommentService
+public interface ICommentService
 {
     IQueryable<Comment> GetTrackComments();
     Task CreateCommentAsync(CreateCommentRequest request);

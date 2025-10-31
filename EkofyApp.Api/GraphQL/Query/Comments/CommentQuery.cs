@@ -8,9 +8,9 @@ namespace EkofyApp.Api.GraphQL.Query.Comments;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public sealed class CommentQuery(ITrackCommentService trackCommentService)
+public sealed class CommentQuery(ICommentService trackCommentService)
 {
-    private readonly ITrackCommentService _trackCommentService = trackCommentService;
+    private readonly ICommentService _trackCommentService = trackCommentService;
 
     #region Track Comments
     [AuthorizeRoles(HelperRoleBase.FullRoles)]
