@@ -746,7 +746,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     /// <summary>
     /// Tạo payout thường (1-5 ngày làm việc) cho connected account
     /// </summary>
-    public async Task<Payout> CreatePayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
+    public async Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
     {
         string alternativeDescription = $"Royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
 

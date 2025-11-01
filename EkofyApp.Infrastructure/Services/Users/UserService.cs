@@ -40,6 +40,34 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             .FirstOrDefaultAsync();
     }
 
+    public IQueryable<User> GetFollowersByUserId(string userId)
+    {
+        List<string> followerIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.TargetId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.ActorId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followerIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
+    public IQueryable<User> GetFollowingsByUserId(string userId)
+    {
+        List<string> followingIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.ActorId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.TargetId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followingIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
     public async Task CreateModeratorAsync(CreateModeratorRequest createModeratorRequest)
     {
         if (await IsEmailExistsAsync(createModeratorRequest.Email))
@@ -140,7 +168,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 ActorType = followerType,
                 TargetId = request.TargetId,
                 TargetType = followedType,
-                CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
+                Action = UserEngagementAction.Follow,
             };
 
             await _unitOfWork.GetCollection<UserEngagement>().InsertOneAsync(session, follow);

@@ -9,8 +9,8 @@ public enum ReleaseStatus
     Delayed,
     [EnumMember(Value = "Canceled")]
     Canceled,
-    [EnumMember(Value = "Leaked")]
-    Leaked,
+    [EnumMember(Value = "Banned")]
+    Banned,
     [EnumMember(Value = "Official")]
     Official
 }

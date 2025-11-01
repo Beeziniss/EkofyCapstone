@@ -23,13 +23,23 @@ public sealed class UserQuery(IUserService userService)
         return _userService.GetUsers();
     }
 
-    //// TODO: Query Object thì dùng Generic T ()
-    //// Vì IQueryable chỉ trả về format chính là List/IEnumerable
-    //[AuthorizeRoles(HelperRoleBase.FullRoles)]
-    //[UseProjection]
-    //[UseSorting<User>]
-    //public Task<User> GetUserByIdAsync(string id)
-    //{
-    //    return _userService.GetUserByIdAsync(id);
-    //}
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<User>]
+    public IQueryable<User> GetFollowersByUserId(string userId)
+    {
+        return _userService.GetFollowersByUserId(userId);
+    }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<User>]
+    public IQueryable<User> GetFollowingsByUserId(string userId)
+    {
+        return _userService.GetFollowingsByUserId(userId);
+    }
 }

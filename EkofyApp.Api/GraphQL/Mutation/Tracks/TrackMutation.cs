@@ -444,14 +444,14 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                     await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
 
                     // Kiểm tra và lên lịch phát hành track nếu cần thiết
-                    //if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
-                    //{
-                    //    DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
-                    //    BackgroundJob.Schedule<IBackgoundService>(
-                    //        x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
-                    //        releaseTime
-                    //    );
-                    //}
+                    if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
+                    {
+                        DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
+                        BackgroundJob.Schedule<IBackgoundService>(
+                            x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
+                            releaseTime
+                        );
+                    }
 
                     // Upload fingerprint lên EmySound
                     string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempRequest.CreatedBy);
@@ -529,11 +529,27 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     private static bool ShouldScheduleTrackRelease(ReleaseInfo releaseInfo)
     {
         // Chỉ schedule job khi:
-        // 1. IsReleased = false (track chưa được phát hành)
-        // 2. ReleaseStatus != Official (không phải là official)
-        return !releaseInfo.IsReleased &&
-               releaseInfo.ReleaseStatus != ReleaseStatus.Official &&
-               releaseInfo.ReleaseDate.HasValue;
+        // 1. IsRelease = false -> track được private thì không cần làm gì hết
+        // Và không cần kiểm tra thêm 2 điều kiện còn lại
+        // 2. IsRelease = true -> track được public -> Release Status -> Official -> không được chọn Release Date -> không cần schedule
+        //                                                            -> Not Announced -> chọn Release Date để schedule -> cần schedule
+        // 2.2 Sau khi chọn Release Date để schedule -> đến ngày thì track sẽ được release và Release Status sẽ được đổi thành Official
+
+        //return releaseInfo.IsRelease &&
+        //       releaseInfo.ReleaseStatus != ReleaseStatus.Official &&
+        //       releaseInfo.ReleaseDate.HasValue;
+
+        if (!releaseInfo.IsRelease)
+        {
+            return false;
+        }
+
+        if (releaseInfo.ReleaseStatus == ReleaseStatus.Official)
+        {
+            return false;
+        }
+
+        return releaseInfo.ReleaseDate.HasValue;
     }
 
     public async Task<bool> AddToFavoriteTrackAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)

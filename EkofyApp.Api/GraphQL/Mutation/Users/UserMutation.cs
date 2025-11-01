@@ -25,22 +25,12 @@ public sealed class UserMutation(IUserService userService)
 
     public async Task<bool> FollowUserAsync(UserEngagementRequest request)
     {
-        if(request.TargetType != UserEngagementTargetType.Listener && request.TargetType != UserEngagementTargetType.Artist)
-        {
-            throw new ArgumentException("TargetType must be User for following a user.");
-        }
-
         await _userService.FollowUserAsync(request);
         return true;
     }
 
     public async Task<bool> UnfollowUserAsync(UserEngagementRequest request)
     {
-        if (request.TargetType != UserEngagementTargetType.Listener && request.TargetType != UserEngagementTargetType.Artist)
-        {
-            throw new ArgumentException("TargetType must be User for following a user.");
-        }
-
         await _userService.UnfollowUserAsync(request);
         return true;
     }

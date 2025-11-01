@@ -25,5 +25,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task<long> AddToFavoriteTrackAsync(string trackId, bool isAdding);
         Task UpdateStreamCount(string trackId);
         IQueryable<Track> GetFavoriteTracks();
+        Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year);
     }
 }
