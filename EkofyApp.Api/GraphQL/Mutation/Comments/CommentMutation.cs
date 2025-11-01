@@ -11,7 +11,7 @@ public sealed class CommentMutation(ICommentService trackCommentService)
     private readonly ICommentService _trackCommentService = trackCommentService;
 
     #region Track Comment
-    public async Task<bool> CreateTrackCommentAsync(CreateCommentRequest request)
+    public async Task<bool> CreateCommentAsync(CreateCommentRequest request)
     {
         // Set CommentType to Track for backward compatibility
         request = request with { CommentType = CommentType.Track };
@@ -19,13 +19,13 @@ public sealed class CommentMutation(ICommentService trackCommentService)
         return true;
     }
 
-    public async Task<bool> UpdateTrackCommentAsync(UpdateTrackCommentRequest request)
+    public async Task<bool> UpdateCommentAsync(UpdateTrackCommentRequest request)
     {
         await _trackCommentService.UpdateCommentAsync(request);
         return true;
     }
 
-    public async Task<bool> DeleteTrackCommentAsync(DeleteCommentRequest request)
+    public async Task<bool> DeleteCommentAsync(DeleteCommentRequest request)
     {
         await _trackCommentService.DeleteCommentAsync(request);
         return true;
