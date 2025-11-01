@@ -27,19 +27,40 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                                     .FirstOrDefaultAsync();
         }
 
-        public IQueryable<RequestHub> SearchRequests(string searchTerm)
+        public IQueryable<RequestHub> GetOwnRequestsAsync()
         {
-            IQueryable<RequestHub> query = _unitOfWork.GetCollection<RequestHub>().AsQueryable();
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            // Không cho xem lại các request đã bị blocked hay đã xóa
+            return _unitOfWork.GetCollection<RequestHub>()
+                                                      .AsQueryable()
+                                                      .Where(rh => rh.RequestUserId == userId && (
+                                                             rh.Status == RequestStatus.Open ||
+                                                             rh.Status == RequestStatus.Closed
+                                                      ));
+        }
 
-            if (string.IsNullOrEmpty(searchTerm))
+        public IQueryable<RequestHub> SearchRequests(string searchTerm, bool isIndividual)
+        {
+            var query = _unitOfWork.GetCollection<RequestHub>().AsQueryable();
+            string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
+
+            //search cá nhân
+            if (isIndividual)
             {
-                return query;
+                string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
+                    ?? throw new UnauthorizedCustomException("Your session is limit");
+
+                query = query.Where(rh => rh.RequestUserId == userId);
             }
 
-            string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
-            query = query.Where(t => (HelperMethod.ToUnsigned(t.Title).Contains(unsignedSearchTerm) || HelperMethod.ToUnsigned(t.Summary).Contains(unsignedSearchTerm)) && t.Status == RequestStatus.Open);
+            // Ko có search term thì trả về luôn query hiện tại
+            if (string.IsNullOrEmpty(searchTerm))
+                return query;
 
-            return query;
+            // có search term thì lọc rồi return
+            return query.Where(t =>
+                (t.Title.Contains(unsignedSearchTerm) || t.Summary.Contains(unsignedSearchTerm)) &&
+                t.Status == RequestStatus.Open);
         }
 
         public async Task<bool> CreateRequestAsync(RequestCreatingRequest request)
@@ -51,9 +72,11 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             {
                 RequestUserId = userId,
                 Title = request.Title,
+                TitleUnsigned = HelperMethod.ToUnsigned(request.Title),
                 Summary = request.Summary,
+                SummaryUnsigned = HelperMethod.ToUnsigned(request.Summary),
                 DetailDescription = request.DetailDescription,
-                Deadline = request.Deadline,
+                Deadline = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(request.Deadline),
                 Budget = request.Budget,
                 Status = RequestStatus.Open
             };
@@ -69,7 +92,8 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             RequestHub requestHub = await _unitOfWork.GetCollection<RequestHub>()
                                                      .Find(rh => rh.Id == request.Id && rh.Status == RequestStatus.Open)
                                                      .Project<RequestHub>(Builders<RequestHub>.Projection
-                                                        .Include(rh => rh.RequestUserId))
+                                                        .Include(rh => rh.RequestUserId)
+                                                        .Include(rh => rh.Deadline))
                                                      .FirstOrDefaultAsync();
 
             //check xem bài request này có đúng là của người đang muốn sửa ko
@@ -85,18 +109,20 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             if (request.Title != null)
             {
                 updatedFields.Add(updateBuilder.Set(rh => rh.Title, request.Title));
+                updatedFields.Add(updateBuilder.Set(rh => rh.TitleUnsigned, HelperMethod.ToUnsigned(request.Title)));
             }
             if (request.Summary != null)
             {
                 updatedFields.Add(updateBuilder.Set(rh => rh.Summary, request.Summary));
+                updatedFields.Add(updateBuilder.Set(rh => rh.SummaryUnsigned, HelperMethod.ToUnsigned(request.Summary)));
             }
             if (request.DetailDescription != null)
             {
                 updatedFields.Add(updateBuilder.Set(rh => rh.DetailDescription, request.DetailDescription));
             }
-            if (request.Deadline != null)
+            if (request.Deadline.HasValue)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.Deadline, request.Deadline));
+                updatedFields.Add(updateBuilder.Set(rh => rh.Deadline, HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(request.Deadline.Value)));
             }
             if (request.Budget != null)
             {

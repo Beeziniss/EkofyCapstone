@@ -1,4 +1,5 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Application.Models.RequestHub
 {
@@ -8,8 +9,8 @@ namespace EkofyApp.Application.Models.RequestHub
         public string? Title { get; init; }
         public string? Summary { get; init; }
         public string? DetailDescription { get; init; }
-        public DateOnly? Deadline { get; init; }
-        public decimal? Budget { get; init; }
+        public DateTime? Deadline { get; init; }
+        public RequestBudget? Budget { get; init; }
         public RequestStatus? Status { get; init; }
     }
 }

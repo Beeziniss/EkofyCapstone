@@ -10,7 +10,7 @@ namespace EkofyApp.Domain.Enums
         Closed,
         [EnumMember(Value = "Open")]
         Open,
-        [EnumMember(Value = "Delete")]
+        [EnumMember(Value = "Deleted")]
         Deleted
     }
 }

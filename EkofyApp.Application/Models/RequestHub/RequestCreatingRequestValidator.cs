@@ -17,7 +17,9 @@ namespace EkofyApp.Application.Models.RequestHub
                 .NotEmpty().WithMessage("Detail Description is required.")
                 .Length(0, 1000)
                 .WithMessage("Detail Description must not exceed 1000 characters.");
-            RuleFor(x => x.Budget)
+            RuleFor(x => x.Budget.Min)
+                .GreaterThanOrEqualTo(0).WithMessage("Budget must be over than 0.");
+            RuleFor(x => x.Budget.Max)
                 .GreaterThanOrEqualTo(0).WithMessage("Budget must be over than 0.");
         }
     }

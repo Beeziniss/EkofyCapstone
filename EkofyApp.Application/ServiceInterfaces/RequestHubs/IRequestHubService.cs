@@ -7,9 +7,10 @@ namespace EkofyApp.Application.ServiceInterfaces.RequestHubs
     {
         Task<bool> BlockRequestAsync(string requestId);
         Task<bool> CreateRequestAsync(RequestCreatingRequest request);
+        IQueryable<RequestHub> GetOwnRequestsAsync();
         Task<RequestHub?> GetRequestByIdAsync(string requestId);
         IQueryable<RequestHub> GetRequestsQueryable();
-        IQueryable<RequestHub> SearchRequests(string searchTerm);
+        IQueryable<RequestHub> SearchRequests(string searchTerm, bool isIndividual);
         Task<bool> UpdateRequestAsync(RequestUpdatingRequest request);
     }
 }
