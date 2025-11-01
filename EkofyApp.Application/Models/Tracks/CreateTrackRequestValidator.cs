@@ -44,11 +44,11 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
         RuleFor(x => x.Lyrics)
             .MaximumLength(5000).WithMessage("Lyrics must not exceed 5000 characters.");
 
-        //RuleFor(x => x.IsReleased)
+        //RuleFor(x => x.IsRelease)
         //    .NotNull().WithMessage("Release status is required.");
 
         //RuleFor(x => x.ReleaseDate)
-        //    .GreaterThanOrEqualTo(_ => HelperMethod.GetUtcPlus7TimeOffset().AddDays(3).AddHours(2)).When(x => x.IsReleased)
+        //    .GreaterThanOrEqualTo(_ => HelperMethod.GetUtcPlus7TimeOffset().AddDays(3).AddHours(2)).When(x => x.IsRelease)
         //    .WithMessage("Release date must be in the present or future if the track is marked as released.");
 
         //RuleFor(x => x.ReleaseStatus)
@@ -64,7 +64,7 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                     case ReleaseStatus.Official:
                         if (!model.IsReleased)
                         {
-                            context.AddFailure(nameof(model.IsReleased), "IsReleased must be true when ReleaseStatus is Official.");
+                            context.AddFailure(nameof(model.IsReleased), "IsRelease must be true when ReleaseStatus is Official.");
                         }
                         if (model.ReleaseDate != null)
                         {
@@ -75,7 +75,7 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                     case ReleaseStatus.NotAnnounced:
                         if (model.IsReleased)
                         {
-                            context.AddFailure(nameof(model.IsReleased), "IsReleased must be false when ReleaseStatus is Not Announced.");
+                            context.AddFailure(nameof(model.IsReleased), "IsRelease must be false when ReleaseStatus is Not Announced.");
                         }
                         if (model.ReleaseDate == null)
                         {
@@ -83,34 +83,33 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                         }
                         break;
 
-                    case ReleaseStatus.Delayed:
-                    case ReleaseStatus.Canceled:
-                    case ReleaseStatus.Leaked:
-                        // Tuỳ vào logic nghiệp vụ muốn:
-                        // Ví dụ giả định muốn:
-                        // - IsReleased = false
-                        // - ReleaseDate = null
-                        if (model.IsReleased)
-                        {
-                            context.AddFailure(nameof(model.IsReleased), $"IsReleased must be false when ReleaseStatus is {model.ReleaseStatus}.");
-                        }
-                        if (model.ReleaseDate != null)
-                        {
-                            context.AddFailure(nameof(model.ReleaseDate), $"ReleaseDate must be null when ReleaseStatus is {model.ReleaseStatus}.");
-                        }
-                        break;
+                    //case ReleaseStatus.Delayed:
+                    //case ReleaseStatus.Canceled:
+                    //    // Tuỳ vào logic nghiệp vụ muốn:
+                    //    // Ví dụ giả định muốn:
+                    //    // - IsRelease = false
+                    //    // - ReleaseDate = null
+                    //    if (model.IsReleased)
+                    //    {
+                    //        context.AddFailure(nameof(model.IsReleased), $"IsRelease must be false when ReleaseStatus is {model.ReleaseStatus}.");
+                    //    }
+                    //    if (model.ReleaseDate != null)
+                    //    {
+                    //        context.AddFailure(nameof(model.ReleaseDate), $"ReleaseDate must be null when ReleaseStatus is {model.ReleaseStatus}.");
+                    //    }
+                    //    break;
                 }
 
-                // Thêm điều kiện riêng cho ngày phát hành nếu đã phát hành
+                // Thêm điều kiện riêng cho ngày phát hành tức có status là Not Annouced nếu chọn phát hành
                 if (model.IsReleased && model.ReleaseStatus != ReleaseStatus.Official)
                 {
                     if (model.ReleaseDate == null)
                     {
-                        context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate is required if the track is marked as released (except Official).");
+                        context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate is required if the track is marked as release (except Official).");
                     }
-                    else if (model.ReleaseDate < now.AddDays(3).AddHours(2))
+                    else if (model.ReleaseDate < now.AddDays(4))
                     {
-                        context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate must be at least 3 days and 2 hours from now.");
+                        context.AddFailure(nameof(model.ReleaseDate), "ReleaseDate must be at least 4 days from now.");
                     }
                 }
             });

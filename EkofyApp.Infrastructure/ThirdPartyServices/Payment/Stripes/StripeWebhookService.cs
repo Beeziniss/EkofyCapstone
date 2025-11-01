@@ -1,6 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
-using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
@@ -12,7 +11,6 @@ using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
-using Grpc.Core;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;

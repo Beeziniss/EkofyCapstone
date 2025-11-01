@@ -77,13 +77,20 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         x => x.TrackId,
                         x => x.TrackId,
                         x => x.RecordingProjection)
+                    .Unwind<MonthlyStreamCountProjection, MonthlyStreamCountProjection>(x => x.RecordingProjection, new AggregateUnwindOptions<MonthlyStreamCountProjection> { PreserveNullAndEmptyArrays = true })
                     .Lookup<MonthlyStreamCountProjection, Work, MonthlyStreamCountProjection>(
                         _unitOfWork.GetCollection<Work>(),
                         x => x.TrackId,
                         x => x.TrackId,
                         x => x.WorkProjection)
+                    .Unwind<MonthlyStreamCountProjection, MonthlyStreamCountProjection>(x => x.WorkProjection, new AggregateUnwindOptions<MonthlyStreamCountProjection> { PreserveNullAndEmptyArrays = true })
                     .Limit(limit)
                     .ToListAsync(ct);
+
+            if(monthlyStreamCountProjections.Count == 0)
+            {
+                throw new NotFoundCustomException($"No MonthlyStreamCount records found for month={month}, year={year} to process.");
+            }
 
             foreach (MonthlyStreamCountProjection monthlyStreamCountProjection in monthlyStreamCountProjections)
             {
@@ -92,7 +99,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 List<RoyaltySplit> splits = [];
 
                 // Nếu có RecordingId → áp dụng RecordingSplits
-                decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage;
+                decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage / 100m;
                 if (!string.IsNullOrEmpty(monthlyStreamCountProjection.RecordingProjection?.Id))
                 {
                     if (monthlyStreamCountProjection.RecordingProjection != null)
@@ -122,7 +129,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 }
 
                 // Nếu có WorkId → áp dụng WorkSplits
-                decimal workPool = totalRoyalty * workRoyaltyPercentage;
+                decimal workPool = totalRoyalty * workRoyaltyPercentage / 100m;
                 if (!string.IsNullOrEmpty(monthlyStreamCountProjection.WorkProjection?.Id))
                 {
                     if (monthlyStreamCountProjection.WorkProjection != null)
@@ -299,7 +306,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     }
 
                     // Thực hiện payout thực sự
-                    Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong,  CurrencyType.sgd.ToString());
+                    Payout payoutResponse = await _stripeService.CreateStandardPayoutAsync(artistStripeAccountId, stripeTotalAmountLong,  CurrencyType.sgd.ToString());
 
                     // Lưu transaction cho từng report
                     foreach (var item in userSplits)
@@ -412,7 +419,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             // Thực hiện payout
             Payout payoutResponse = isInstant 
                 ? await _stripeService.CreateInstantPayoutAsync(user.StripeAccountId, stripeAmount)
-                : await _stripeService.CreatePayoutAsync(user.StripeAccountId, stripeAmount);
+                : await _stripeService.CreateStandardPayoutAsync(user.StripeAccountId, stripeAmount);
 
             // Lưu transaction
             PayoutTransaction payoutTransaction = new()

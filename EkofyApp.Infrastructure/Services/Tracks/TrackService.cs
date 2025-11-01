@@ -9,11 +9,9 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
-using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -31,6 +29,25 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
     private readonly ILogger<TrackService> _logger = logger;
+
+    public async Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year)
+    {
+        UpdateResult updateTrackResult = await _unitOfWork.GetCollection<Track>()
+            .UpdateOneAsync(x => x.Id == trackId, Builders<Track>.Update.Set(x => x.StreamCount, streamCount));
+
+        if (updateTrackResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException("Cannot seed stream count.");
+        }
+
+        await _unitOfWork.GetCollection<MonthlyStreamCount>().InsertOneAsync(new MonthlyStreamCount
+        {
+            TrackId = trackId,
+            StreamCount = streamCount,
+            Month = month,
+            Year = year,
+        });
+    }
 
     public IQueryable<Track> GetTracks()
     {
@@ -75,13 +92,12 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
         // Cập nhật thông tin phát hành track với điều kiện track chưa được release
         UpdateDefinition<Track> updateDefinition = Builders<Track>.Update
-            .Set(t => t.ReleaseInfo.IsReleased, true)
             .Set(t => t.ReleaseInfo.ReleasedAt, currentTime)
             .Set(t => t.ReleaseInfo.ReleaseStatus, ReleaseStatus.Official);
 
         FilterDefinition<Track> filter = Builders<Track>.Filter.And(
             Builders<Track>.Filter.Eq(t => t.Id, trackId),
-            Builders<Track>.Filter.Eq(t => t.ReleaseInfo.IsReleased, false) // Chỉ cập nhật nếu chưa được release
+            Builders<Track>.Filter.Eq(t => t.ReleaseInfo.ReleaseStatus, ReleaseStatus.NotAnnounced)
         );
 
         UpdateResult result = await _unitOfWork.GetCollection<Track>()
@@ -192,7 +208,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
             ReleaseInfo = new()
             {
-                IsReleased = createTrackRequest.IsReleased,
+                IsRelease = createTrackRequest.IsReleased,
                 ReleaseDate = createTrackRequest.ReleaseDate,
                 ReleaseStatus = createTrackRequest.ReleaseStatus,
             },
