@@ -9,9 +9,9 @@ using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
-namespace EkofyApp.Infrastructure.Services.Tracks;
+namespace EkofyApp.Infrastructure.Services.Comments;
 
-public sealed class TrackCommentService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : ITrackCommentService
+public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : ICommentService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;

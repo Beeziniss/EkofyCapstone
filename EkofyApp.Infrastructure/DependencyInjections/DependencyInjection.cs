@@ -61,6 +61,7 @@ using EkofyApp.Infrastructure.Services.Auth;
 using EkofyApp.Infrastructure.Services.BillingPortalConfigurations;
 using EkofyApp.Infrastructure.Services.Categories;
 using EkofyApp.Infrastructure.Services.Chat;
+using EkofyApp.Infrastructure.Services.Comments;
 using EkofyApp.Infrastructure.Services.Coupons;
 using EkofyApp.Infrastructure.Services.Entitlements;
 using EkofyApp.Infrastructure.Services.Jobs;
@@ -394,7 +395,7 @@ public static class DependencyInjection
         services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
-        services.AddScoped<ITrackCommentService, TrackCommentService>();
+        services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
@@ -741,6 +742,9 @@ public static class DependencyInjection
         // User Engagement
         BsonSerializer.RegisterSerializer(typeof(UserEngagementTargetType), new EnumMemberSerializer<UserEngagementTargetType>());
         BsonSerializer.RegisterSerializer(typeof(UserEngagementAction), new EnumMemberSerializer<UserEngagementAction>());
+
+        // RequestHub
+        BsonSerializer.RegisterSerializer(typeof(RequestStatus), new EnumMemberSerializer<RequestStatus>());
     }
 
     public static void AddHangfire(this IServiceCollection service)
