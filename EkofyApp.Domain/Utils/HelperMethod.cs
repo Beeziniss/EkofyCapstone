@@ -99,6 +99,23 @@ public sealed class HelperMethod
     {
         return dateTimeOffset.ToString("dd-MM-yyyy HH:mm:ss");
     }
+
+    public static DateTimeOffset ParseFromStringUtcPlus7(string dateTimeString)
+    {
+        if (string.IsNullOrWhiteSpace(dateTimeString))
+        {
+            throw new ArgumentException("Date time string cannot be null or empty.", nameof(dateTimeString));
+        }
+
+        if (!DateTimeOffset.TryParseExact(dateTimeString, "dd-MM-yyyy HH:mm:ss", 
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset result))
+        {
+            throw new FormatException($"Invalid date time format. Expected format: dd-MM-yyyy HH:mm:ss. Actual: {dateTimeString}");
+        }
+
+        // Apply UTC+7 offset to match the normalize method
+        return new DateTimeOffset(result.DateTime, TimeSpan.FromHours(7));
+    }
     #endregion
 
     #region Operation System Handle

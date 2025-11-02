@@ -16,7 +16,7 @@ public sealed class PayoutTransaction : TimeStamped, IEntityCustom
     // TODO: Chưa biết có cần không
     // Resolved: Cần
     [BsonRepresentation(BsonType.ObjectId)]
-    public string RoyaltyReportId { get; set; } = null!; // Liên kết tới report đã generate
+    public string? RoyaltyReportId { get; set; } // Liên kết tới report đã generate
 
     #region Stripe
     public string StripeTransferId { get; set; } = null!; // Transfer.EntitlementId từ Stripe
@@ -27,7 +27,7 @@ public sealed class PayoutTransaction : TimeStamped, IEntityCustom
     public decimal Amount { get; set; }
     public string Currency { get; set; } = null!;
 
-    public AggregationLevel Level { get; set; }
+    public AggregationLevel? Level { get; set; }
     public string Description { get; set; } = null!;
     
     // Payout specific fields

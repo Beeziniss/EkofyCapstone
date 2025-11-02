@@ -445,28 +445,42 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             //ServiceDetails = artistPackage.ServiceDetails,
                             Status = Enum.Parse<ArtistPackageStatus>(checkoutSession.Metadata["package_status"]),
                         };
+
+                        // TODO: Tạo package order
+                        decimal platformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]);
+                        await _unitOfWork.GetCollection<PackageOrder>().InsertOneAsync(session, new PackageOrder
+                        {
+                            ClientId = transaction.UserId,
+                            ProviderId = checkoutSession.Metadata["provider_id"],
+                            ArtistPackageId = checkoutSession.Metadata["package_id"],
+                            PaymentTransactionId = transaction.Id,
+                            ConversationId = checkoutSession.Metadata["conversation_id"],
+                            Description = oneOffSnapshot.Description,
+                            RevisionCount = 0,
+                            Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
+                            PlatformFeePercentage = platformFeePercentage,
+                            ArtistFeePercentage = 100m - platformFeePercentage,
+                        });
                     }
 
-                    // TODO: Tạo package ordeer
+                    // Tạo Invoice
+                    await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
+                    {
+                        UserId = transaction.UserId,
+                        PaymentTransactionId = transaction.Id,
 
-                    //// Tạo Invoice
-                    //await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
-                    //{
-                    //    UserId = transaction.UserId,
-                    //    PaymentTransactionId = transaction.Id,
+                        OneOffSnapshot = oneOffSnapshot,
+                        SubscriptionSnapshot = subscriptionSnapshot,
 
-                    //    OneOffSnapshot = oneOffSnapshot,
-                    //    SubscriptionSnapshot = subscriptionSnapshot,
+                        FullName = checkoutSession.Customer.Name,
+                        Email = checkoutSession.Customer.Email,
+                        Country = "VN", // Tạm thời
+                        Amount = transaction.Amount,
+                        Currency = transaction.Currency,
 
-                    //    FullName = checkoutSession.Customer.Name,
-                    //    Email = checkoutSession.Customer.Email,
-                    //    Country = "VN", // Tạm thời
-                    //    Amount = transaction.Amount,
-                    //    Currency = transaction.Currency,
-
-                    //    From = checkoutSession.Customer.Email,
-                    //    To = "Ekofy" // Tạm thời
-                    //});
+                        From = checkoutSession.Customer.Email,
+                        To = "Ekofy" // Tạm thời
+                    });
                 }
             }
             catch (StripeException e)
@@ -487,11 +501,31 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             // Handle different payout events
             switch (stripeEvent.Type)
             {
+                case EventTypes.PayoutUpdated:
+                    {
+                        // Handle status transitions: pending → in_transit
+                        // This is typically when payout moves from pending to in_transit
+                        UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                        UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
+                            .UpdateManyAsync(
+                              x => x.StripePayoutId == payout.Id && x.Status != Enum.Parse<PayoutTransactionStatus>(payout.Status),
+                              updateDefinition);
+                        if (updateResult.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException($"No payout transactions were updated for Stripe Payout ID: {payout.Id}");
+                        }
+
+                        break;
+                    }
+
                 case EventTypes.PayoutPaid:
                     {
                         // Update payout transactions that are in pending or in_transit status to paid
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
@@ -504,6 +538,24 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             throw new UnprocessableEntityCustomException($"No payout transactions were updated for Stripe Payout ID: {payout.Id}");
                         }
 
+                        // Nếu metadata có package_order_id thì cập nhật IsEscrowReleased của package order tương ứng
+                        // Phần này chỉ áp dụng cho payout liên quan đến package order
+                        if (payout.Metadata != null && payout.Metadata.TryGetValue("package_order_id", out string? value))
+                        {
+                            // Cập nhật IsEscrowReleased package order
+                            await _unitOfWork.GetCollection<PackageOrder>()
+                                .UpdateManyAsync(
+                                    x => x.Id == value && x.IsEscrowReleased == false,
+                                    Builders<PackageOrder>.Update
+                                        .Set(x => x.IsEscrowReleased, true)
+                                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                                );
+                            if (updateResult.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException($"No package orders were updated for Payout ID: {payout.Id}");
+                            }
+                        }
+
                         break;
                     }
 
@@ -511,7 +563,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     {
                         // Update payout transactions that are in pending or in_transit status to failed
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
@@ -532,33 +584,13 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         // Update payout transactions that are in pending status to canceled
                         // Note: Only pending payouts can be canceled, not in_transit ones
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
                             .UpdateManyAsync(
                                 x => x.StripePayoutId == payout.Id && x.Status == PayoutTransactionStatus.pending,
                                 updateDefinition);
-                        if (updateResult.ModifiedCount == 0)
-                        {
-                            throw new UnprocessableEntityCustomException($"No payout transactions were updated for Stripe Payout ID: {payout.Id}");
-                        }
-
-                        break;
-                    }
-
-                case EventTypes.PayoutUpdated:
-                    {
-                        // Handle status transitions: pending → in_transit
-                        // This is typically when payout moves from pending to in_transit
-                        UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
-                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
-
-                        UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
-                            .UpdateManyAsync(
-                              x => x.StripePayoutId == payout.Id && x.Status != Enum.Parse<PayoutTransactionStatus>(payout.Status),
-                              updateDefinition);
                         if (updateResult.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException($"No payout transactions were updated for Stripe Payout ID: {payout.Id}");
