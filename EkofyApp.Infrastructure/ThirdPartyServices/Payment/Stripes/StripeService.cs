@@ -105,7 +105,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
 
         // Chuẩn hóa số điện thoại Singapore
         string singaporePhone = user.PhoneNumber!.StartsWith("0")
-            ? string.Concat("+65", user.PhoneNumber.AsSpan(1))
+            ? string.Concat("+65", user.PhoneNumber.AsSpan(2))
             : "+65" + user.PhoneNumber;
 
         Artist artist = await _unitOfWork.GetCollection<Artist>()
@@ -130,7 +130,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             Capabilities = new AccountCapabilitiesOptions
             {
                 Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
-                //CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
+                CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
             },
             BusinessProfile = new AccountBusinessProfileOptions
             {

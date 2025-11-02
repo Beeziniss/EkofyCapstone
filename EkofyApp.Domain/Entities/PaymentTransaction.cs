@@ -15,7 +15,7 @@ public sealed class PaymentTransaction : TimeStamped, IEntityCustom // Snapshot 
 
     #region Stripe
     public string StripeCheckoutSessionId { get; set; } = null!; // ID of the Checkout Session in Stripe
-    public string? StripePaymentId { get; set; }// ID of the payment in Stripe
+    public string? StripePaymentId { get; set; } // ID of the payment in Stripe
     public List<string> StripePaymentMethod { get; set; } = null!; // e.g., "visa", "master_card", "link"
     #endregion
 

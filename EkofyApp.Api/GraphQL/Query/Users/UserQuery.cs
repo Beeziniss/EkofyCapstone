@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
 using HotChocolate.Data;
@@ -28,9 +29,21 @@ public sealed class UserQuery(IUserService userService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<User>]
-    public IQueryable<User> GetFollowersByUserId(string userId)
+    public IQueryable<User> GetFollowers(string? userId, string? artistId)
     {
-        return _userService.GetFollowersByUserId(userId);
+        if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(artistId))
+        {
+            throw new BadRequestCustomException("Only userId or artistId should be passed, not both.");
+        }
+
+        if (userId != null)
+        {
+            return _userService.GetFollowersByUserId(userId);
+        }
+        else
+        {
+            return _userService.GetFollowersByArtistId(artistId!);
+        }
     }
 
     [AllowAnonymous]
@@ -38,8 +51,20 @@ public sealed class UserQuery(IUserService userService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<User>]
-    public IQueryable<User> GetFollowingsByUserId(string userId)
+    public IQueryable<User> GetFollowingsByUserId(string? userId, string? artistId)
     {
-        return _userService.GetFollowingsByUserId(userId);
+        if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(artistId))
+        {
+            throw new BadRequestCustomException("Only userId or artistId should be passed, not both.");
+        }
+
+        if (userId != null)
+        {
+            return _userService.GetFollowingsByUserId(userId);
+        }
+        else
+        {
+            return _userService.GetFollowingsByArtistId(artistId!);
+        }
     }
 }
