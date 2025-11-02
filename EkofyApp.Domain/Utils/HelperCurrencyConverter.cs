@@ -1,8 +1,8 @@
 ﻿namespace EkofyApp.Domain.Utils;
 public sealed class HelperCurrencyConverter
 {
-    // Tỷ giá hiện tại: 1 SGD = 20,263.42 VND
-    private const decimal ExchangeRateSgdToVnd = 20263.42m; // chữ 'm' để dùng decimal literal
+    // Tỷ giá hiện tại: 1 SGD = 20,300.00 VND
+    private const decimal ExchangeRateSgdToVnd = 20300.00m; // chữ 'm' để dùng decimal literal
 
     public static decimal FormatDecimalLiteral(decimal amount)
     {
@@ -38,7 +38,7 @@ public sealed class HelperCurrencyConverter
 
     public static long ConvertDecimalToStripeAmount(decimal amount, string currency)
     {
-        string[] zeroDecimalCurrencies = { "vnd", "jpy", "krw", "clp", "pyg" };
+        string[] zeroDecimalCurrencies = ["vnd", "jpy", "krw", "clp", "pyg"];
 
         if (zeroDecimalCurrencies.Contains(currency.ToLower()))
         {
@@ -50,4 +50,9 @@ public sealed class HelperCurrencyConverter
         }
     }
 
+    public static long ConvertVndDecimalToStripeAmountSgdLong(decimal amount)
+    {
+        decimal sgdAmount = ConvertVndToSgd(amount);
+        return ConvertDecimalToStripeAmount(sgdAmount, "sgd");
+    }
 }

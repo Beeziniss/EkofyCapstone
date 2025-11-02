@@ -1,10 +1,12 @@
 ﻿using EkofyApp.Api.GraphQL.Scalars;
+using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
@@ -15,6 +17,15 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test;
 [MutationType]
 public sealed class TestMutation
 {
+    public TransferResponse TestTransferMoneyToArtist(string artistAccountId, decimal amount, [Service] IStripeService stripeService)
+    {
+        //decimal sgdAmount = HelperCurrencyConverter.ConvertVndToSgd(amount);
+        //long stripeAmount = HelperCurrencyConverter.ConvertDecimalToStripeAmount(sgdAmount, "sgd");
+        long stripeAmount = HelperCurrencyConverter.ConvertVndDecimalToStripeAmountSgdLong(amount);
+
+        return stripeService.TransferToArtist(artistAccountId, stripeAmount, "aaaaa");
+    }
+
     public async Task<bool> SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year, [Service] ITrackService trackService)
     {
         await trackService.SeedMonthlyStreamCountByTrackIdAsync(trackId, streamCount, month, year);

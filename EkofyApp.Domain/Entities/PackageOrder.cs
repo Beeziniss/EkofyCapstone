@@ -1,9 +1,10 @@
-﻿using EkofyApp.Domain.EmbeddedDocuments;
+﻿using EkofyApp.Domain.Base;
+using EkofyApp.Domain.EmbeddedDocuments;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class PackageOrder
+public sealed class PackageOrder : TimeStamped
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -21,11 +22,11 @@ public sealed class PackageOrder
 
     //public PackageOrderStatus Status { get; set; }
     public string? Description { get; set; }
-    public List<string> RequirementFiles { get; set; } = [];
     public int RevisionCount { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public DateTimeOffset Deadline { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
+    public bool IsEscrowReleased { get; set; } = false;
     public decimal PlatformFeePercentage { get; set; }
     public decimal ArtistFeePercentage { get; set; }
 }

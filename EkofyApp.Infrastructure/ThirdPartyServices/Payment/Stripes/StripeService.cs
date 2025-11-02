@@ -2,6 +2,7 @@
 using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Coupons;
@@ -15,9 +16,10 @@ using Stripe;
 using Stripe.Checkout;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
-public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
+public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ILogger<StripeService> _logger = logger;
 
@@ -331,6 +333,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .Find(x => x.Id == createPaymentCheckoutSessionRequest.PackageId && x.Status == ArtistPackageStatus.Enabled)
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any artist package.");
 
+        string platformFeePercentage = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
+            .Find(x => x.Status == PolicyStatus.Active)
+            .Project(x => x.PlatformFeePercentage.ToString())
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
+
         // Lấy coupon giảm giá nếu có
         // TODO: Cần sửa lại nếu không phải yearly thì không lấy coupon
         //List<string> couponIds = [];
@@ -382,7 +389,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId },
                 { "package_order_description", createPaymentCheckoutSessionRequest.PackageOrderDescription ?? string.Empty },
                 { "deadline", HelperMethod.NormalizeToStringUtcPlus7(createPaymentCheckoutSessionRequest.Deadline) },
-                // Requirement Files thì sẽ add sau tức là dùng .metdata add thêm string vào
+                { "platform_fee_percentage", platformFeePercentage },
                 // Deliveries thì không cần
                 { "package_name", artistPackage.PackageName },
                 { "package_amount", artistPackage.Amount.ToString() },
@@ -452,8 +459,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
             .Find(x => x.Code == createCheckoutSessionRequest.SubscriptionCode &&
                 x.Status == SubscriptionStatus.Active)
-            //.Project<Subscription>(Builders<Subscription>.Projection
-            //    .Include(x => x.UserId))
+            .Project<Subscription>(Builders<Subscription>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Code))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription.");
 
         SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
@@ -569,7 +577,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         };
     }
 
-
     public async Task CancelSubscriptionAtPeriodEndAsync()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -609,19 +616,83 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         });
     }
 
+    // Giải ngân tiền từ Platform sang Artist
+    public async Task EscrowReleaseAsync(string packageOrderId)
+    {
+        // Tìm payment transaction trong package order chưa giải ngân
+        PackageOrder packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
+            .Find(x => x.Id == packageOrderId && x.CompletedAt != null)
+            .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                .Include(x => x.PaymentTransactionId)
+                .Include(x => x.ProviderId))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found package order.");
+
+        decimal amountPackageOrder = await _unitOfWork.GetCollection<PaymentTransaction>()
+            .Find(x => x.Id == packageOrder.PaymentTransactionId)
+            .Project(x => x.Amount)
+            .FirstOrDefaultAsync();
+
+        if (amountPackageOrder <= 0)
+        {
+            throw new ConflictCustomException("Amount in package order is invalid.");
+        }
+
+        // Thực hiện chuyển tiền cho Artist
+        string artistStripeAccountId = await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Id == packageOrder.ProviderId)
+            .Project(x => x.StripeAccountId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found artist's Stripe Account ID.");
+
+        long stripeAmountPackageOrder = HelperCurrencyConverter.ConvertVndDecimalToStripeAmountSgdLong(amountPackageOrder);
+        TransferResponse transferResponse = TransferToArtist(artistStripeAccountId, stripeAmountPackageOrder, $"Transfer escrow for package order {packageOrder.Id}"); // chuyển tiền
+
+        // Payout cho Artist
+        // Đợi một chút để transfer được xử lý
+        await Task.Delay(3000);
+
+        // Kiểm tra balance của connected account trước khi payout
+        Balance accountBalance = await GetConnectedAccountBalanceAsync(artistStripeAccountId);
+        long availableBalance = accountBalance.Available.FirstOrDefault()?.Amount ?? 0;
+
+        if (availableBalance < stripeAmountPackageOrder)
+        {
+            throw new ConflictCustomException($"Available balance {availableBalance} is insufficient for payout amount {stripeAmountPackageOrder} to connected account {artistStripeAccountId} for package order {packageOrder.Id}.");
+        }
+
+        Dictionary<string, string> metadata = new()
+        {
+            { "package_order_id", packageOrder.Id },
+        };
+        Payout payoutResponse = await CreateStandardPayoutAsync(artistStripeAccountId, stripeAmountPackageOrder, $"Payout escrow for package order {packageOrder.Id}", metadata);
+
+        // Tạo payout transaction
+        await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(new PayoutTransaction
+        {
+            UserId = packageOrder.ProviderId,
+            StripeTransferId = transferResponse.Id,
+            StripePayoutId = payoutResponse.Id,
+            Amount = amountPackageOrder,
+            Currency = CurrencyType.vnd.ToString(),
+            DestinationAccountId = artistStripeAccountId,
+            Description = payoutResponse.Description,
+            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status, true), // pending, in_transit
+            Method = payoutResponse.Method, // standard hoặc instant
+        });
+    }
+
     // Chuyển tiền cho Artist
     // TODO: Cần cân nhắc hàm này được sử dụng thế nào, khi nào, ở đâu
     // Nên dùng void
-    public TransferResponse TransferToArtist(string artistAccountId, long amount)
+    public TransferResponse TransferToArtist(string artistAccountId, long amount, string description)
     {
         TransferService transferService = new();
         Transfer transfer = transferService.Create(new TransferCreateOptions
         {
             Amount = amount,
-            Currency = CurrencyType.vnd.ToString(),
+            Currency = CurrencyType.sgd.ToString(),
             Destination = artistAccountId,
 
-            Description = "Royalty payout for streaming"
+            Description = description,
         });
 
         return new TransferResponse()
@@ -645,7 +716,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             transferService.Create(new TransferCreateOptions
             {
                 Amount = amount,
-                Currency = CurrencyType.vnd.ToString(),
+                Currency = CurrencyType.sgd.ToString(),
                 Destination = artistAccountId,
                 TransferGroup = groupId,
                 Description = "Royalty payout for streaming"
@@ -746,7 +817,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     /// <summary>
     /// Tạo payout thường (1-5 ngày làm việc) cho connected account
     /// </summary>
-    public async Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
+    public async Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "sgd")
     {
         string alternativeDescription = $"Royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
 
@@ -762,7 +833,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             Amount = amount,
             Currency = currency,
             Method = "standard", // Standard payout (1-5 business days)
-            Description = description ?? alternativeDescription
+            Description = description ?? alternativeDescription,
+            Metadata = metadata ?? new Dictionary<string, string>
+            {
+                { "empty", "empty" }
+            }
         }, requestOptions);
     }
 

@@ -21,12 +21,13 @@ public interface IStripeService
     Balance GetBalance();
     Task<bool> IsCustomerIdExisted();
     void TransferGroupArtist(string[] artistAccountIds, long amount, string groupId = "default");
-    TransferResponse TransferToArtist(string artistAccountId, long amount);
+    TransferResponse TransferToArtist(string artistAccountId, long amount, string description);
     
     // Payout methods
-    Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
+    Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "sgd");
     Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
     Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId);
     Task CancelSubscriptionAtPeriodEndAsync();
     Task ResumeSubscriptionAsync();
+    Task EscrowReleaseAsync(string packageOrderId);
 }
