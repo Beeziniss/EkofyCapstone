@@ -6,13 +6,13 @@ public sealed class CommentMutationExtension : ObjectTypeExtension<CommentMutati
 {
     protected override void Configure(IObjectTypeDescriptor<CommentMutation> descriptor)
     {
-        descriptor.Field(x => x.CreateTrackCommentAsync(default!))
+        descriptor.Field(x => x.CreateCommentAsync(default!))
             .Authorize(HelperRoleBase.FullRolesArray);
 
-        descriptor.Field(x => x.UpdateTrackCommentAsync(default!))
+        descriptor.Field(x => x.UpdateCommentAsync(default!))
             .Authorize(HelperRoleBase.FullRolesArray);
 
-        descriptor.Field(x => x.DeleteTrackCommentAsync(default!))
+        descriptor.Field(x => x.DeleteCommentAsync(default!))
             .Authorize(HelperRoleBase.FullRolesArray);
     }
 }
