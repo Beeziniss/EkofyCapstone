@@ -498,11 +498,23 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.PayoutSigningSecret);
             Payout payout = stripeEvent.Data.Object as Payout ?? throw new ArgumentNullCustomException("Payout is NULL");
 
+            // Kiểm tra method của payout
+            bool isInstantPayout = false;
+            if (payout.Method != "standard")
+            {
+               isInstantPayout = true;
+            }
+
             // Handle different payout events
             switch (stripeEvent.Type)
             {
                 case EventTypes.PayoutUpdated:
                     {
+                        if (!isInstantPayout)
+                        {
+                            break; // Không làm gì hết vì status của instant luôn là paid nếu thành công
+                        }
+
                         // Handle status transitions: pending → in_transit
                         // This is typically when payout moves from pending to in_transit
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update

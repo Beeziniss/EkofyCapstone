@@ -18,4 +18,6 @@ public interface IUserService
     Task<bool> CheckUserFollowingAsync(string userFollowingId);
     IQueryable<User> GetFollowersByUserId(string userId);
     IQueryable<User> GetFollowingsByUserId(string userId);
+    IQueryable<User> GetFollowersByArtistId(string artistId);
+    IQueryable<User> GetFollowingsByArtistId(string artistId);
 }

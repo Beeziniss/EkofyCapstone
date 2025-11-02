@@ -54,8 +54,46 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             .AsQueryable();
     }
 
+    public IQueryable<User> GetFollowersByArtistId(string artistId)
+    {
+        string userId = _unitOfWork.GetCollection<Artist>()
+            .Find(a => a.Id == artistId)
+            .Project(a => a.UserId)
+            .FirstOrDefault() ?? throw new NotFoundCustomException("Artist not found");
+
+        List<string> followerIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.TargetId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.ActorId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followerIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
     public IQueryable<User> GetFollowingsByUserId(string userId)
     {
+        List<string> followingIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.ActorId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.TargetId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followingIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
+    public IQueryable<User> GetFollowingsByArtistId(string artistId)
+    {
+        string userId = _unitOfWork.GetCollection<Artist>()
+            .Find(a => a.Id == artistId)
+            .Project(a => a.UserId)
+            .FirstOrDefault() ?? throw new NotFoundCustomException("Artist not found");
+
         List<string> followingIds = _unitOfWork.GetCollection<UserEngagement>()
             .Find(ue => ue.ActorId == userId && ue.Action == UserEngagementAction.Follow)
             .Project(ue => ue.TargetId)
