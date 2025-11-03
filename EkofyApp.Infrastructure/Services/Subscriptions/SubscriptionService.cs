@@ -235,6 +235,12 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
         {
             try
             {
+                // Kiểm tra subscription plan tồn tại thông qua Subscription Code
+                if (await _unitOfWork.GetCollection<Subscription>().Find(x => x.Code.ToLowerInvariant() == createSubScriptionPlanRequest.SubscriptionCode.ToLowerInvariant() && x.Status == SubscriptionStatus.Active).AnyAsync())
+                {
+                    throw new ConflictCustomException("Subscription plan with the same subscription code already exists.");
+                }
+
                 // Tạo subscription plan UserId
                 string subscriptionPlanId = ObjectId.GenerateNewId().ToString();
 
@@ -368,6 +374,170 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
             {
                 _logger.LogError(ex, "Stripe API error while creating subscription plan.");
                 throw new UnprocessableEntityCustomException("Cannot create SubscriptionPlan");
+            }
+        });
+    }
+
+    public async Task UpdateSubscriptionPlanAsync(UpdateSubscriptionPlanRequest updateSubscriptionPlanRequest)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            try
+            {
+                // 1. Find the existing subscription plan
+                SubscriptionPlan existingPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
+                    .Find(x => x.Id == updateSubscriptionPlanRequest.SubscriptionPlanId)
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Subscription plan not found.");
+
+                // 2. Get the subscription details for price calculation
+                Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
+                    .Find(x => x.Id == existingPlan.SubscriptionId)
+                    .Project<Subscription>(Builders<Subscription>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.Amount)
+                        .Include(x => x.Tier)
+                        .Include(x => x.Version))
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Related subscription not found.");
+
+                PriceService priceService = new();
+                ProductService productService = new();
+
+                // 3. Check if any of the new lookup keys already exist
+                if (updateSubscriptionPlanRequest.NewPrices?.Count > 0)
+                {
+                    StripeList<Price> existingPrices = priceService.List(new PriceListOptions
+                    {
+                        LookupKeys = updateSubscriptionPlanRequest.NewPrices.Select(x => x.LookupKey).ToList(),
+                        Limit = 50
+                    });
+
+                    if (existingPrices.Data.Count > 0)
+                    {
+                        throw new ConflictCustomException("One or more prices with the same lookup_key already exist.");
+                    }
+
+                    // 4. Create new prices for the existing product
+                    List<Price> newCreatedPrices = [];
+                    foreach (CreatePriceRequest createPriceRequest in updateSubscriptionPlanRequest.NewPrices)
+                    {
+                        decimal actualPrice = createPriceRequest.Interval switch
+                        {
+                            PeriodTime.day => (subscription.Amount * 12) / 365,
+                            PeriodTime.month => subscription.Amount,             // Giá gốc là tháng
+                            PeriodTime.week => (subscription.Amount * 12) / 52,
+                            PeriodTime.year => subscription.Amount * 12,        // Giá năm
+                            _ => throw new BadRequestCustomException("Invalid interval. Supported values are 'day', 'week', 'month' and 'year'.")
+                        };
+
+                        long stripeActualPrice = HelperCurrencyConverter.ConvertDecimalToStripeAmount(actualPrice, CurrencyType.vnd.ToString());
+
+                        Price newPrice = await priceService.CreateAsync(new PriceCreateOptions
+                        {
+                            Active = true,
+                            UnitAmountDecimal = Convert.ToDecimal(stripeActualPrice),
+                            Currency = CurrencyType.vnd.ToString(),
+                            Recurring = new PriceRecurringOptions
+                            {
+                                Interval = createPriceRequest.Interval.ToString(),
+                                IntervalCount = createPriceRequest.IntervalCount,
+                            },
+                            Product = existingPlan.StripeProductId,
+                            LookupKey = createPriceRequest.LookupKey,
+                            Metadata = new Dictionary<string, string>
+                            {
+                                { "subscription_version", subscription.Version.ToString() },
+                                { "subscription_plan_id", existingPlan.Id }
+                            }
+                        });
+
+                        newCreatedPrices.Add(newPrice);
+                    }
+
+                    // 5. Update the subscription plan with new prices
+                    List<SubscriptionPlanPrice> newPlanPrices = newCreatedPrices.Select(price => new SubscriptionPlanPrice
+                    {
+                        StripePriceId = price.Id,
+                        StripePriceActive = price.Active,
+                        StripePriceUnitAmount = price.UnitAmount ?? 0,
+                        StripePriceCurrency = price.Currency,
+
+                        StripePriceLookupKey = price.LookupKey,
+                        StripePriceMetadata = price.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
+
+                        Interval = Enum.Parse<PeriodTime>(price.Recurring.Interval),
+                        IntervalCount = price.Recurring.IntervalCount
+                    }).ToList();
+
+                    // Add new prices to existing prices
+                    UpdateDefinition<SubscriptionPlan> priceUpdate = Builders<SubscriptionPlan>.Update
+                        .PushEach(x => x.SubscriptionPlanPrices, newPlanPrices);
+
+                    await _unitOfWork.GetCollection<SubscriptionPlan>()
+                        .UpdateOneAsync(session, x => x.Id == updateSubscriptionPlanRequest.SubscriptionPlanId, priceUpdate);
+                }
+
+                // 6. Update product information if provided
+                if (!string.IsNullOrEmpty(updateSubscriptionPlanRequest.Name) || 
+                    updateSubscriptionPlanRequest.Images != null || 
+                    updateSubscriptionPlanRequest.Metadata != null)
+                {
+                    var productUpdateOptions = new ProductUpdateOptions();
+
+                    if (!string.IsNullOrEmpty(updateSubscriptionPlanRequest.Name))
+                    {
+                        productUpdateOptions.Name = updateSubscriptionPlanRequest.Name;
+                    }
+
+                    if (updateSubscriptionPlanRequest.Images != null)
+                    {
+                        productUpdateOptions.Images = updateSubscriptionPlanRequest.Images;
+                    }
+
+                    if (updateSubscriptionPlanRequest.Metadata != null)
+                    {
+                        // Merge with existing metadata
+                        var existingMetadata = existingPlan.StripeProductMetadata?.ToDictionary(x => x.Key, x => x.Value) ?? [];
+                        foreach (var kvp in updateSubscriptionPlanRequest.Metadata)
+                        {
+                            existingMetadata[kvp.Key] = kvp.Value;
+                        }
+                        productUpdateOptions.Metadata = existingMetadata;
+                    }
+
+                    Product updatedProduct = await productService.UpdateAsync(existingPlan.StripeProductId, productUpdateOptions);
+
+                    // 7. Update the subscription plan document with new product information
+                    List<UpdateDefinition<SubscriptionPlan>> updateDefinitions = [];
+                    UpdateDefinitionBuilder<SubscriptionPlan> updateBuilder = Builders<SubscriptionPlan>.Update;
+
+                    if (!string.IsNullOrEmpty(updateSubscriptionPlanRequest.Name))
+                    {
+                        updateDefinitions.Add(updateBuilder.Set(x => x.StripeProductName, updatedProduct.Name));
+                    }
+
+                    if (updateSubscriptionPlanRequest.Images != null)
+                    {
+                        updateDefinitions.Add(updateBuilder.Set(x => x.StripeProductImages, updatedProduct.Images));
+                    }
+
+                    if (updateSubscriptionPlanRequest.Metadata != null)
+                    {
+                        updateDefinitions.Add(updateBuilder.Set(x => x.StripeProductMetadata, 
+    updatedProduct.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList()));
+                    }
+
+                    if (updateDefinitions.Count != 0)
+                    {
+                        UpdateDefinition<SubscriptionPlan> combinedUpdate = updateBuilder.Combine(updateDefinitions);
+                        await _unitOfWork.GetCollection<SubscriptionPlan>()
+                            .UpdateOneAsync(session, x => x.Id == updateSubscriptionPlanRequest.SubscriptionPlanId, combinedUpdate);
+                    }
+                }
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogError(ex, "Stripe API error while updating subscription plan.");
+                throw new UnprocessableEntityCustomException("Cannot update subscription plan");
             }
         });
     }

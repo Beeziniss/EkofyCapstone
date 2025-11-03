@@ -597,7 +597,6 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     public async Task<bool> CheckUserFollowingAsync(string userFollowingId)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-        string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         try
         {
