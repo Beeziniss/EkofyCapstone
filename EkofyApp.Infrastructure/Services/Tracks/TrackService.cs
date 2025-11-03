@@ -260,8 +260,10 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     #region Favorite Tracks
     public async Task<long> AddToFavoriteTrackAsync(string trackId, bool isAdding)
     {
+        long updatedFavoriteCount = isAdding ? 1 : -1;
+
         Track trackUpdated = await _unitOfWork.GetCollection<Track>()
-        .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, 1),
+        .FindOneAndUpdateAsync(t => t.Id == trackId, Builders<Track>.Update.Inc(t => t.FavoriteCount, updatedFavoriteCount),
         new FindOneAndUpdateOptions<Track>
         {
             // Trả về tài liệu sau khi cập nhật
