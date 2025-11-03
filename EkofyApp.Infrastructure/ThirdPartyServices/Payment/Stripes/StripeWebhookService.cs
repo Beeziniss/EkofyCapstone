@@ -518,7 +518,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         // Handle status transitions: pending → in_transit
                         // This is typically when payout moves from pending to in_transit
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
@@ -537,7 +537,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     {
                         // Update payout transactions that are in pending or in_transit status to paid
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
@@ -575,7 +575,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     {
                         // Update payout transactions that are in pending or in_transit status to failed
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()
@@ -596,7 +596,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         // Update payout transactions that are in pending status to canceled
                         // Note: Only pending payouts can be canceled, not in_transit ones
                         UpdateDefinition<PayoutTransaction> updateDefinition = Builders<PayoutTransaction>.Update
-                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status, true))
+                            .Set(x => x.Status, Enum.Parse<PayoutTransactionStatus>(payout.Status))
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                         UpdateResult updateResult = await _unitOfWork.GetCollection<PayoutTransaction>()

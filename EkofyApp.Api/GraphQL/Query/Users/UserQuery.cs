@@ -1,7 +1,6 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
-using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
 using HotChocolate.Data;
 
@@ -51,7 +50,7 @@ public sealed class UserQuery(IUserService userService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<User>]
-    public IQueryable<User> GetFollowingsByUserId(string? userId, string? artistId)
+    public IQueryable<User> GetFollowings(string? userId, string? artistId)
     {
         if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(artistId))
         {

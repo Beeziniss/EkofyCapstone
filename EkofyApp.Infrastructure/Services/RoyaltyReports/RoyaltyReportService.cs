@@ -321,7 +321,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                             DestinationAccountId = artistStripeAccountId,
                             Level = item.Split.Level,
                             Description = payoutResponse.Description,
-                            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status, true), // pending, in_transit
+                            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status), // pending, in_transit
                             Method = payoutResponse.Method, // standard hoặc instant
                         };
 

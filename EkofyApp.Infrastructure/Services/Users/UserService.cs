@@ -613,14 +613,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             }
 
             // Cache miss - populate from database
-            if(Enum.Parse<UserRole>(role, true) == UserRole.Artist)
-            {
-                await EnsureCachePopulatedAsync(userId, UserEngagementTargetType.Artist);
-            }
-            else if(Enum.Parse<UserRole>(role, true) == UserRole.Listener)
-            {
-                await EnsureCachePopulatedAsync(userId, UserEngagementTargetType.Listener);
-            }
+            await EnsureCachePopulatedAsync(userId);
 
             // Check again after population
             return await _redisCacheService.ListContainsAsync(cacheKey, userFollowingId);
@@ -632,7 +625,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         }
     }
 
-    private async Task<bool> EnsureCachePopulatedAsync(string userId, UserEngagementTargetType userEngagementTargetType)
+    private async Task<bool> EnsureCachePopulatedAsync(string userId)
     {
         try
         {
@@ -645,18 +638,18 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 return true; // Cache already populated
             }
 
-            // Fetch favorite playlist from database
-            List<string> favoritePlaylistIds = await _unitOfWork.GetCollection<UserEngagement>()
-                .Find(x => x.ActorId == userId && x.TargetType == userEngagementTargetType && x.Action == UserEngagementAction.Follow)
+            // Fetch followings from database
+            List<string> followingIds = await _unitOfWork.GetCollection<UserEngagement>()
+                .Find(x => x.ActorId == userId && x.Action == UserEngagementAction.Follow)
                 .Project(x => x.TargetId)
                 .ToListAsync();
 
-            if (favoritePlaylistIds.Count > 0)
+            if (followingIds.Count > 0)
             {
                 // Populate cache with track IDs
-                await _redisCacheService.ListPushRangeAsync(cacheKey, favoritePlaylistIds, TimeSpan.FromHours(1));
+                await _redisCacheService.ListPushRangeAsync(cacheKey, followingIds, TimeSpan.FromHours(1));
 
-                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} playlists", userId, favoritePlaylistIds.Count);
+                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} playlists", userId, followingIds.Count);
                 return true;
             }
 

@@ -7,6 +7,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -302,10 +303,12 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
                         _ => throw new BadRequestCustomException("Invalid interval. Supported values are 'day', 'week', 'month' and 'year'.")
                     };
 
+                    long stripeActualPrice = HelperCurrencyConverter.ConvertDecimalToStripeAmount(actualPrice, CurrencyType.vnd.ToString());
+
                     await priceService.CreateAsync(new PriceCreateOptions
                     {
                         Active = true,
-                        UnitAmountDecimal = actualPrice,
+                        UnitAmountDecimal = Convert.ToDecimal(stripeActualPrice),
                         Currency = CurrencyType.vnd.ToString(),
                         Recurring = new PriceRecurringOptions
                         {

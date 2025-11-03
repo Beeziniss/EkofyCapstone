@@ -675,7 +675,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             Currency = CurrencyType.vnd.ToString(),
             DestinationAccountId = artistStripeAccountId,
             Description = payoutResponse.Description,
-            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status, true), // pending, in_transit
+            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status), // pending, in_transit
             Method = payoutResponse.Method, // standard hoặc instant
         });
     }
