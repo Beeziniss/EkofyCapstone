@@ -4,6 +4,9 @@
     {
         protected override void Configure(IObjectTypeDescriptor<TestMutation> descriptor)
         {
+            //descriptor.Field(x => x.RefundAsync(default!, default!, default!))
+            //    .AllowAnonymous();
+
             descriptor.Field(x => x.TestTransferMoneyToArtist(default!, default!, default!))
                 .AllowAnonymous();
 

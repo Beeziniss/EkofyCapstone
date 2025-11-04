@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.ArtistPackage;
 using EkofyApp.Application.Models.Stripes;
+using EkofyApp.Domain.Enums;
 using Stripe;
 using Account = Stripe.Account;
 using PortalSession = Stripe.BillingPortal.Session;
@@ -30,4 +31,5 @@ public interface IStripeService
     Task CancelSubscriptionAtPeriodEndAsync();
     Task ResumeSubscriptionAsync();
     Task EscrowReleaseAsync(string packageOrderId);
+    Task RefundAsync(string paymentIntentId, decimal amount, RefundReasonType reason);
 }

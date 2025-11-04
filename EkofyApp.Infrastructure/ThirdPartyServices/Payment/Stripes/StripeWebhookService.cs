@@ -346,6 +346,45 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
         });
     }
 
+    public async Task HandleWebhookInvoicePaymentAsync(string json, string stripeSignature)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
+        {
+            try
+            {
+                Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.InvoicePaymentSigningSecret);
+                switch (stripeEvent.Type)
+                {
+                    case EventTypes.InvoicePaymentSucceeded:
+                        {
+                            InvoicePayment invoicePayment = stripeEvent.Data.Object as InvoicePayment ?? throw new ArgumentNullCustomException("Invoice payment is NULL");
+
+                            // Xử lý khi payment thành công nếu cần thiết
+                            await _unitOfWork.ExecuteInTransactionAsync(async session =>
+                            {
+                                // Cập nhật Payment Intent của PaymentTransaction
+                                UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, x => x.StripeInvoiceId == invoicePayment.InvoiceId,
+                                    Builders<PaymentTransaction>.Update
+                                    .Set(t => t.StripePaymentId, invoicePayment.Payment.PaymentIntentId)
+                                    .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                                );
+                                if (updateResult.ModifiedCount == 0)
+                                {
+                                    throw new UnprocessableEntityCustomException($"Cannot update payment transaction {invoicePayment.InvoiceId} with payment intent.");
+                                }
+                            });
+
+                            break;
+                        }
+                }
+            }
+            catch (StripeException e)
+            {
+                throw new ExternalServiceCustomException($"Stripe webhook error: {e}");
+            }
+        });
+    }
+
     // TODO: Xử lý webhook từ Stripe cho Express Connected Account (tạm thời chỉ log ra)
     public void HandleWebhookExpressConnectedAccount(string json, string stripeSignature)
     {
@@ -380,7 +419,8 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                     // Cập nhật PaymentTransaction
                     UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
-                        .Set(t => t.StripePaymentId, checkoutSession.PaymentIntentId)
+                        .Set(t => t.StripeSubscriptionId, checkoutSession.SubscriptionId)
+                        .Set(t => t.StripeInvoiceId, checkoutSession.InvoiceId)
                         .Set(t => t.StripePaymentMethod, checkoutSession.PaymentMethodTypes)
                         .Set(t => t.PaymentStatus, PaymentTransactionStatus.Paid)
                         .Set(t => t.Status, TransactionStatus.Completed)
@@ -468,6 +508,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     {
                         UserId = transaction.UserId,
                         PaymentTransactionId = transaction.Id,
+                        StripeInvoiceId = checkoutSession.InvoiceId,
 
                         OneOffSnapshot = oneOffSnapshot,
                         SubscriptionSnapshot = subscriptionSnapshot,
@@ -502,7 +543,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             bool isInstantPayout = false;
             if (payout.Method != "standard")
             {
-               isInstantPayout = true;
+                isInstantPayout = true;
             }
 
             // Handle different payout events

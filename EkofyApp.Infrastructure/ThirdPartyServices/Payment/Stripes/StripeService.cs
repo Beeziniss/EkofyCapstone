@@ -418,7 +418,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         {
             UserId = userId,
             StripeCheckoutSessionId = checkoutSession.Id,
-            StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
             StripePaymentMethod = checkoutSession.PaymentMethodTypes,
             Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
             Currency = checkoutSession.Currency,
@@ -440,19 +439,31 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         };
     }
 
-    //public async Task RefundAsync(string paymentIntentId, decimal amount, string reason = "requested_by_customer")
-    //{
-    //    // Lấy PaymentIntent để lấy currency
-    //    PaymentIntentService paymentIntentService = new();
-    //    PaymentIntent paymentIntent = await paymentIntentService.GetAsync(paymentIntentId);
-    //    RefundService refundService = new();
-    //    await refundService.CreateAsync(new RefundCreateOptions
-    //    {
-    //        PaymentIntent = paymentIntentId,
-    //        Amount = HelperCurrencyConverter.aaaaaa(amount, paymentIntent.Currency),
-    //        Reason = reason,
-    //    });
-    //}
+    public async Task RefundAsync(string paymentIntentId, decimal amount, RefundReasonType reason)
+    {
+        RefundCreateOptions refundOptions = new()
+        {
+            PaymentIntent = paymentIntentId,
+            Amount = HelperCurrencyConverter.ConvertDecimalToStripeAmount(amount, CurrencyType.vnd.ToString()),
+            Reason = reason.ToString(),
+        };
+
+        RefundService refundService = new();
+        Refund refund = await refundService.CreateAsync(refundOptions);
+        if (refund.Status != RefundTransactionStatus.succeeded.ToString())
+        {
+            throw new ExternalServiceCustomException("Refund payment is pending or failed.");
+        }
+
+        await _unitOfWork.GetCollection<RefundTransaction>().InsertOneAsync(new RefundTransaction
+        {
+            StripePaymentId = paymentIntentId,
+            Amount = amount,
+            Currency = CurrencyType.vnd,
+            Reason = reason,
+            Status = RefundTransactionStatus.succeeded
+        });
+    }
 
     // Tạo Checkout Session (link) cho đăng ký gói (subscription)
     public async Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest)
@@ -556,6 +567,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 { "subscription_code", subscription.Code },
                 { "subscription_period", createCheckoutSessionRequest.Period.ToString() },
             },
+            //Expand = ["subscription", "invoice"],
         };
 
         CheckoutOption.SessionService service = new();
@@ -569,7 +581,6 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         {
             UserId = userId,
             StripeCheckoutSessionId = checkoutSession.Id,
-            StripePaymentId = checkoutSession.PaymentIntentId, // Lúc này chưa có paymentId nên null
             StripePaymentMethod = checkoutSession.PaymentMethodTypes,
             Amount = Convert.ToDecimal(checkoutSession.AmountTotal),
             Currency = checkoutSession.Currency,
@@ -856,7 +867,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     }
 
     /// <summary>
-    /// Tạo instant payout (trong vòng 30 phút, có phí cao hơn)
+    /// Tạo instant payout (ngay lập tức, có phí cao hơn)
     /// </summary>
     public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd")
     {
