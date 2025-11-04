@@ -599,7 +599,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         //string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         string? userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
-        if (!string.IsNullOrEmpty(userId))
+        if (string.IsNullOrEmpty(userId))
         {
             return false;
         }
