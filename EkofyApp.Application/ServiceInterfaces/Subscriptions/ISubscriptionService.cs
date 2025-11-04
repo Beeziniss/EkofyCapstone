@@ -7,6 +7,7 @@ public interface ISubscriptionService
 {
     Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest);
     Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
+    Task UpdateSubscriptionPlanAsync(UpdateSubscriptionPlanRequest updateSubscriptionPlanRequest);
     //Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest);
     Task DeprecateSubscriptionAsync(string subscriptionId);
 
