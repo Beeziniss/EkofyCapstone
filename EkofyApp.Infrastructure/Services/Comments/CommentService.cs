@@ -163,7 +163,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
 
             // Map root comment and replies with user information
             CommentResponse rootCommentResponse = await MapToResponseAsync(rootComment);
-            List<CommentResponse> repliesWithUserInfo = new List<CommentResponse>();
+            List<CommentResponse> repliesWithUserInfo = [];
 
             foreach (Comment reply in previewReplies)
             {
@@ -230,17 +230,16 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
 
     public async Task<List<CommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
     {
-        var comment = await _unitOfWork.GetCollection<Comment>()
+        Comment comment = await _unitOfWork.GetCollection<Comment>()
         .Find(c => c.Id == request.CommentId)
            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Comment not found");
 
-        var rootId = comment.RootCommentId ?? comment.Id;
+        string rootId = comment.RootCommentId ?? comment.Id;
 
-        var filter = Builders<Comment>.Filter.And(
- Builders<Comment>.Filter.Or(
-               Builders<Comment>.Filter.Eq(c => c.Id, rootId),
-        Builders<Comment>.Filter.Eq(c => c.RootCommentId, rootId)
-            )
+        FilterDefinition<Comment> filter = Builders<Comment>.Filter.And(
+                Builders<Comment>.Filter.Or(
+                Builders<Comment>.Filter.Eq(c => c.Id, rootId),
+                Builders<Comment>.Filter.Eq(c => c.RootCommentId, rootId))
         );
 
         if (!request.IncludeDeleted)
@@ -250,14 +249,14 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
         }
 
         List<Comment> threadComments = await _unitOfWork.GetCollection<Comment>()
-     .Find(filter)
-        .SortBy(c => c.Depth)
-      .ThenBy(c => c.CreatedAt)
-        .ToListAsync();
+            .Find(filter)
+            .SortBy(c => c.Depth)
+            .ThenBy(c => c.CreatedAt)
+            .ToListAsync();
 
         // Map comments with user information
-        var commentsWithUserInfo = new List<CommentResponse>();
-        foreach (var threadComment in threadComments)
+        List<CommentResponse> commentsWithUserInfo = [];
+        foreach (Comment threadComment in threadComments)
         {
             commentsWithUserInfo.Add(await MapToResponseAsync(threadComment));
         }
@@ -282,9 +281,12 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
             .Project(c => new { c.RootCommentId, c.Id })
             .FirstOrDefaultAsync();
 
-        if (comment == null) return false;
+        if (comment == null)
+        {
+            return false;
+        }
 
-        var rootId = comment.RootCommentId ?? comment.Id;
+        string rootId = comment.RootCommentId ?? comment.Id;
         return rootId == threadRootId;
     }
 
@@ -346,7 +348,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
     private async Task UpdateParentReplyCounts(IClientSessionHandle session, string parentCommentId, string rootCommentId, int increment)
     {
         // Update direct parent reply count
-        var parentUpdate = Builders<Comment>.Update
+        UpdateDefinition<Comment> parentUpdate = Builders<Comment>.Update
             .Inc(c => c.ReplyCount, increment)
             .Set(c => c.ThreadUpdatedAt, HelperMethod.GetUtcPlus7TimeOffset().DateTime);
 
@@ -354,7 +356,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
             .UpdateOneAsync(session, c => c.Id == parentCommentId, parentUpdate);
 
         // Update all ancestors' total reply counts
-        var ancestorUpdate = Builders<Comment>.Update
+        UpdateDefinition<Comment> ancestorUpdate = Builders<Comment>.Update
             .Inc(c => c.TotalRepliesCount, increment)
             .Set(c => c.ThreadUpdatedAt, HelperMethod.GetUtcPlus7TimeOffset().DateTime);
 
@@ -369,7 +371,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
 
         if (parentComment?.ThreadPath?.Count > 0)
         {
-            var ancestorIds = parentComment.ThreadPath;
+            List<string> ancestorIds = parentComment.ThreadPath;
             await _unitOfWork.GetCollection<Comment>()
                 .UpdateManyAsync(session,
                     c => ancestorIds.Contains(c.Id),
@@ -380,7 +382,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
     // Helper method to map entity to response with user information
     private async Task<CommentResponse> MapToResponseAsync(Comment comment)
     {
-        var commenterInfo = await GetCommenterInfoAsync(comment.CommenterId);
+        CommenterInfo commenterInfo = await GetCommenterInfoAsync(comment.CommenterId);
 
         return new CommentResponse
         {
@@ -529,22 +531,22 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
     {
         var allReplyIds = new List<string>();
         var queue = new Queue<string>();
-   queue.Enqueue(commentId);
+        queue.Enqueue(commentId);
 
         while (queue.Count > 0)
-      {
-        var currentCommentId = queue.Dequeue();
-            
-     // Find direct replies to current comment
-  var directReplies = await _unitOfWork.GetCollection<Comment>()
-                .Find(c => c.ParentCommentId == currentCommentId && !c.IsDeleted)
-        .Project(c => c.Id)
-    .ToListAsync();
+        {
+            var currentCommentId = queue.Dequeue();
 
-    foreach (var replyId in directReplies)
+            // Find direct replies to current comment
+            var directReplies = await _unitOfWork.GetCollection<Comment>()
+                          .Find(c => c.ParentCommentId == currentCommentId && !c.IsDeleted)
+                  .Project(c => c.Id)
+              .ToListAsync();
+
+            foreach (var replyId in directReplies)
             {
-      allReplyIds.Add(replyId);
-     queue.Enqueue(replyId); // Add to queue to find its replies
+                allReplyIds.Add(replyId);
+                queue.Enqueue(replyId); // Add to queue to find its replies
             }
         }
 

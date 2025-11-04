@@ -1,8 +1,8 @@
 ﻿namespace EkofyApp.Domain.Utils;
 public sealed class HelperCurrencyConverter
 {
-    // Tỷ giá hiện tại: 1 SGD = 20,300.00 VND
-    private const decimal ExchangeRateSgdToVnd = 20300.00m; // chữ 'm' để dùng decimal literal
+    // Tỷ giá hiện tại: 1 SGD = 20,500.00 VND
+    private const decimal ExchangeRateSgdToVnd = 20500.00m; // chữ 'm' để dùng decimal literal
 
     public static decimal FormatDecimalLiteral(decimal amount)
     {
