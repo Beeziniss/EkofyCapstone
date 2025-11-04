@@ -11,7 +11,6 @@ public sealed class CouponQuery(ICouponCustomService couponCustomService)
 {
     private readonly ICouponCustomService _couponCustomService = couponCustomService;
 
-    [AuthorizeRoles(HelperRoleBase.AdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

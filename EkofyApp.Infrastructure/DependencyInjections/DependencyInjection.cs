@@ -171,6 +171,7 @@ public static class DependencyInjection
             SubscriptionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_SUBSCRIPTION is not set in the environment"),
             CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
             InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
+            InvoicePaymentSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE_PAYMENT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE_PAYMENT is not set in the environment"),
             PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
         };
 
@@ -699,6 +700,8 @@ public static class DependencyInjection
         // Coupon
         BsonSerializer.RegisterSerializer(typeof(CouponDurationType), new EnumMemberSerializer<CouponDurationType>());
         BsonSerializer.RegisterSerializer(typeof(CouponStatus), new EnumMemberSerializer<CouponStatus>());
+        BsonSerializer.RegisterSerializer(typeof(CouponPurposeType), new EnumMemberSerializer<CouponPurposeType>());
+        
 
         // BillingPortalConfiguration
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
@@ -745,6 +748,10 @@ public static class DependencyInjection
 
         // RequestHub
         BsonSerializer.RegisterSerializer(typeof(RequestStatus), new EnumMemberSerializer<RequestStatus>());
+
+        // Refund
+        BsonSerializer.RegisterSerializer(typeof(RefundReasonType), new EnumMemberSerializer<RefundReasonType>());
+        BsonSerializer.RegisterSerializer(typeof(RefundTransactionStatus), new EnumMemberSerializer<RefundTransactionStatus>());
     }
 
     public static void AddHangfire(this IServiceCollection service)

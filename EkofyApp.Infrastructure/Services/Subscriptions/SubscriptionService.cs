@@ -236,10 +236,10 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
             try
             {
                 // Kiểm tra subscription plan tồn tại thông qua Subscription Code
-                if (await _unitOfWork.GetCollection<Subscription>().Find(x => x.Code.ToLowerInvariant() == createSubScriptionPlanRequest.SubscriptionCode.ToLowerInvariant() && x.Status == SubscriptionStatus.Active).AnyAsync())
-                {
-                    throw new ConflictCustomException("Subscription plan with the same subscription code already exists.");
-                }
+                //if (await _unitOfWork.GetCollection<SubscriptionPlan>().Find(x => x..ToLowerInvariant() == createSubScriptionPlanRequest.SubscriptionCode.ToLowerInvariant() && x.Status == SubscriptionStatus.Active).AnyAsync())
+                //{
+                //    throw new ConflictCustomException("Subscription plan with the same subscription code already exists.");
+                //}
 
                 // Tạo subscription plan UserId
                 string subscriptionPlanId = ObjectId.GenerateNewId().ToString();

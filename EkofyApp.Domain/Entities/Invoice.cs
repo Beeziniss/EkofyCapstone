@@ -14,6 +14,7 @@ public sealed class Invoice : IEntityCustom // Snapshot
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string PaymentTransactionId { get; set; } = null!;
+    public string StripeInvoiceId { get; set; } = null!; // ID of the Invoice in Stripe
 
     public OneOffSnapshot? OneOffSnapshot { get; set; } // Snapshot of the one-off purchase
     public SubscriptionSnapshot? SubscriptionSnapshot { get; set; } // Snapshot of the subscription
