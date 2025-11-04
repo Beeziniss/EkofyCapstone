@@ -15,6 +15,10 @@ public sealed class UpdateSubscriptionPlanRequestValidator : AbstractValidator<U
          .ForEach(price => price.SetValidator(new CreatePriceRequestValidator()))
  .WithMessage("Error while validating new prices");
 
+  RuleFor(x => x.UpdatePrices)
+ .ForEach(price => price.SetValidator(new UpdatePriceRequestValidator()))
+            .WithMessage("Error while validating update prices");
+
   RuleFor(x => x.Name)
             .MaximumLength(100).WithMessage("Subscription name must not exceed 100 characters.")
 .Matches(x => HelperMethod.RegexPatternAlphaNumericWithSpace())

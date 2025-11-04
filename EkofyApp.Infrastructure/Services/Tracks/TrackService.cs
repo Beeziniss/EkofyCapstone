@@ -304,7 +304,13 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
     public async Task<bool> CheckTrackInFavoriteAsync(string trackId)
     {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        //string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string? userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
+        if (!string.IsNullOrEmpty(userId))
+        {
+            return false;
+        }
 
         try
         {
@@ -314,7 +320,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
 
             if (listLength > 0)
-            {
+            { 
                 // Cache hit - check if track exists in Redis list
                 return await _redisCacheService.ListContainsAsync(cacheKey, trackId);
             }

@@ -440,6 +440,20 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         };
     }
 
+    //public async Task RefundAsync(string paymentIntentId, decimal amount, string reason = "requested_by_customer")
+    //{
+    //    // Lấy PaymentIntent để lấy currency
+    //    PaymentIntentService paymentIntentService = new();
+    //    PaymentIntent paymentIntent = await paymentIntentService.GetAsync(paymentIntentId);
+    //    RefundService refundService = new();
+    //    await refundService.CreateAsync(new RefundCreateOptions
+    //    {
+    //        PaymentIntent = paymentIntentId,
+    //        Amount = HelperCurrencyConverter.aaaaaa(amount, paymentIntent.Currency),
+    //        Reason = reason,
+    //    });
+    //}
+
     // Tạo Checkout Session (link) cho đăng ký gói (subscription)
     public async Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSession(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest)
     {
