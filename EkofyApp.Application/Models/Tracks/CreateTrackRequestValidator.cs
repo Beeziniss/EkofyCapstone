@@ -59,6 +59,11 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
             {
                 DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
 
+                if (!model.IsReleased)
+                {
+                    context.AddFailure(nameof(model.IsReleased), "IsRelease must be true when ReleaseStatus is Official.");
+                }
+
                 switch (model.ReleaseStatus)
                 {
                     case ReleaseStatus.Official:
@@ -73,6 +78,10 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                         break;
 
                     case ReleaseStatus.NotAnnounced:
+                        if (!model.IsReleased)
+                        {
+                            break;
+                        }
                         if (model.IsReleased)
                         {
                             context.AddFailure(nameof(model.IsReleased), "IsRelease must be false when ReleaseStatus is Not Announced.");
