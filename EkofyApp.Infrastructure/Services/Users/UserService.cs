@@ -526,6 +526,14 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         });
     }
 
+    public IQueryable<PaymentTransaction> GetPaymentTransactionsByUserId(string userId)
+    {
+        return _unitOfWork.GetCollection<PaymentTransaction>()
+            .Find(x => x.UserId == userId)
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
     public async Task DeleteUserManualAsync(string userId)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>

@@ -1,5 +1,7 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.Chat;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.SignalR;
 using MongoDB.Bson;
@@ -45,15 +47,15 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
     }
 
     // SEND MESSAGE
-    public async Task SendMessage(string conversationId, string senderId, string receiverId, string text)
+    public async Task SendMessage(ChatMessageRequest chatMessageRequest)
     {
         try
         {
             // Nếu chưa có conversationId, tìm hoặc tạo
-            if (string.IsNullOrEmpty(conversationId))
+            if (string.IsNullOrEmpty(chatMessageRequest.ConversationId))
             {
                 Conversation conversation = await _unitOfWork.GetCollection<Conversation>()
-                    .Find(c => c.UserIds.Contains(senderId) && c.UserIds.Contains(receiverId))
+                    .Find(c => c.UserIds.Contains(chatMessageRequest.SenderId) && c.UserIds.Contains(chatMessageRequest.ReceiverId))
                     .FirstOrDefaultAsync();
 
                 if (conversation is null)
@@ -61,42 +63,62 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                     conversation = new()
                     {
                         Id = ObjectId.GenerateNewId().ToString(),
-                        UserIds = [senderId, receiverId],
+                        UserIds = [chatMessageRequest.SenderId, chatMessageRequest.ReceiverId],
                     };
                     await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(conversation);
                 }
 
-                conversationId = conversation.Id;
+                chatMessageRequest.ConversationId = conversation.Id;
             }
 
+            // Atomically check status & update lastMessage
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+
+            FilterDefinition<Conversation> filter = Builders<Conversation>.Filter.And(
+                Builders<Conversation>.Filter.Eq(c => c.Id, chatMessageRequest.ConversationId),
+                Builders<Conversation>.Filter.Ne(c => c.Status, ConversationStatus.Completed),
+                Builders<Conversation>.Filter.Ne(c => c.Status, ConversationStatus.Cancelled)
+            );
+
+            UpdateDefinition<Conversation> update = Builders<Conversation>.Update
+                .Set(c => c.LastMessage, new LastMessage
+                {
+                    Text = chatMessageRequest.Text,
+                    SenderId = chatMessageRequest.SenderId,
+                    SentAt = now,
+                    IsReadBy = [chatMessageRequest.SenderId]
+                })
+                .Set(c => c.UpdatedAt, now);
+
+            Conversation conversationBeforeUpdate = await _unitOfWork.GetCollection<Conversation>()
+                .FindOneAndUpdateAsync(
+                    filter,
+                    update,
+                    new FindOneAndUpdateOptions<Conversation>
+                    {
+                        ReturnDocument = ReturnDocument.Before
+                    });
+
+            if (conversationBeforeUpdate == null)
+            {
+                await Clients.Caller.SendAsync("ReceiveException", "This conversation is closed. You cannot send messages.");
+                return;
+            }
+
+            // Insert message
             Message message = new()
             {
-                ConversationId = conversationId,
-                SenderId = senderId,
-                ReceiverId = receiverId,
-                Text = text,
-                SentAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                ConversationId = chatMessageRequest.ConversationId,
+                SenderId = chatMessageRequest.SenderId,
+                ReceiverId = chatMessageRequest.ReceiverId,
+                Text = chatMessageRequest.Text,
+                SentAt = now
             };
 
             await _unitOfWork.GetCollection<Message>().InsertOneAsync(message);
 
-            // Update lastMessage
-            UpdateDefinition<Conversation> update = Builders<Conversation>.Update
-                .Set(c => c.LastMessage, new LastMessage
-                {
-                    Text = text,
-                    SenderId = senderId,
-                    SentAt = message.SentAt,
-                    IsReadBy = [senderId]
-                })
-                .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
-
-            await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(
-                Builders<Conversation>.Filter.Eq(c => c.Id, conversationId),
-                update);
-
             // SignalR push to receiver
-            if (OnlineUsers.TryGetValue(receiverId, out string? receiverConnectionId))
+            if (OnlineUsers.TryGetValue(chatMessageRequest.ReceiverId, out string? receiverConnectionId))
             {
                 await Clients.Client(receiverConnectionId).SendAsync("ReceiveMessage", message);
             }

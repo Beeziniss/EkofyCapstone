@@ -11,7 +11,6 @@ public sealed class SubscriptionPlanQuery(ISubscriptionPlanService subscriptionP
 {
     private readonly ISubscriptionPlanService _subscriptionPlanService = subscriptionPlanService;
 
-    [AuthorizeRoles(HelperRoleBase.FullRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

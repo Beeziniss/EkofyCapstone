@@ -404,7 +404,7 @@ public static class DependencyInjection
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
-        services.AddScoped<IChatGraphQLService, ChatGraphQLService>();
+        services.AddScoped<IChatService, ChatService>();
 
         // Third Party Services
         services.AddScoped<IFfmpegService, FfmpegService>();
@@ -748,6 +748,9 @@ public static class DependencyInjection
 
         // RequestHub
         BsonSerializer.RegisterSerializer(typeof(RequestStatus), new EnumMemberSerializer<RequestStatus>());
+
+        // Chat
+        BsonSerializer.RegisterSerializer(typeof(ConversationStatus), new EnumMemberSerializer<ConversationStatus>());
 
         // Refund
         BsonSerializer.RegisterSerializer(typeof(RefundReasonType), new EnumMemberSerializer<RefundReasonType>());

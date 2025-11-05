@@ -12,4 +12,12 @@ public sealed class InvoiceService(IUnitOfWork unitOfWork) : IInvoiceService
     {
         return _unitOfWork.GetCollection<Invoice>().AsQueryable();
     }
+
+    public IQueryable<Invoice> GetInvoicesByUserId(string userId)
+    {
+        return _unitOfWork.GetCollection<Invoice>()
+            .Find(x => x.UserId == userId)
+            .ToEnumerable()
+            .AsQueryable();
+    }
 }

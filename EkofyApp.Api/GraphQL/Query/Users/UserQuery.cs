@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
 using HotChocolate.Data;
 
@@ -65,5 +66,15 @@ public sealed class UserQuery(IUserService userService)
         {
             return _userService.GetFollowingsByArtistId(artistId!);
         }
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<User>]
+    public IQueryable<PaymentTransaction> GetPaymentTransactionsByUserId(string userId)
+    {
+        return _userService.GetPaymentTransactionsByUserId(userId);
     }
 }
