@@ -20,4 +20,5 @@ public interface IUserService
     IQueryable<User> GetFollowingsByUserId(string userId);
     IQueryable<User> GetFollowersByArtistId(string artistId);
     IQueryable<User> GetFollowingsByArtistId(string artistId);
+    IQueryable<PaymentTransaction> GetPaymentTransactionsByUserId(string userId);
 }

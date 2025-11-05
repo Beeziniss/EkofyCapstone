@@ -20,4 +20,14 @@ public sealed class InvoiceQuery(IInvoiceService invoiceService)
     {
         return _invoiceService.GetInvoices();
     }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Invoice>]
+    public IQueryable<Invoice> GetInvoicesByUserId(string userId)
+    {
+        return _invoiceService.GetInvoicesByUserId(userId);
+    }
 }
