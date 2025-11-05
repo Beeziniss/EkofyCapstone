@@ -40,6 +40,72 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             .FirstOrDefaultAsync();
     }
 
+    public IQueryable<User> GetFollowersByUserId(string userId)
+    {
+        List<string> followerIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.TargetId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.ActorId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followerIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
+    public IQueryable<User> GetFollowersByArtistId(string artistId)
+    {
+        string userId = _unitOfWork.GetCollection<Artist>()
+            .Find(a => a.Id == artistId)
+            .Project(a => a.UserId)
+            .FirstOrDefault() ?? throw new NotFoundCustomException("Artist not found");
+
+        List<string> followerIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.TargetId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.ActorId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followerIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
+    public IQueryable<User> GetFollowingsByUserId(string userId)
+    {
+        List<string> followingIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.ActorId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.TargetId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followingIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
+    public IQueryable<User> GetFollowingsByArtistId(string artistId)
+    {
+        string userId = _unitOfWork.GetCollection<Artist>()
+            .Find(a => a.Id == artistId)
+            .Project(a => a.UserId)
+            .FirstOrDefault() ?? throw new NotFoundCustomException("Artist not found");
+
+        List<string> followingIds = _unitOfWork.GetCollection<UserEngagement>()
+            .Find(ue => ue.ActorId == userId && ue.Action == UserEngagementAction.Follow)
+            .Project(ue => ue.TargetId)
+            .ToEnumerable()
+            .ToList();
+
+        return _unitOfWork.GetCollection<User>()
+            .Find(u => followingIds.Contains(u.Id))
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
     public async Task CreateModeratorAsync(CreateModeratorRequest createModeratorRequest)
     {
         if (await IsEmailExistsAsync(createModeratorRequest.Email))
@@ -140,7 +206,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 ActorType = followerType,
                 TargetId = request.TargetId,
                 TargetType = followedType,
-                CreatedAt = HelperMethod.GetUtcPlus7TimeOffset()
+                Action = UserEngagementAction.Follow,
             };
 
             await _unitOfWork.GetCollection<UserEngagement>().InsertOneAsync(session, follow);
@@ -460,6 +526,14 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         });
     }
 
+    public IQueryable<PaymentTransaction> GetPaymentTransactionsByUserId(string userId)
+    {
+        return _unitOfWork.GetCollection<PaymentTransaction>()
+            .Find(x => x.UserId == userId)
+            .ToEnumerable()
+            .AsQueryable();
+    }
+
     public async Task DeleteUserManualAsync(string userId)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
@@ -530,8 +604,13 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
     #region Caching
     public async Task<bool> CheckUserFollowingAsync(string userFollowingId)
     {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-        string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        //string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string? userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return false;
+        }
 
         try
         {
@@ -547,14 +626,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             }
 
             // Cache miss - populate from database
-            if(Enum.Parse<UserRole>(role, true) == UserRole.Artist)
-            {
-                await EnsureCachePopulatedAsync(userId, UserEngagementTargetType.Artist);
-            }
-            else if(Enum.Parse<UserRole>(role, true) == UserRole.Listener)
-            {
-                await EnsureCachePopulatedAsync(userId, UserEngagementTargetType.Listener);
-            }
+            await EnsureCachePopulatedAsync(userId);
 
             // Check again after population
             return await _redisCacheService.ListContainsAsync(cacheKey, userFollowingId);
@@ -566,7 +638,7 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         }
     }
 
-    private async Task<bool> EnsureCachePopulatedAsync(string userId, UserEngagementTargetType userEngagementTargetType)
+    private async Task<bool> EnsureCachePopulatedAsync(string userId)
     {
         try
         {
@@ -579,18 +651,18 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
                 return true; // Cache already populated
             }
 
-            // Fetch favorite playlist from database
-            List<string> favoritePlaylistIds = await _unitOfWork.GetCollection<UserEngagement>()
-                .Find(x => x.ActorId == userId && x.TargetType == userEngagementTargetType && x.Action == UserEngagementAction.Follow)
+            // Fetch followings from database
+            List<string> followingIds = await _unitOfWork.GetCollection<UserEngagement>()
+                .Find(x => x.ActorId == userId && x.Action == UserEngagementAction.Follow)
                 .Project(x => x.TargetId)
                 .ToListAsync();
 
-            if (favoritePlaylistIds.Count > 0)
+            if (followingIds.Count > 0)
             {
                 // Populate cache with track IDs
-                await _redisCacheService.ListPushRangeAsync(cacheKey, favoritePlaylistIds, TimeSpan.FromHours(1));
+                await _redisCacheService.ListPushRangeAsync(cacheKey, followingIds, TimeSpan.FromHours(1));
 
-                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} playlists", userId, favoritePlaylistIds.Count);
+                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} playlists", userId, followingIds.Count);
                 return true;
             }
 

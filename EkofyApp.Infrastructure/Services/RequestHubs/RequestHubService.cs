@@ -2,7 +2,9 @@
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
@@ -18,16 +20,65 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             return _unitOfWork.GetCollection<RequestHub>().AsQueryable();
         }
 
+        public async Task<RequestHub?> GetRequestByIdAsync(string requestId)
+        {
+            return await _unitOfWork.GetCollection<RequestHub>()
+                                    .Find(rh => rh.Id == requestId && rh.Status == RequestStatus.Open)
+                                    .FirstOrDefaultAsync();
+        }
+
+        public IQueryable<RequestHub> GetOwnRequestsAsync()
+        {
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            // Không cho xem lại các request đã bị blocked hay đã xóa
+            return _unitOfWork.GetCollection<RequestHub>()
+                                                      .AsQueryable()
+                                                      .Where(rh => rh.RequestUserId == userId && (
+                                                             rh.Status == RequestStatus.Open ||
+                                                             rh.Status == RequestStatus.Closed
+                                                      ));
+        }
+
+        public IQueryable<RequestHub> SearchRequests(string searchTerm, bool isIndividual)
+        {
+            var query = _unitOfWork.GetCollection<RequestHub>().AsQueryable();
+            string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
+
+            //search cá nhân
+            if (isIndividual)
+            {
+                string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
+                    ?? throw new UnauthorizedCustomException("Your session is limit");
+
+                query = query.Where(rh => rh.RequestUserId == userId);
+            }
+
+            // Ko có search term thì trả về luôn query hiện tại
+            if (string.IsNullOrEmpty(searchTerm))
+                return query;
+
+            // có search term thì lọc rồi return
+            return query.Where(t =>
+                (t.Title.Contains(unsignedSearchTerm) || t.Summary.Contains(unsignedSearchTerm)) &&
+                t.Status == RequestStatus.Open);
+        }
+
         public async Task<bool> CreateRequestAsync(RequestCreatingRequest request)
         {
-            string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             // tạo request từ data của model
             RequestHub requestHub = new()
             {
+                RequestUserId = userId,
                 Title = request.Title,
-                Description = request.Description,
-                Attachments = request.Attachments ?? new List<string>()
+                TitleUnsigned = HelperMethod.ToUnsigned(request.Title),
+                Summary = request.Summary,
+                SummaryUnsigned = HelperMethod.ToUnsigned(request.Summary),
+                DetailDescription = request.DetailDescription,
+                Deadline = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(request.Deadline),
+                Budget = request.Budget,
+                Status = RequestStatus.Open
             };
             // lưu request vừa mới tạo
             await _unitOfWork.GetCollection<RequestHub>().InsertOneAsync(requestHub);
@@ -36,59 +87,74 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
 
         public async Task<bool> UpdateRequestAsync(RequestUpdatingRequest request)
         {
-            string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             RequestHub requestHub = await _unitOfWork.GetCollection<RequestHub>()
-                                                     .Find(rh => rh.Id == request.Id)
+                                                     .Find(rh => rh.Id == request.Id && rh.Status == RequestStatus.Open)
                                                      .Project<RequestHub>(Builders<RequestHub>.Projection
-                                                        .Include(isClose => isClose.IsClosed)
-                                                        .Include(isDelete => isDelete.IsDeleted))
+                                                        .Include(rh => rh.RequestUserId)
+                                                        .Include(rh => rh.Deadline))
                                                      .FirstOrDefaultAsync();
 
-            //kiểm tra request có hợp lệ hay không
-            if (requestHub.IsClosed || requestHub.IsDeleted)
+            //check xem bài request này có đúng là của người đang muốn sửa ko
+            if(requestHub.RequestUserId != userId)
             {
-                throw new BadRequestCustomException("The request has been closed or deleted, cannot update anymoore!");
+                throw new ForbiddenCustomException("You do not have permission to edit request!");
             }
 
             List<UpdateDefinition<RequestHub>> updatedFields = new();
 
             UpdateDefinitionBuilder<RequestHub> updateBuilder = Builders<RequestHub>.Update;
 
-            if(request.Title != null)
+            if (request.Title != null)
             {
                 updatedFields.Add(updateBuilder.Set(rh => rh.Title, request.Title));
+                updatedFields.Add(updateBuilder.Set(rh => rh.TitleUnsigned, HelperMethod.ToUnsigned(request.Title)));
             }
-            if(request.Description != null)
+            if (request.Summary != null)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.Description, request.Description));
+                updatedFields.Add(updateBuilder.Set(rh => rh.Summary, request.Summary));
+                updatedFields.Add(updateBuilder.Set(rh => rh.SummaryUnsigned, HelperMethod.ToUnsigned(request.Summary)));
             }
-            if(request.Attachments != null)
+            if (request.DetailDescription != null)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.Attachments, request.Attachments));
+                updatedFields.Add(updateBuilder.Set(rh => rh.DetailDescription, request.DetailDescription));
             }
-            if(request.IsClosed != null)
+            if (request.Deadline.HasValue)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.IsClosed, request.IsClosed));
+                updatedFields.Add(updateBuilder.Set(rh => rh.Deadline, HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(request.Deadline.Value)));
             }
-            if(request.IsDeleted != null)
+            if (request.Budget != null)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.IsDeleted, request.IsDeleted));
+                updatedFields.Add(updateBuilder.Set(rh => rh.Budget, request.Budget));
             }
 
-            var updateBuilderCombine  = updateBuilder.Combine(updatedFields);
-            
+            // CHỖ NÀY ĐỂ CẬP NHẬT TRẠNG THÁI CỦA REQUEST 
+            if (request.Status != null)
+            {
+                updatedFields.Add(updateBuilder.Set(rh => rh.Status, request.Status));
+            }
+
+            //cập nhật lại thời gian sửa đổi
+            updatedFields.Add(updateBuilder.Set(rh => rh.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+
+            //gộp các field đã được cập nhật
+            var updateBuilderCombine = updateBuilder.Combine(updatedFields);
+
             var result = await _unitOfWork.GetCollection<RequestHub>()
                              .UpdateOneAsync(rh => rh.Id == request.Id, updateBuilderCombine);
 
             return result.ModifiedCount > 0;
         }
 
-        // NOT DO YET
-        public async Task SendRequestCommentAsync(CreateRequestCommentRequest commentRequest)
+        public async Task<bool> BlockRequestAsync(string requestId)
         {
-            
+            var update = Builders<RequestHub>.Update
+                                             .Set(rh => rh.Status, RequestStatus.Blocked)
+                                             .Set(rh => rh.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            var result = await _unitOfWork.GetCollection<RequestHub>()
+                             .UpdateOneAsync(rh => rh.Id == requestId, update);
+            return result.ModifiedCount > 0;
         }
-
     }
 }

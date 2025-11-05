@@ -287,7 +287,7 @@ public class TestController : ControllerBase
 
                 ReleaseInfo = new()
                 {
-                    IsReleased = true,
+                    IsRelease = true,
                     ReleaseStatus = ReleaseStatus.Official,
                     ReleaseDate = HelperMethod.GetUtcPlus7Time(),
                 },

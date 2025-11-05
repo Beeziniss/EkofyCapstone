@@ -11,7 +11,6 @@ public sealed class SubscriptionQuery(ISubscriptionService subscriptionService)
 {
     private readonly ISubscriptionService _subscriptionService = subscriptionService;
 
-    [AuthorizeRoles(HelperRoleBase.AdminRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

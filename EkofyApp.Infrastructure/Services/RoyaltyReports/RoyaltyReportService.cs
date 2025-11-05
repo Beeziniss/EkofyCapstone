@@ -77,13 +77,20 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         x => x.TrackId,
                         x => x.TrackId,
                         x => x.RecordingProjection)
+                    .Unwind<MonthlyStreamCountProjection, MonthlyStreamCountProjection>(x => x.RecordingProjection, new AggregateUnwindOptions<MonthlyStreamCountProjection> { PreserveNullAndEmptyArrays = true })
                     .Lookup<MonthlyStreamCountProjection, Work, MonthlyStreamCountProjection>(
                         _unitOfWork.GetCollection<Work>(),
                         x => x.TrackId,
                         x => x.TrackId,
                         x => x.WorkProjection)
+                    .Unwind<MonthlyStreamCountProjection, MonthlyStreamCountProjection>(x => x.WorkProjection, new AggregateUnwindOptions<MonthlyStreamCountProjection> { PreserveNullAndEmptyArrays = true })
                     .Limit(limit)
                     .ToListAsync(ct);
+
+            if(monthlyStreamCountProjections.Count == 0)
+            {
+                throw new NotFoundCustomException($"No MonthlyStreamCount records found for month={month}, year={year} to process.");
+            }
 
             foreach (MonthlyStreamCountProjection monthlyStreamCountProjection in monthlyStreamCountProjections)
             {
@@ -92,7 +99,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 List<RoyaltySplit> splits = [];
 
                 // Nếu có RecordingId → áp dụng RecordingSplits
-                decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage;
+                decimal recordingPool = totalRoyalty * recordingRoyaltyPercentage / 100m;
                 if (!string.IsNullOrEmpty(monthlyStreamCountProjection.RecordingProjection?.Id))
                 {
                     if (monthlyStreamCountProjection.RecordingProjection != null)
@@ -115,14 +122,14 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                                 Percentage = split.Percentage,
                                 Amount = amount,
                                 Level = AggregationLevel.Recording,
-                                IsTransferred = true,
+                                IsTransferred = false, // Đã có đánh dấu chuyển tiền ở bước sau
                             });
                         }
                     }
                 }
 
                 // Nếu có WorkId → áp dụng WorkSplits
-                decimal workPool = totalRoyalty * workRoyaltyPercentage;
+                decimal workPool = totalRoyalty * workRoyaltyPercentage / 100m;
                 if (!string.IsNullOrEmpty(monthlyStreamCountProjection.WorkProjection?.Id))
                 {
                     if (monthlyStreamCountProjection.WorkProjection != null)
@@ -145,7 +152,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                                 Percentage = split.Percentage,
                                 Amount = amount,
                                 Level = AggregationLevel.Work,
-                                IsTransferred = true,
+                                IsTransferred = false, // Đã có đánh dấu chuyển tiền ở bước sau
                             });
                         }
                     }
@@ -267,7 +274,6 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 // Tính tổng amount cho user này
                 decimal totalVndAmount = userSplits.Sum(x => x.Split.Amount);
                 decimal totalSgdAmount = HelperCurrencyConverter.ConvertVndToSgd(totalVndAmount);
-                //decimal stripeAmount = HelperCurrencyConverter.FormatDecimalLiteral(totalVndAmount); // Stripe tính bằng cent
 
                 try
                 {
@@ -290,7 +296,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     // Kiểm tra balance của connected account trước khi payout
                     Balance accountBalance = await _stripeService.GetConnectedAccountBalanceAsync(artistStripeAccountId);
                     long availableBalance = accountBalance.Available.FirstOrDefault()?.Amount ?? 0;
-                    //decimal availableBalanceDecimal = HelperCurrencyConverter.ConvertStripeAmountToDecimal(availableBalance, CurrencyType.sgd.ToString());
+
                     if (availableBalance < stripeTotalAmountLong)
                     {
                         _logger.LogError($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {totalSgdAmount}");
@@ -299,7 +305,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     }
 
                     // Thực hiện payout thực sự
-                    Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong,  CurrencyType.sgd.ToString());
+                    Payout payoutResponse = await _stripeService.CreateStandardPayoutAsync(artistStripeAccountId, stripeTotalAmountLong,  CurrencyType.sgd.ToString());
 
                     // Lưu transaction cho từng report
                     foreach (var item in userSplits)
@@ -315,7 +321,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                             DestinationAccountId = artistStripeAccountId,
                             Level = item.Split.Level,
                             Description = payoutResponse.Description,
-                            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status), // pending, paid, failed, canceled
+                            Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status), // pending, in_transit
                             Method = payoutResponse.Method, // standard hoặc instant
                         };
 
@@ -345,8 +351,6 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 throw new UnprocessableEntityCustomException($"No payout transactions were created for month={month}, year={year}. Skipping further processing.");
             }
 
-            await _unitOfWork.GetCollection<PayoutTransaction>().InsertManyAsync(session, payoutTransactions, cancellationToken: ct);
-
             // Lưu Royalty Report
             if (royaltyReports.Count == 0)
             {
@@ -354,6 +358,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 throw new UnprocessableEntityCustomException($"No royalty reports were generated for month={month}, year={year}. Skipping further processing.");
             }
 
+            await _unitOfWork.GetCollection<PayoutTransaction>().InsertManyAsync(session, payoutTransactions, cancellationToken: ct);
             await _unitOfWork.GetCollection<RoyaltyReport>().InsertManyAsync(session, royaltyReports, cancellationToken: ct);
 
             // Cập nhật lại trạng thái đã xử lý
@@ -412,7 +417,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             // Thực hiện payout
             Payout payoutResponse = isInstant 
                 ? await _stripeService.CreateInstantPayoutAsync(user.StripeAccountId, stripeAmount)
-                : await _stripeService.CreatePayoutAsync(user.StripeAccountId, stripeAmount);
+                : await _stripeService.CreateStandardPayoutAsync(user.StripeAccountId, stripeAmount);
 
             // Lưu transaction
             PayoutTransaction payoutTransaction = new()

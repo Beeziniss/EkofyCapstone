@@ -66,8 +66,23 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
         {
             return BadRequest("Missing Stripe-Signature header");
         }
+
         await _stripeWebhookService.HandleWebhookInvoiceAsync(json, stripeSignature);
         return Ok("Invoice webhook processed successfully!");
+    }
+
+    [AllowAnonymous, HttpPost("invoice_payment")]
+    public async Task<IActionResult> HandleWebhookInvoicePaymentAsync()
+    {
+        string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+        string? stripeSignature = Request.Headers["Stripe-Signature"];
+        if (string.IsNullOrEmpty(stripeSignature))
+        {
+            return BadRequest("Missing Stripe-Signature header");
+        }
+
+        await _stripeWebhookService.HandleWebhookInvoicePaymentAsync(json, stripeSignature);
+        return Ok("Invoice payment webhook processed successfully!");
     }
 
     [AllowAnonymous, HttpPost("payout")]

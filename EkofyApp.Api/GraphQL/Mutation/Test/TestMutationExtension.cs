@@ -4,18 +4,30 @@
     {
         protected override void Configure(IObjectTypeDescriptor<TestMutation> descriptor)
         {
-            descriptor.Field(x => x.UploadFileAsync(default!, default!, default!))
+            //descriptor.Field(x => x.RefundAsync(default!, default!, default!))
+            //    .AllowAnonymous();
+
+            descriptor.Field(x => x.TestTransferMoneyToArtist(default!, default!, default!))
                 .AllowAnonymous();
 
-            descriptor.Field(x => x.ConvertToWavFileAsync(default!, default!, default!))
+            descriptor.Field(x => x.SeedMonthlyStreamCountByTrackIdAsync(default!, default!, default!, default!, default!))
                 .AllowAnonymous();
 
-            descriptor.Field(x => x.ConvertToHlsAsync(default!, default!, default!))
+            descriptor.Field(x => x.TestGenrateMonthlyRoyaltyReportsAynsc(default!, default!, default!))
                 .AllowAnonymous();
 
-            descriptor.Field(x => x.CreateEntilement(default!, default!, default!))
-                .AllowAnonymous()
-                .Description("Create a test entitlement for demonstration purposes.");
+            //descriptor.Field(x => x.UploadFileAsync(default!, default!, default!))
+            //    .AllowAnonymous();
+
+            //descriptor.Field(x => x.ConvertToWavFileAsync(default!, default!, default!))
+            //    .AllowAnonymous();
+
+            //descriptor.Field(x => x.ConvertToHlsAsync(default!, default!, default!))
+            //    .AllowAnonymous();
+
+            //descriptor.Field(x => x.CreateEntilement(default!, default!, default!))
+            //    .AllowAnonymous()
+            //    .Description("Create a test entitlement for demonstration purposes.");
         }
     }
 }

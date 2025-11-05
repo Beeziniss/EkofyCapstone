@@ -1,9 +1,13 @@
-﻿namespace EkofyApp.Application.Models.RequestHub
+﻿using EkofyApp.Domain.EmbeddedDocuments;
+
+namespace EkofyApp.Application.Models.RequestHub
 {
     public sealed record RequestCreatingRequest
     {
-        public string Title { get; set; } = null!;
-        public string Description { get; set; } = null!;
-        public List<string>? Attachments { get; set; }
+        public string Title { get; init; } = null!;
+        public string Summary { get; init; } = null!;
+        public string DetailDescription { get; init; } = null!;
+        public DateTime Deadline { get; init; }
+        public RequestBudget Budget { get; init; } = null!;
     }
 }

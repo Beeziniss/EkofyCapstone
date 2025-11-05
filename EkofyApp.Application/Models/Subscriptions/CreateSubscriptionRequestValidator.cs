@@ -13,9 +13,6 @@ public sealed class CreateSubscriptionRequestValidator : AbstractValidator<Creat
             .NotEmpty().WithMessage("Code is required.")
             .MaximumLength(50).WithMessage("Code must not exceed 50 characters.");
 
-        RuleFor(x => x.Version)
-            .GreaterThan(0).WithMessage("Version must be greater than 0.");
-
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0).WithMessage("Amount must be a non-negative value.");
 

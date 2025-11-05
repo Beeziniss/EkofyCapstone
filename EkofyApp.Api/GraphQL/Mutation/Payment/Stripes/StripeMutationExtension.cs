@@ -12,6 +12,9 @@ public sealed class StripeMutationExtension : ObjectTypeExtension<StripeMutation
         descriptor.Field(x => x.CreatePaymentCheckoutSessionAsync(default!))
             .Authorize(roles: HelperRoleBase.ListenerArtistRolesArray);
 
+        descriptor.Field(x => x.RefundAsync(default!, default!, default!, default!))
+            .Authorize(roles: HelperRoleBase.ListenerArtistModeratorRolesArray);
+
         descriptor.Field(x => x.CreateSubscriptionCheckoutSessionAsync(default!))
             .Authorize(roles: HelperRoleBase.ListenerArtistRolesArray);
 

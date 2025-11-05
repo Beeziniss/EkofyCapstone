@@ -2,6 +2,7 @@
 using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
+using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Payment.Stripes;
 
@@ -31,6 +32,12 @@ public sealed class StripeMutation(IStripeService stripeService, IUserSubscripti
         }
 
         return await _stripeService.CreatePaymentCheckoutSessionAsync(createPaymentCheckoutSessionRequest);
+    }
+
+    public async Task<bool> RefundAsync(string paymentIntentId, decimal amount, RefundReasonType refundReasonType, [Service] IStripeService stripeService)
+    {
+        await stripeService.RefundAsync(paymentIntentId, amount, refundReasonType);
+        return true;
     }
 
     public async Task<CheckoutSessionResponse> CreateSubscriptionCheckoutSessionAsync(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest)

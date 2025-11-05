@@ -122,6 +122,7 @@ public static class GraphQLServer
             .AddType<EnumType<ApprovalType>>()
             .AddType<EnumType<HistoryActionType>>()
             .AddType<EnumType<ArtistPackageStatus>>()
+            .AddType<EnumType<RequestStatus>>()
 
             // Paging
             //.AddQueryableCursorPagingProvider(defaultProvider: true)

@@ -91,7 +91,7 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
             .Project(x => x.Tier)
             .FirstOrDefaultAsync();
 
-        SubscriptionTier tier = Enum.Parse<UserRole>(role, true) == UserRole.Listener ? SubscriptionTier.Premium : SubscriptionTier.Pro;
+        SubscriptionTier tier = Enum.Parse<UserRole>(role) == UserRole.Listener ? SubscriptionTier.Premium : SubscriptionTier.Pro;
 
         if (tier == currentSubscriptionTier)
         {
