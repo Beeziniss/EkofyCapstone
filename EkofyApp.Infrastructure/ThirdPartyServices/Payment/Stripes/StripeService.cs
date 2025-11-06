@@ -377,6 +377,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             {
                 { "is_subscription", "false" },
                 { "package_id", artistPackage.Id },
+                { "request_hub_id", createPaymentCheckoutSessionRequest.RequestHubId },
                 // Client Id = User Id từ payment transaction
                 { "provider_id", artistPackage.ArtistId },
                 { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId },

@@ -4,6 +4,7 @@ namespace EkofyApp.Application.Models.ArtistPackage;
 public sealed record class CreatePaymentCheckoutSessionRequest
 {
     public string PackageId { get; init; } = null!;
+    public string RequestHubId { get; init; } = null!;
 
     public string SuccessUrl { get; init; } = null!;
     public string CancelUrl { get; init; } = null!;
