@@ -95,13 +95,14 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 }
             }
 
-            // Duyệt tự động
-            //await ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
-
             // Tạo stream mới để dùng cho duyệt tự động
             using var autoStream = new MemoryStream(fileBytes);
+
+            // Duyệt tự động
+            await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+
             // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
-            await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            //await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
             return true;
         }

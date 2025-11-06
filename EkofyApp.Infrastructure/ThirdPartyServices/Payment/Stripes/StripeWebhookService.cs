@@ -495,6 +495,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             ArtistPackageId = checkoutSession.Metadata["package_id"],
                             PaymentTransactionId = transaction.Id,
                             ConversationId = checkoutSession.Metadata["conversation_id"],
+                            Status = PackageOrderStatus.InProgress,
                             Description = oneOffSnapshot.Description,
                             RevisionCount = 0,
                             Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
