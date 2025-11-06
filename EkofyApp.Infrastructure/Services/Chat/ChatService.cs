@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using EkofyApp.Application.Models.Conversations;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Domain.Entities;
@@ -28,6 +29,28 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper) : IChatS
             .Find(x => x.UserIds.Contains(userId))
             .ToEnumerable()
             .AsQueryable();
+    }
+
+    public async Task AddConversationFromRequestHubAsync(CreateConversationRequest request)
+    {
+        //check xem da co conversation cua 2 nguoi nay chua
+        var isExistingConversation = await _unitOfWork.GetCollection<Conversation>()
+            .Find(c => request.UserIds.All(id => c.UserIds.Contains(id)) &&
+                       request.RequestHubId == c.RequestHubId)
+            .AnyAsync();
+        if (isExistingConversation)
+        {
+            return;
+        }
+
+        //chua co thi tao moi conversation
+        var conversation = new Conversation() 
+        {
+            UserIds = request.UserIds,
+            RequestHubId = request.RequestHubId,
+            Status = ConversationStatus.Pending
+        };
+        await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(conversation);
     }
 
     public async Task UpdateConversationStatusAsync(string conversationId, ConversationStatus status)
