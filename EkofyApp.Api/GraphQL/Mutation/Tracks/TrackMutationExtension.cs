@@ -6,7 +6,7 @@ public sealed class TrackMutationExtension : ObjectTypeExtension<TrackMutation>
     protected override void Configure(IObjectTypeDescriptor<TrackMutation> descriptor)
     {
         // Configure the TrackMutation type here if needed
-        descriptor.Field(x => x.UploadTrackAsync(default!, default!, default!, default!))
+        descriptor.Field(x => x.UploadTrackAsync(default!, default!, default!, default!, default!))
             .Authorize(HelperRoleBase.ArtistRolesArray);
 
         descriptor.Field(x => x.ApproveTrackUploadRequestAsync(default!))

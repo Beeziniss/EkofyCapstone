@@ -44,7 +44,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest, bool isTesting = false)
     {
         //using Stream stream = file.OpenReadStream();
         // Đọc toàn bộ file vào mảng byte[]
@@ -99,10 +99,15 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             using var autoStream = new MemoryStream(fileBytes);
 
             // Duyệt tự động
-            await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
-
-            // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
-            //await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            if(!isTesting)
+            {
+                await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            }
+            else
+            {
+                // Tạm thời vẫn duyệt thủ công do cần kiểm duyệt legal document
+                await AssignApproveManuallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+            }
 
             return true;
         }
