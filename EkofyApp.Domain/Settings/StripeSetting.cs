@@ -7,4 +7,5 @@ public sealed record class StripeSetting
     public required string InvoiceSigningSecret { get; init; }
     public required string InvoicePaymentSigningSecret { get; init; }
     public required string PayoutSigningSecret { get; init; }
+    public required string RefundSigningSecret { get; init; }
 }

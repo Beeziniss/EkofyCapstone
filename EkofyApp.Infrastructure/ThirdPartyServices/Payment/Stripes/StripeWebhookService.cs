@@ -498,6 +498,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         };
 
                         // TODO: Tạo package order
+                        // Resolved: Đã tạo package order
                         decimal platformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]);
                         await _unitOfWork.GetCollection<PackageOrder>().InsertOneAsync(session, new PackageOrder
                         {
@@ -513,6 +514,33 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             PlatformFeePercentage = platformFeePercentage,
                             ArtistFeePercentage = 100m - platformFeePercentage,
                         });
+
+                        // Cập nhật trạng thái của các conversations
+                        // Đóng các conversations không được chấp nhận
+                        UpdateResult updateConversationCancelled = await _unitOfWork.GetCollection<Conversation>()
+                                .UpdateManyAsync(session,
+                                    x => x.Id != checkoutSession.Metadata["conversation_id"] && x.RequestHubId == checkoutSession.Metadata["request_hub_id"] && x.Status == ConversationStatus.Pending,
+                                    Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.Cancelled));
+                        if (updateConversationCancelled.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
+                        }
+
+                        // Cập nhật trạng thái của conversation được chấp nhận thành In Progress
+                        UpdateResult updateConversationInprogress = await _unitOfWork.GetCollection<Conversation>()
+                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["conversation_id"] && x.RequestHubId == checkoutSession.Metadata["request_hub_id"] && x.Status == ConversationStatus.Pending, Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.InProgress));
+                        if (updateConversationInprogress.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Cannot update conversation status to in progress");
+                        }
+
+                        // Cập nhật trạng thái của Request Hub
+                        UpdateResult updateRequestHub = await _unitOfWork.GetCollection<RequestHub>()
+                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<RequestHub>.Update.Set(x => x.Status, RequestStatus.Closed));
+                        if(updateRequestHub.ModifiedCount == 0)
+                        {
+                            throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
+                        }
                     }
 
                     // Tạo Invoice
@@ -674,4 +702,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
             throw new ExternalServiceCustomException($"Error processing payout webhook: {ex.Message}");
         }
     }
+
+    // Refund không cần webhook vì khi request thì response đã có status là succeeded rồi
 }

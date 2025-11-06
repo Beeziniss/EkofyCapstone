@@ -170,7 +170,8 @@ public static class DependencyInjection
             CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
             InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
             InvoicePaymentSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE_PAYMENT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE_PAYMENT is not set in the environment"),
-            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
+            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment"),
+            RefundSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_REFUND") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_REFUND is not set in the environment"),
         };
 
         services.AddSingleton(stripeSetting);
