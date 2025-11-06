@@ -236,7 +236,13 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
     #region Caching
     public async Task<bool> CheckPlaylistInFavoriteAsync(string playlistId)
     {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        //string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string? userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return false;
+        }
 
         try
         {

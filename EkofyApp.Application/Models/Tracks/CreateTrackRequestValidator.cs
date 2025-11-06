@@ -73,6 +73,10 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                         break;
 
                     case ReleaseStatus.NotAnnounced:
+                        if (!model.IsReleased)
+                        {
+                            break;
+                        }
                         if (model.IsReleased)
                         {
                             context.AddFailure(nameof(model.IsReleased), "IsRelease must be false when ReleaseStatus is Not Announced.");
