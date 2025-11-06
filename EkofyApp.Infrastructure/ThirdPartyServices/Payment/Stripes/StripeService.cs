@@ -195,18 +195,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                     }
                 },
             },
+            Metadata = new Dictionary<string, string>
+            {
+                { "user_id", user.Id },
+            }
         });
-
-        UpdateResult updateResult = await _unitOfWork.GetCollection<User>()
-            .UpdateOneAsync(
-                Builders<User>.Filter.Eq(x => x.Id, userId),
-                Builders<User>.Update.Set(x => x.StripeAccountId, account.Id)
-            );
-
-        if (updateResult.ModifiedCount == 0)
-        {
-            throw new NotFoundCustomException("Cannot create express connected account.");
-        }
 
         // Thêm tài khoản ngân hàng Việt Nam
         AccountExternalAccountCreateOptions bankAccountOptions = new()

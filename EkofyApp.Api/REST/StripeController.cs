@@ -28,8 +28,8 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
         return Ok("StripeController is working!");
     }
 
-    [AllowAnonymous, HttpPost("/v1/accounts")]
-    public async Task<IActionResult> HandleWebhookAccountAsync()
+    [AllowAnonymous, HttpPost("express-connected-account")]
+    public async Task<IActionResult> HandleExpressWebhookAccountAsync()
     {
         string json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
 
@@ -100,18 +100,18 @@ public sealed class StripeController(IStripeService stripeService, IStripeWebhoo
     }
 
     #region Test
-    [HttpPost("connected-account")]
-    public async Task<IActionResult> CreateExpressConnectedAccountAsync()
-    {
-        var account = await _stripeService.CreateExpressConnectedAccountTest();
-        return Ok(account);
-    }
+    //[HttpPost("connected-account")]
+    //public async Task<IActionResult> CreateExpressConnectedAccountAsync()
+    //{
+    //    var account = await _stripeService.CreateExpressConnectedAccountTest();
+    //    return Ok(account);
+    //}
 
-    [HttpPost("onboarding")]
-    public IActionResult CreateAccountOnboardingLink([FromQuery] string refreshUrl, [FromQuery] string returnUrl)
-    {
-        var accountLink = _stripeService.CreateAccountOnboardingLinkTest(refreshUrl, returnUrl);
-        return Ok(accountLink);
-    }
+    //[HttpPost("onboarding")]
+    //public IActionResult CreateAccountOnboardingLink([FromQuery] string refreshUrl, [FromQuery] string returnUrl)
+    //{
+    //    var accountLink = _stripeService.CreateAccountOnboardingLinkTest(refreshUrl, returnUrl);
+    //    return Ok(accountLink);
+    //}
     #endregion
 }
