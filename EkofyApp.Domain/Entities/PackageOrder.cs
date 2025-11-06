@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Domain.Base;
 using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -20,7 +21,7 @@ public sealed class PackageOrder : TimeStamped
     [BsonRepresentation(BsonType.ObjectId)]
     public string ConversationId { get; set; } = null!;
 
-    //public PackageOrderStatus Status { get; set; }
+    public PackageOrderStatus Status { get; set; }
     public string? Description { get; set; }
     public int RevisionCount { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
