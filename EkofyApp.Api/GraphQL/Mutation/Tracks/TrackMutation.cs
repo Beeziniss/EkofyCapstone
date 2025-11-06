@@ -197,7 +197,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 TargetOwnerId = trackTempRequest.CreatedBy,
                 TargetId = trackTempRequest.Id,
                 ApprovalType = ApprovalType.TrackUpload,
-                ActionByUserId = "System",
+                ActionByUserId = "68abf0fc5252e66631121e57",
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
                 Action = HistoryActionType.Approved,
                 Notes = null,
@@ -209,7 +209,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             {
                 TargetId = workTempRequest.Id,
                 ApprovalType = ApprovalType.WorkUpload,
-                ActionByUserId = "System",
+                ActionByUserId = "68abf0fc5252e66631121e57",
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
                 Action = HistoryActionType.Approved,
                 Notes = null,
@@ -221,7 +221,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             {
                 TargetId = recordingTempRequest.Id,
                 ApprovalType = ApprovalType.RecordingUpload,
-                ActionByUserId = "System",
+                ActionByUserId = "68abf0fc5252e66631121e57",
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
                 Action = HistoryActionType.Approved,
                 Notes = null,
