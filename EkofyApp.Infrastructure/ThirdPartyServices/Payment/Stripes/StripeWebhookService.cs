@@ -390,19 +390,30 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
     {
         try
         {
-            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.AccountV2SigningSecret);
-
-            _logger.LogInformation($"Webhook event received: {stripeEvent.Type}");
+            Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.ExpressConnectedAccountSigningSecret);
 
             if (stripeEvent.Type == EventTypes.AccountUpdated)
             {
-                Account account = stripeEvent.Data.Object as Account ?? throw new ArgumentNullCustomException("NULL");
-                _logger.LogInformation($"Account updated: {account.Id}, Email: {account.Email}, ChargesEnabled: {account.ChargesEnabled}");
+                Account account = stripeEvent.Data.Object as Account ?? throw new ArgumentNullCustomException("Express connected account is NULL");
+
+                if (account.PayoutsEnabled && account.Type == "express")
+                {
+                    UpdateResult updateResult = _unitOfWork.GetCollection<User>()
+                        .UpdateOne(
+                            Builders<User>.Filter.Eq(x => x.Id, account.Metadata["user_id"]),
+                            Builders<User>.Update.Set(x => x.StripeAccountId, account.Id)
+                        );
+
+                    if (updateResult.ModifiedCount == 0)
+                    {
+                        throw new NotFoundCustomException("Cannot create express connected account.");
+                    }
+                }
             }
         }
         catch (StripeException e)
         {
-            _logger.LogError($"Webhook error: {e.Message}");
+            throw new ExternalServiceCustomException($"Stripe webhook error: {e}");
         }
     }
 
