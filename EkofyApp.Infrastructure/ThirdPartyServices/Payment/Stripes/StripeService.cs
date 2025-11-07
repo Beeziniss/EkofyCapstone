@@ -49,41 +49,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     }
 
     // Tạo Connected Account cho Artist
-    public async Task<Account> CreateExpressConnectedAccountTest()
-    {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
-        string email = await _unitOfWork.GetCollection<User>()
-            .Find(x => x.Id == userId)
-            .Project(x => x.Email)
-            .FirstOrDefaultAsync();
-
-        AccountService accountService = new();
-        Account account = accountService.Create(new AccountCreateOptions
-        {
-            Type = "express",  // Express phổ biến nhất
-            Country = "SG",   // Sandbox test US/EU (VN không hỗ trợ)
-            Email = email,
-            DefaultCurrency = CurrencyType.sgd.ToString(),
-            Settings = new AccountSettingsOptions
-            {
-                Payouts = new AccountSettingsPayoutsOptions
-                {
-                    Schedule = new AccountSettingsPayoutsScheduleOptions
-                    {
-                        Interval = "manual" // Chuyển tiền thủ công
-                        //Interval = "monthly", // Tự động chuyển tiền hàng tháng,
-                        //DelayDays = 3, // sau 3 ngày
-                        //MonthlyPayoutDays = [28, 31], // vào ngày 28 và 31 hàng tháng
-                    }
-                },
-            },
-        });
-
-        return account;
-    }
-
-    public async Task CreateExpressConnectedAccount()
+    public async Task<string> CreateExpressConnectedAccount()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
@@ -218,38 +184,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         AccountExternalAccountService externalAccountService = new();
         await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
 
-        return;
+        return account.Id;
     }
 
-    // Tạo link onboarding để Artist nhập thông tin
-    public AccountLink CreateAccountOnboardingLinkTest(string refreshUrl, string returnUrl)
+    public AccountLinkResponse CreateAccountOnboardingLink(string userStripeAccountId, string refreshUrl, string returnUrl)
     {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
-        string userStripeAccountId = _unitOfWork.GetCollection<User>()
-            .Find(x => x.Id == userId)
-            .Project(x => x.StripeAccountId)
-            .FirstOrDefault() ?? throw new NotFoundCustomException("Not found your Stripe Account ID. Please contact us for more information.");
-
-        AccountLinkService accountLinkService = new();
-        return accountLinkService.Create(new AccountLinkCreateOptions
-        {
-            Account = userStripeAccountId,
-            RefreshUrl = refreshUrl,
-            ReturnUrl = returnUrl,
-            Type = "account_onboarding"
-        });
-    }
-
-    public AccountLinkResponse CreateAccountOnboardingLink(string refreshUrl, string returnUrl)
-    {
-        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
-        string userStripeAccountId = _unitOfWork.GetCollection<User>()
-            .Find(x => x.Id == userId)
-            .Project(x => x.StripeAccountId)
-            .FirstOrDefault() ?? throw new NotFoundCustomException("Not found your Stripe Account ID. Please contact us for more information.");
-
         AccountLinkService accountLinkService = new();
         AccountLink accountLink = accountLinkService.Create(new AccountLinkCreateOptions
         {

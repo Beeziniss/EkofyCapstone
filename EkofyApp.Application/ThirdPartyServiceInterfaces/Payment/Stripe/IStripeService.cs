@@ -8,11 +8,9 @@ using PortalSession = Stripe.BillingPortal.Session;
 namespace EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 public interface IStripeService
 {
-    AccountLinkResponse CreateAccountOnboardingLink(string refreshUrl, string returnUrl);
-    AccountLink CreateAccountOnboardingLinkTest(string refreshUrl, string returnUrl);
+    AccountLinkResponse CreateAccountOnboardingLink(string userStripeAccountId, string refreshUrl, string returnUrl);
     Task<Customer> CreateCustomerAsync();
-    Task CreateExpressConnectedAccount();
-    Task<Account> CreateExpressConnectedAccountTest();
+    Task<string> CreateExpressConnectedAccount();
     Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreatePaymentCheckoutSessionRequest createPaymentCheckoutSessionRequest);
 
     //Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreateSubscriptionCheckoutSessionRequest createCheckoutSessionRequest);
