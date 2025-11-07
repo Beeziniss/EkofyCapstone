@@ -8,5 +8,5 @@ public sealed record class CreateRoyalPolicyRequest
     public decimal RecordingPercentage { get; init; }
     public decimal WorkPercentage { get; init; }
     //public bool IsActive { get; init; }
-    public DateTimeOffset EffectiveAt { get; init; }
+    //public DateTimeOffset EffectiveAt { get; init; }
 }

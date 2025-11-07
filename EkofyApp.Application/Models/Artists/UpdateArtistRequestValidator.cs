@@ -41,7 +41,6 @@ public sealed class UpdateArtistRequestValidator : AbstractValidator<UpdateArtis
 
         RuleFor(x => x.BirthDate)
             .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 18).WithMessage("Date of Birth must be at least 18 years old")
-            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date")
             .When(x => x.BirthDate != null);
     }
 }

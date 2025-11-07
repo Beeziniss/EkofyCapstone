@@ -1,5 +1,4 @@
-﻿using EkofyApp.Api.GraphQL.DataLoader;
-using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
 using HotChocolate.Data;
 using MongoDB.Driver;

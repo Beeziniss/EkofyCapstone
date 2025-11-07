@@ -28,8 +28,7 @@ public sealed class ListenerRegisterRequestValidator : AbstractValidator<Listene
 
         RuleFor(x => x.BirthDate)
             .NotEmpty().WithMessage("Date of Birth is required")
-            .Must(date => HelperMethod.GetExactAge(date) >= 13).WithMessage("Date of Birth must be at least 14 years old")
-            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
+            .Must(date => HelperMethod.GetExactAge(date) >= 13).WithMessage("Date of Birth must be at least 13 years old");
 
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Gender must be Male or Female or Other");

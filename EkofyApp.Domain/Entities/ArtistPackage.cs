@@ -1,7 +1,6 @@
 ﻿using EkofyApp.Domain.Base;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
-using HotChocolate;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities
@@ -11,6 +10,7 @@ namespace EkofyApp.Domain.Entities
         [BsonId]
         [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
         public string Id { get; set; } = null!;
+        [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
         public string ArtistId { get; set; } = null!;
         public string PackageName { get; set; } = null!;
         public decimal Amount { get; set; }
