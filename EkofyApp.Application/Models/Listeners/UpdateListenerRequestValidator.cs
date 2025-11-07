@@ -37,7 +37,6 @@ public sealed class UpdateListenerRequestValidator : AbstractValidator<UpdateLis
 
         RuleFor(x => x.BirthDate)
             .NotEmpty().WithMessage("Date of Birth is required")
-            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 13).WithMessage("Date of Birth must be at least 14 years old")
-            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Date of Birth must be a valid date");
+            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 13).WithMessage("Date of Birth must be at least 13 years old");
     }
 }
