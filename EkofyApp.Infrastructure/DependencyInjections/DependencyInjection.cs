@@ -25,6 +25,7 @@ using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.Reviews;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.TopTracks;
@@ -72,6 +73,7 @@ using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Reports;
 using EkofyApp.Infrastructure.Services.RequestHubs;
+using EkofyApp.Infrastructure.Services.Reviews;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.TopTracks;
@@ -400,6 +402,7 @@ public static class DependencyInjection
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
         services.AddScoped<ITopTrackService, TopTrackService>();
+        services.AddScoped<IReviewService, Services.Reviews.ReviewService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
