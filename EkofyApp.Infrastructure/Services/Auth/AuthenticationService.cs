@@ -225,7 +225,10 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        if(loginRequest.IsRememberMe)
+        {
+            _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        }
 
         return new AuthListenerTokenResponse()
         {
@@ -394,7 +397,10 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        if(loginRequest.IsRememberMe)
+        {
+            _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        }
 
         return new AuthArtistTokenResponse()
         {
@@ -455,7 +461,10 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        if(loginRequest.IsRememberMe)
+        {
+            _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        }
 
         return new AuthModeratorTokenResponse()
         {
@@ -514,7 +523,10 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        if(loginRequest.IsRememberMe)
+        {
+            _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
+        }
 
         return new AuthAdminTokenResponse()
         {
