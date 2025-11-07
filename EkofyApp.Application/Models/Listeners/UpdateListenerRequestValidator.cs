@@ -36,7 +36,6 @@ public sealed class UpdateListenerRequestValidator : AbstractValidator<UpdateLis
             .IsInEnum().When(x => x.Gender != null).WithMessage("Gender must be valid value");
 
         RuleFor(x => x.BirthDate)
-            .NotEmpty().WithMessage("Date of Birth is required")
-            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 13).WithMessage("Date of Birth must be at least 13 years old");
+            .Must(date => date != null && HelperMethod.GetExactAge(date.Value) >= 13).When(x => x.BirthDate != null).WithMessage("Date of Birth must be at least 13 years old");
     }
 }
