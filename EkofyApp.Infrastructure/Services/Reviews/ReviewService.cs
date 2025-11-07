@@ -6,6 +6,7 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace EkofyApp.Infrastructure.Services.Reviews;
 public sealed class ReviewService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IReviewService
@@ -49,6 +50,11 @@ public sealed class ReviewService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     public async Task CreateReviewAsync(CreateReviewRequest createReviewRequest)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        if (await _unitOfWork.GetCollection<Review>().Find(x => x.ClientId == userId && x.PackageOrderId == createReviewRequest.PackageOrderId).AnyAsync())
+        {
+            throw new ConflictCustomException("You have already reviewed this package order");
+        }
 
         await _unitOfWork.GetCollection<Review>().InsertOneAsync(new Review
         {
@@ -104,5 +110,13 @@ public sealed class ReviewService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         {
             throw new UnprocessableEntityCustomException("Cannot delete review");
         }
+    }
+
+    public async Task<bool> CheckClientReviewedPackageOrderAsync(string clientId, string packageOrderId)
+    {
+        return await _unitOfWork.GetCollection<Review>()
+            .AsQueryable()
+            .Where(x => x.ClientId == clientId && x.PackageOrderId == packageOrderId && x.DeletedAt == null)
+            .AnyAsync();
     }
 }

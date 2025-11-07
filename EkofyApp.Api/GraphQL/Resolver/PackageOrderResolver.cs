@@ -19,7 +19,7 @@ public sealed class PackageOrderResolver
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Listener> GetListener([Parent] PackageOrder packageOrder, [Service] IUnitOfWork unitOfWork)
+    public IQueryable<Listener> GetClient([Parent] PackageOrder packageOrder, [Service] IUnitOfWork unitOfWork)
     {
         return unitOfWork.GetCollection<Listener>().AsQueryable().Where(x => x.UserId == packageOrder.ClientId);
     }
@@ -27,7 +27,7 @@ public sealed class PackageOrderResolver
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Artist> GetArtist([Parent] PackageOrder packageOrder, [Service] IUnitOfWork unitOfWork)
+    public IQueryable<Artist> GetProvider([Parent] PackageOrder packageOrder, [Service] IUnitOfWork unitOfWork)
     {
         return unitOfWork.GetCollection<Artist>().AsQueryable().Where(x => x.UserId == packageOrder.ProviderId);
     }
