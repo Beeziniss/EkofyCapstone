@@ -17,7 +17,7 @@ namespace EkofyApp.Domain.Entities
         public CurrencyType Currency { get; set; } = CurrencyType.vnd;
         public int EstimateDeliveryDays { get; set; }
         public string? Description { get; set; }
-        public int MaxRevisions { get; set; }
+        public int MaxRevision { get; set; }
         public List<Metadata> ServiceDetails { get; set; } = [];
         public ArtistPackageStatus Status { get; set; }
 

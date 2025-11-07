@@ -13,7 +13,7 @@ public sealed class RecordingProjection
     [BsonRepresentation(BsonType.ObjectId)]
     public string TrackId { get; set; } = null!; // Reference to the associated track
 
-    public string? Description { get; set; } // Description of the recording, if available
+    public string? Description { get; set; } // PackageDescription of the recording, if available
     public List<RecordingSplitProjection> RecordingSplits { get; set; } = []; // List of splits for the recording, e.g., 50% to Artist A, 50% to Artist B
 }
 

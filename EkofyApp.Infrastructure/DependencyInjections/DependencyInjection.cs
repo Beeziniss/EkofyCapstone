@@ -25,6 +25,7 @@ using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.Revenues;
 using EkofyApp.Application.ServiceInterfaces.Reviews;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
@@ -73,6 +74,7 @@ using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Reports;
 using EkofyApp.Infrastructure.Services.RequestHubs;
+using EkofyApp.Infrastructure.Services.Revenues;
 using EkofyApp.Infrastructure.Services.Reviews;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
@@ -403,6 +405,7 @@ public static class DependencyInjection
         services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
         services.AddScoped<ITopTrackService, TopTrackService>();
         services.AddScoped<IReviewService, Services.Reviews.ReviewService>();
+        services.AddScoped<IPlatformRevenueService, PlatformRevenueService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -723,6 +726,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(PaymentMethodType), new EnumMemberSerializer<PaymentMethodType>());
         BsonSerializer.RegisterSerializer(typeof(AggregationLevel), new EnumMemberSerializer<AggregationLevel>());
         BsonSerializer.RegisterSerializer(typeof(PolicyStatus), new EnumMemberSerializer<PolicyStatus>());
+        BsonSerializer.RegisterSerializer(typeof(OneOffType), new EnumMemberSerializer<OneOffType>());
 
         // Payout Trasnsaction
         BsonSerializer.RegisterSerializer(typeof(PayoutTransactionStatus), new EnumMemberSerializer<PayoutTransactionStatus>());

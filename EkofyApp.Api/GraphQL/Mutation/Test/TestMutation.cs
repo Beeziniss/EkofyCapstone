@@ -83,7 +83,7 @@ public sealed class TestMutation
     //        //UserId = ObjectId.GenerateNewId().ToString(),
     //        Name = "Test Entitlement",
     //        Code = "test_entitlement",
-    //        Description = "This is a test entitlement",
+    //        PackageDescription = "This is a test entitlement",
     //        ValueType = featureValueType,
     //        Value = value,
     //        ExpiredAt = DateTime.UtcNow.AddDays(30)

@@ -105,9 +105,9 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
     //                {
     //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Name)}", entitlementRequest.Name));
     //                }
-    //                if (entitlementRequest.Description != null)
+    //                if (entitlementRequest.PackageDescription != null)
     //                {
-    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.Description)}", entitlementRequest.Description));
+    //                    updates.Add(Builders<Subscription>.Update.Set($"{nameof(Subscription.Entitlements)}.$.{nameof(Entitlement.PackageDescription)}", entitlementRequest.PackageDescription));
     //                }
     //                if (entitlementRequest.ValueType != default)
     //                {
@@ -132,7 +132,7 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
     //                    {
     //                        Name = entitlementRequest.Name ?? throw new BadRequestCustomException("Entitlement Name is required"),
     //                        Code = entitlementRequest.Code,
-    //                        Description = entitlementRequest.Description ?? throw new BadRequestCustomException("Entitlement Description is required"),
+    //                        PackageDescription = entitlementRequest.PackageDescription ?? throw new BadRequestCustomException("Entitlement PackageDescription is required"),
     //                        ValueType = entitlementRequest.ValueType ?? throw new BadRequestCustomException("Entitlement Value Type is required"),
     //                        Value = entitlementRequest.Value,
     //                        ExpiredAt = entitlementRequest.ExpiredAt

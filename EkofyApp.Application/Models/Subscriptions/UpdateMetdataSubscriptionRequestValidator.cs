@@ -19,7 +19,7 @@ public sealed class UpdateMetdataSubscriptionRequestValidator : AbstractValidato
             .When(x => !string.IsNullOrEmpty(x.Name));
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).WithMessage("Description must not exceed 500 characters.")
+            .MaximumLength(500).WithMessage("PackageDescription must not exceed 500 characters.")
             .When(x => !string.IsNullOrEmpty(x.Description));
 
         RuleFor(x => x.Code)

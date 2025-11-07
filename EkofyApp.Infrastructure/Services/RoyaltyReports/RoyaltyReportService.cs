@@ -225,7 +225,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             //        Currency = CurrencyType.vnd.ToString(),
             //        Destination = stripeAccountId,
             //        TransferGroup = groupId,
-            //        Description = $"Royalty payout for {month}/{year}"
+            //        PackageDescription = $"Royalty payout for {month}/{year}"
             //    });
 
             //    //Lưu transaction vào DB để trace
@@ -237,7 +237,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             //        Amount = transfer.Amount,
             //        Currency = transfer.Currency,
             //        DestinationAccountId = transfer.DestinationId,
-            //        Description = transfer.Description,
+            //        PackageDescription = transfer.PackageDescription,
             //    };
 
             //    payoutTransactions.Add(payoutTransaction);

@@ -14,7 +14,7 @@ public sealed class Work : IEntityCustom // TODO: Chưa xong hết các trườn
     [BsonRepresentation(BsonType.ObjectId)]
     public string TrackId { get; set; } = null!; // Reference to the associated track
 
-    public string? Description { get; set; } // Description of the work, if available
+    public string? Description { get; set; } // PackageDescription of the work, if available
 
     public List<WorkSplit> WorkSplits { get; set; } = []; // List of splits for the work, e.g., 50% to Artist A, 50% to Artist B
 
