@@ -6,7 +6,7 @@ public sealed class CreateWorkRequestValidator : AbstractValidator<CreateWorkReq
     public CreateWorkRequestValidator()
     {
         RuleFor(x => x.Description)
-            .MaximumLength(500).WithMessage("Description must not exceed 500 characters");
+            .MaximumLength(500).WithMessage("PackageDescription must not exceed 500 characters");
 
         RuleFor(x => x.WorkSplits)
             .ForEach(x => x.SetValidator(new CreateWorkSplitRequestValidator()));

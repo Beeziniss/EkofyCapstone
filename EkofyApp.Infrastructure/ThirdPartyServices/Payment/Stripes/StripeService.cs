@@ -307,6 +307,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             Mode = "payment",
             SuccessUrl = createPaymentCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createPaymentCheckoutSessionRequest.CancelUrl,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30), // Đóng vai trò như duration của session nên không cần quan tâm múi giờ
             PaymentIntentData = new SessionPaymentIntentDataOptions
             {
                 ReceiptEmail = createPaymentCheckoutSessionRequest.IsReceiptEmail ? user.Email : null, // Gửi biên lai về email của customer
@@ -317,18 +318,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 { "is_subscription", "false" },
                 { "package_id", artistPackage.Id },
                 { "request_hub_id", createPaymentCheckoutSessionRequest.RequestHubId },
-                // Client Id = User Id từ payment transaction
-                { "provider_id", artistPackage.ArtistId },
                 { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId },
-                { "package_order_description", createPaymentCheckoutSessionRequest.PackageOrderDescription ?? string.Empty },
                 { "deadline", HelperMethod.NormalizeToStringUtcPlus7(createPaymentCheckoutSessionRequest.Deadline) },
                 { "platform_fee_percentage", platformFeePercentage },
-                // Deliveries thì không cần
-                { "package_name", artistPackage.PackageName },
-                { "package_amount", artistPackage.Amount.ToString() },
-                { "package_currency", artistPackage.Currency.ToString() },
-                { "package_description", artistPackage.Description ?? string.Empty },
-                { "package_status", artistPackage.Status.ToString() },
             },
             //InvoiceCreation = new SessionInvoiceCreationOptions
             //{
@@ -466,12 +458,13 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             //OriginContext = "web",
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createCheckoutSessionRequest.CancelUrl,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30), // Đóng vai trò như duration của session nên không cần quan tâm múi giờ
             InvoiceCreation = new SessionInvoiceCreationOptions
             {
                 Enabled = true, // Tạo hóa đơn
                 //InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
                 //{
-                //    Description = $"Invoice for {subscriptionPlan.Name} plan",
+                //    PackageDescription = $"Invoice for {subscriptionPlan.Name} plan",
                 //}
             },
             Discounts = couponIds != null ? couponIds?.Select(x => new SessionDiscountOptions

@@ -14,7 +14,7 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
             .MaximumLength(200).WithMessage("Track name must not exceed 200 characters.");
 
         RuleFor(x => x.Description)
-            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters.");
+            .MaximumLength(1000).WithMessage("PackageDescription must not exceed 1000 characters.");
 
         RuleFor(x => x.MainArtistIds)
             //.NotEmpty().WithMessage("At least one main artist ID is required.")

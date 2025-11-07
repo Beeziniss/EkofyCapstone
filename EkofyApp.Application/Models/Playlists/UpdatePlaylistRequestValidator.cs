@@ -15,7 +15,7 @@ public sealed class UpdatePlaylistRequestValidator : AbstractValidator<UpdatePla
             .When(x => !string.IsNullOrWhiteSpace(x.Name));
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).WithMessage("Description must not exceed 500 characters");
+            .MaximumLength(500).WithMessage("PackageDescription must not exceed 500 characters");
 
         RuleFor(x => x.CoverImage)
             .Must(url => Uri.IsWellFormedUriString(url, UriKind.Absolute)).WithMessage("Cover Image URL must be a valid URL")

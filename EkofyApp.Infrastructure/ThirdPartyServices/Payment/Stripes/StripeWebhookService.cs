@@ -487,15 +487,14 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     }
                     else
                     {
-                        oneOffSnapshot = new()
-                        {
-                            PackageName = checkoutSession.Metadata["package_name"],
-                            PackageAmount = Convert.ToDecimal(checkoutSession.Metadata["package_amount"]),
-                            PackageCurrency = Enum.Parse<CurrencyType>(checkoutSession.Metadata["package_currency"]),
-                            Description = checkoutSession.Metadata["package_description"],
-                            //ServiceDetails = artistPackage.ServiceDetails,
-                            Status = Enum.Parse<ArtistPackageStatus>(checkoutSession.Metadata["package_status"]),
-                        };
+                        ArtistPackage artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
+                            .Find(x => x.Id == checkoutSession.Metadata["package_id"])
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any artist package {checkoutSession.Metadata["package_id"]}");
+
+                        string userArtistId = await _unitOfWork.GetCollection<Artist>()
+                            .Find(x => x.Id == artistPackage.ArtistId)
+                            .Project(x => x.UserId)
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any user with artist {artistPackage.ArtistId}");
 
                         // TODO: Tạo package order
                         // Resolved: Đã tạo package order
@@ -503,17 +502,36 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         await _unitOfWork.GetCollection<PackageOrder>().InsertOneAsync(session, new PackageOrder
                         {
                             ClientId = transaction.UserId,
-                            ProviderId = checkoutSession.Metadata["provider_id"],
+                            ProviderId = userArtistId,
                             ArtistPackageId = checkoutSession.Metadata["package_id"],
                             PaymentTransactionId = transaction.Id,
                             ConversationId = checkoutSession.Metadata["conversation_id"],
                             Status = PackageOrderStatus.InProgress,
-                            Description = oneOffSnapshot.Description,
                             RevisionCount = 0,
                             Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
                             PlatformFeePercentage = platformFeePercentage,
                             ArtistFeePercentage = 100m - platformFeePercentage,
                         });
+
+                        oneOffSnapshot = new()
+                        {
+                            // Artist Package
+                            PackageName = artistPackage.PackageName,
+                            PackageAmount = artistPackage.Amount,
+                            PackageCurrency = artistPackage.Currency,
+                            EstimateDeliveryDays = artistPackage.EstimateDeliveryDays,
+                            PackageDescription = artistPackage.Description,
+                            MaxRevision = artistPackage.MaxRevision,
+                            ServiceDetails = artistPackage.ServiceDetails,
+                            ArtistPackageStatus = artistPackage.Status,
+
+                            // Package Order
+                            PlatformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]),
+                            ArtistFeePercentage = 100m - Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]),
+                            Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
+
+                            OneOffType = OneOffType.Payment,
+                        };
 
                         // Cập nhật trạng thái của các conversations
                         // Đóng các conversations không được chấp nhận
@@ -537,7 +555,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         // Cập nhật trạng thái của Request Hub
                         UpdateResult updateRequestHub = await _unitOfWork.GetCollection<RequestHub>()
                                 .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<RequestHub>.Update.Set(x => x.Status, RequestStatus.Closed));
-                        if(updateRequestHub.ModifiedCount == 0)
+                        if (updateRequestHub.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
                         }
@@ -562,6 +580,22 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         From = checkoutSession.Customer.Email,
                         To = "Ekofy" // Tạm thời
                     });
+                }
+                else if (stripeEvent.Type == EventTypes.CheckoutSessionExpired)
+                {
+                    CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
+
+                    // Cập nhật PaymentTransaction
+                    UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
+                        .Set(t => t.PaymentStatus, PaymentTransactionStatus.Unpaid)
+                        .Set(t => t.Status, TransactionStatus.Expired)
+                        .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                    UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, Builders<PaymentTransaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
+                    if(updateResult.ModifiedCount == 0)
+                    {
+                        throw new UnprocessableEntityCustomException($"Cannot update payment transaction {checkoutSession.Id} to expired.");
+                    }
                 }
             }
             catch (StripeException e)

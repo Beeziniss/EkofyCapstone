@@ -4,7 +4,7 @@ namespace EkofyApp.Application.Models.Subscriptions;
 public sealed record class CreateSubscriptionRequest
 {
     public string Name { get; init; } = null!; // DisplayName of the subscription plan
-    public string? Description { get; init; } // Description of the subscription plan
+    public string? Description { get; init; } // PackageDescription of the subscription plan
     public string Code { get; init; } = null!; // Unique code for the subscription plan
 
     public decimal Price { get; init; } // Amount of the subscription plan

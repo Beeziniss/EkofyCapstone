@@ -14,7 +14,6 @@ public sealed record class CreatePaymentCheckoutSessionRequest
 
     // Package Order
     public string ConversationId { get; init; } = null!;
-    public string? PackageOrderDescription { get; set; }
     public List<string> RequirementFiles { get; set; } = [];
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public DateTimeOffset Deadline { get; set; }

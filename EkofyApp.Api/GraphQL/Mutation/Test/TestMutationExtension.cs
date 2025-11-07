@@ -27,7 +27,7 @@
 
             //descriptor.Field(x => x.CreateEntilement(default!, default!, default!))
             //    .AllowAnonymous()
-            //    .Description("Create a test entitlement for demonstration purposes.");
+            //    .PackageDescription("Create a test entitlement for demonstration purposes.");
         }
     }
 }
