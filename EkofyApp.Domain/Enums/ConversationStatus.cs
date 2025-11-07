@@ -4,7 +4,7 @@ namespace EkofyApp.Domain.Enums;
 public enum ConversationStatus
 {
     [EnumMember(Value = "Pending")]
-    Pending,        // Request gửi đi, đang chờ Artist phản hồi
+    Pending,        // Request gửi đi, đang chờ Artist/ người tạo request phản hồi
     [EnumMember(Value = "Cancelled")]
     Cancelled,      // Bị từ chối / hủy bỏ trước khi tạo order
     [EnumMember(Value = "InProgress")]

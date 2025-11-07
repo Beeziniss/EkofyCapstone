@@ -2,9 +2,9 @@
 using FluentValidation;
 
 namespace EkofyApp.Application.Models.Stripes;
-public sealed class CreateCheckoutSessionRequestValidator : AbstractValidator<CreateSubscriptionCheckoutSessionRequest>
+public sealed class CreateSubscriptionCheckoutSessionRequestValidator : AbstractValidator<CreateSubscriptionCheckoutSessionRequest>
 {
-    public CreateCheckoutSessionRequestValidator()
+    public CreateSubscriptionCheckoutSessionRequestValidator()
     {
         RuleFor(x => x.SubscriptionCode)
             .NotEmpty().WithMessage("Subscription Code is required.")

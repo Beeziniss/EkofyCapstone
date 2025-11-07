@@ -20,6 +20,12 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
             return _unitOfWork.GetCollection<ArtistPackage>().AsQueryable().Where(ap => !ap.IsDelete);
         }
 
+        public IQueryable<ArtistPackage> GetArtistPackagesInConversation(string artistId)
+        {
+            return _unitOfWork.GetCollection<ArtistPackage>().AsQueryable()
+                .Where(ap => !ap.IsDelete && ap.Status == ArtistPackageStatus.Enabled && ap.ArtistId == artistId);
+        }
+
         public async Task CreateArtistPackageAsync(CreateArtistPackageRequest createRequest)
         {
             string newArtistPackageId = ObjectId.GenerateNewId().ToString();
@@ -33,6 +39,7 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
                 EstimateDeliveryDays = createRequest.EstimateDeliveryDays,
                 Description = createRequest.Description,
                 ServiceDetails = createRequest.ServiceDetails,
+                MaxRevisions = createRequest.MaxRevisions,
                 Status = ArtistPackageStatus.Pending,
             };
 

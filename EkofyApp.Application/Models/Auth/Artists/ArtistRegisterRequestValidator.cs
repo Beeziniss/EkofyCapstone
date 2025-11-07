@@ -30,8 +30,7 @@ public sealed class ArtistRegisterRequestValidator : AbstractValidator<ArtistReg
 
         RuleFor(x => x.BirthDate)
             .NotEmpty().WithMessage("Birth Date is required")
-            .GreaterThan(DateTimeOffset.MinValue).WithMessage("Birth Date must be in the past")
-            .LessThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Birth Date must be in the past");
+            .LessThanOrEqualTo(x => HelperMethod.GetUtcPlus7TimeOffset().AddYears(-18)).WithMessage("Birth Date must be in the past or you must be at least 18 years old");
 
         RuleFor(x => x.Gender)
             .IsInEnum().WithMessage("Gender must be Male or Female or Other");

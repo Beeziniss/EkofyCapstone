@@ -167,6 +167,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 
                 RoyaltyReport report = new()
                 {
+                    Id = ObjectId.GenerateNewId().ToString(),
                     TrackId = monthlyStreamCountProjection.TrackId,
                     Month = monthlyStreamCountProjection.Month,
                     Year = monthlyStreamCountProjection.Year,

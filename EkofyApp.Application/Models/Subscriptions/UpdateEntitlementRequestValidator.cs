@@ -41,6 +41,6 @@ public sealed class UpdateEntitlementRequestValidator : AbstractValidator<Update
             }).WithMessage("Value must match the specified ValueType.");
 
         RuleFor(x => x.ExpiredAt)
-            .GreaterThanOrEqualTo(HelperMethod.GetUtcPlus7TimeOffset()).When(x => x.ExpiredAt.HasValue).WithMessage("ExpiredAt must be a future date.");
+            .GreaterThanOrEqualTo(x => HelperMethod.GetUtcPlus7TimeOffset()).When(x => x.ExpiredAt.HasValue).WithMessage("ExpiredAt must be a future date.");
     }
 }

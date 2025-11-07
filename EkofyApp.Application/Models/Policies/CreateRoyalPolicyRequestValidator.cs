@@ -24,7 +24,7 @@ public sealed class CreateRoyalPolicyRequestValidator : AbstractValidator<Create
         //RuleFor(x => x.IsActive)
         //    .NotNull().WithMessage("IsActive must be specified.");
 
-        RuleFor(x => x.EffectiveAt)
-            .GreaterThan(HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Effective date must be in the future.");
+        //RuleFor(x => x.EffectiveAt)
+        //    .GreaterThan(x => HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Effective date must be in the future.");
     }
 }

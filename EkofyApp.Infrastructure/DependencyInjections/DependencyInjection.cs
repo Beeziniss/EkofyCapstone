@@ -25,6 +25,7 @@ using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.Reviews;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.TopTracks;
@@ -72,6 +73,7 @@ using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Reports;
 using EkofyApp.Infrastructure.Services.RequestHubs;
+using EkofyApp.Infrastructure.Services.Reviews;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
 using EkofyApp.Infrastructure.Services.TopTracks;
@@ -170,7 +172,8 @@ public static class DependencyInjection
             CheckoutSessionSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_CHECKOUT_SESSION is not set in the environment"),
             InvoiceSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE is not set in the environment"),
             InvoicePaymentSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_INVOICE_PAYMENT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_INVOICE_PAYMENT is not set in the environment"),
-            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment")
+            PayoutSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_PAYOUT") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_PAYOUT is not set in the environment"),
+            RefundSigningSecret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET_REFUND") ?? throw new UnconfiguredEnvironmentCustomException("STRIPE_WEBHOOK_SECRET_REFUND is not set in the environment"),
         };
 
         services.AddSingleton(stripeSetting);
@@ -399,6 +402,7 @@ public static class DependencyInjection
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
         services.AddScoped<ITopTrackService, TopTrackService>();
+        services.AddScoped<IReviewService, Services.Reviews.ReviewService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
