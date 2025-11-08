@@ -506,7 +506,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             ArtistPackageId = checkoutSession.Metadata["package_id"],
                             PaymentTransactionId = transaction.Id,
                             ConversationId = checkoutSession.Metadata["conversation_id"],
-                            Status = PackageOrderStatus.InProgress,
+                            Status = PackageOrderStatus.Paid,
                             RevisionCount = 0,
                             Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
                             PlatformFeePercentage = platformFeePercentage,
@@ -553,9 +553,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         }
 
                         // Cập nhật trạng thái của Request Hub
-                        UpdateResult updateRequestHub = await _unitOfWork.GetCollection<RequestHub>()
-                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<RequestHub>.Update.Set(x => x.Status, RequestStatus.Closed));
-                        if (updateRequestHub.ModifiedCount == 0)
+                        UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
+                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
+                        if(updateRequestHub.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
                         }

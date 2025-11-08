@@ -1,13 +1,13 @@
 ﻿using EkofyApp.Application.Models.RequestHub;
-using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.Requests;
 
 namespace EkofyApp.Api.GraphQL.Mutation.RequestHubs
 {
     [ExtendObjectType(typeof(MutationInitialization))]
     [MutationType]
-    public class RequestMutation(IRequestHubService requestHubService)
+    public class RequestMutation(IRequestService requestHubService)
     {
-        private readonly IRequestHubService _requestHubService = requestHubService;
+        private readonly IRequestService _requestHubService = requestHubService;
 
         public async Task<bool> CreateRequestAsync(RequestCreatingRequest request)
         {

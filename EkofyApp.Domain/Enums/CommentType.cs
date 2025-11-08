@@ -9,6 +9,6 @@ public enum CommentType
     Playlist,
     [EnumMember(Value = "Album")]
     Album,
-    [EnumMember(Value = "RequestHub")]
+    [EnumMember(Value = "Request")]
     RequestHub
 }

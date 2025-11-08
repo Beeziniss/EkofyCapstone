@@ -1,6 +1,6 @@
 ﻿using EkofyApp.Application.Models.RequestHub;
 using EkofyApp.Application.ServiceInterfaces;
-using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+using EkofyApp.Application.ServiceInterfaces.Requests;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -8,30 +8,30 @@ using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
-namespace EkofyApp.Infrastructure.Services.RequestHubs
+namespace EkofyApp.Infrastructure.Services.Requests
 {
-    public class RequestHubService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IRequestHubService
+    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IRequestService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-        public IQueryable<RequestHub> GetRequestsQueryable()
+        public IQueryable<Request> GetRequestsQueryable()
         {
-            return _unitOfWork.GetCollection<RequestHub>().AsQueryable();
+            return _unitOfWork.GetCollection<Request>().AsQueryable();
         }
 
-        public async Task<RequestHub?> GetRequestByIdAsync(string requestId)
+        public async Task<Request?> GetRequestByIdAsync(string requestId)
         {
-            return await _unitOfWork.GetCollection<RequestHub>()
+            return await _unitOfWork.GetCollection<Request>()
                                     .Find(rh => rh.Id == requestId && rh.Status == RequestStatus.Open)
                                     .FirstOrDefaultAsync();
         }
 
-        public IQueryable<RequestHub> GetOwnRequestsAsync()
+        public IQueryable<Request> GetOwnRequestsAsync()
         {
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
             // Không cho xem lại các request đã bị blocked hay đã xóa
-            return _unitOfWork.GetCollection<RequestHub>()
+            return _unitOfWork.GetCollection<Request>()
                                                       .AsQueryable()
                                                       .Where(rh => rh.RequestUserId == userId && (
                                                              rh.Status == RequestStatus.Open ||
@@ -39,9 +39,9 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                                                       ));
         }
 
-        public IQueryable<RequestHub> SearchRequests(string searchTerm, bool isIndividual)
+        public IQueryable<Request> SearchRequests(string searchTerm, bool isIndividual)
         {
-            var query = _unitOfWork.GetCollection<RequestHub>().AsQueryable();
+            var query = _unitOfWork.GetCollection<Request>().AsQueryable();
             string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
 
             //search cá nhân
@@ -68,7 +68,7 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             // tạo request từ data của model
-            RequestHub requestHub = new()
+            Request requestHub = new()
             {
                 RequestUserId = userId,
                 Title = request.Title,
@@ -81,7 +81,7 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                 Status = RequestStatus.Open
             };
             // lưu request vừa mới tạo
-            await _unitOfWork.GetCollection<RequestHub>().InsertOneAsync(requestHub);
+            await _unitOfWork.GetCollection<Request>().InsertOneAsync(requestHub);
             return true;
         }
 
@@ -89,9 +89,9 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
         {
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            RequestHub requestHub = await _unitOfWork.GetCollection<RequestHub>()
+            Request requestHub = await _unitOfWork.GetCollection<Request>()
                                                      .Find(rh => rh.Id == request.Id && rh.Status == RequestStatus.Open)
-                                                     .Project<RequestHub>(Builders<RequestHub>.Projection
+                                                     .Project<Request>(Builders<Request>.Projection
                                                         .Include(rh => rh.RequestUserId)
                                                         .Include(rh => rh.Deadline))
                                                      .FirstOrDefaultAsync();
@@ -102,9 +102,9 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
                 throw new ForbiddenCustomException("You do not have permission to edit request!");
             }
 
-            List<UpdateDefinition<RequestHub>> updatedFields = new();
+            List<UpdateDefinition<Request>> updatedFields = new();
 
-            UpdateDefinitionBuilder<RequestHub> updateBuilder = Builders<RequestHub>.Update;
+            UpdateDefinitionBuilder<Request> updateBuilder = Builders<Request>.Update;
 
             if (request.Title != null)
             {
@@ -141,7 +141,7 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
             //gộp các field đã được cập nhật
             var updateBuilderCombine = updateBuilder.Combine(updatedFields);
 
-            var result = await _unitOfWork.GetCollection<RequestHub>()
+            var result = await _unitOfWork.GetCollection<Request>()
                              .UpdateOneAsync(rh => rh.Id == request.Id, updateBuilderCombine);
 
             return result.ModifiedCount > 0;
@@ -149,10 +149,10 @@ namespace EkofyApp.Infrastructure.Services.RequestHubs
 
         public async Task<bool> BlockRequestAsync(string requestId)
         {
-            var update = Builders<RequestHub>.Update
+            var update = Builders<Request>.Update
                                              .Set(rh => rh.Status, RequestStatus.Blocked)
                                              .Set(rh => rh.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
-            var result = await _unitOfWork.GetCollection<RequestHub>()
+            var result = await _unitOfWork.GetCollection<Request>()
                              .UpdateOneAsync(rh => rh.Id == requestId, update);
             return result.ModifiedCount > 0;
         }

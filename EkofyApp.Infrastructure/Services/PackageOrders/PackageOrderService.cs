@@ -8,6 +8,7 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
@@ -20,11 +21,31 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             return _unitOfWork.GetCollection<PackageOrder>().AsQueryable();
         }
 
-        //public async Task<bool> BuyArtistPackageAsync(string artistPackageId, string userId)
-        //{
-        //    // Implementation for buying an artist package
-        //    return true;
-        //}
+        //hàm này dùng chung cho cả 2
+        public async Task<bool> AcceptRequestByArtist(string packageOrderId)
+        {
+            //lấy ra xem order này có được phép cập nhật không
+            bool isOrderExist = await _unitOfWork.GetCollection<PackageOrder>().Find(po => po.Id == packageOrderId && po.Status != PackageOrderStatus.Paid).AnyAsync();
+
+            if (!isOrderExist)
+            {
+                throw new BadRequestCustomException("This request haven't been paid, not found or close!");
+            }
+
+            //cập nhật trạng thái lại
+            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress);
+
+            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, update);
+
+            return result.ModifiedCount > 0;
+        }
+
+
+        #region FOR DIRECT REQUEST ONLY
+
+        #endregion
+
+        #region FOR REQUEST HUB ONLY
 
         public async Task<bool> SubmitDeliverytAsync(SubmitDeliveryRequest request)
         {
@@ -110,6 +131,46 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             return result.ModifiedCount > 0;
         }
 
+        public async Task<bool> SwitchStatusByRequestor(ChangeOrderStatusRequest request)
+        {
+            ProjectionDefinition<PackageOrder> projection = Builders<PackageOrder>.Projection.Include(po => po.Status);
+
+            var orderPackage = _unitOfWork.GetCollection<PackageOrder>()
+                                          .Find(po => po.Id == request.Id && 
+                                                      (po.Status == PackageOrderStatus.InProgress ||
+                                                      po.Status == PackageOrderStatus.Paid))
+                                          .Project<PackageOrder>(projection)
+                                          .FirstOrDefault()
+                               ?? throw new BadRequestCustomException("You can not do any action for this request!");
+
+            //check ở đây xem là đã vô làm việc chưa? Nếu chưa thì refund 100%
+            if(orderPackage.Status == PackageOrderStatus.Paid && request.Status == PackageOrderStatus.Cancelled)
+            {
+                //REFUND HERE
+            }
+
+
+            //nếu đã làm việc thì sẽ chuyển qua cho mod xử lý
+            if(orderPackage.Status == PackageOrderStatus.InProgress && request.Status == PackageOrderStatus.Refund)
+            {
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
+                var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
+                return result.ModifiedCount > 0;
+            }
+            return true;
+        }
+
+        // FOR MOD
+        public async Task<bool> RefundPartially()
+        {
+            // assign model above and send it to invoke method
+
+            // 1 là cho refund và thực hiện refund
+            // 2 là không cho refund, gửi lý do qua thông báo và đặt lại trạng thái về in progress
+            return true;
+        }
+
+
         //FOR BACKGROUND JOB
         public async Task ApproveDeliveryAutomatically()
         {
@@ -130,5 +191,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             //TODO: REFUND HERRE
             //_stripeService.EscrowReleaseAsync(packageOrderId)
         }
+
+
+        #endregion
     }
 }

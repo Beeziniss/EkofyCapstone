@@ -10,6 +10,6 @@ namespace EkofyApp.Application.Models.ArtistPackage
         public int EstimateDeliveryDays { get; init; }
         public string? Description { get; init; }
         public List<Metadata> ServiceDetails { get; init; } = [];
-        public int MaxRevisions { get; init; }
+        public int MaxRevision { get; init; }
     }
 }
