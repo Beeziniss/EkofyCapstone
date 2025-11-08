@@ -87,7 +87,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     .Limit(limit)
                     .ToListAsync(ct);
 
-            if(monthlyStreamCountProjections.Count == 0)
+            if (monthlyStreamCountProjections.Count == 0)
             {
                 throw new NotFoundCustomException($"No MonthlyStreamCount records found for month={month}, year={year} to process.");
             }
@@ -254,7 +254,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             {
                 string userId = userGroup.Key;
                 var userSplits = userGroup.Value;
-                
+
                 // Lấy artistStripeAccountId từ UserId
                 string? artistStripeAccountId = await _unitOfWork.GetCollection<User>()
                     .Find(x => x.Id == userId)
@@ -306,7 +306,18 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     }
 
                     // Thực hiện payout thực sự
-                    Payout payoutResponse = await _stripeService.CreateStandardPayoutAsync(artistStripeAccountId, stripeTotalAmountLong,  CurrencyType.sgd.ToString());
+                    Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong, CurrencyType.sgd.ToString());
+
+                    // Cập nhật payout royalty amount cho Platform
+                    UpdateResult updatePayoutRoyaltyResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                        .UpdateOneAsync(session,
+                            _ => true,
+                            Builders<PlatformRevenue>.Update.Inc(x => x.RoyaltyPayoutAmount, totalVndAmount),
+                            cancellationToken: ct);
+                    if (updatePayoutRoyaltyResult.ModifiedCount == 0)
+                    {
+                        _logger.LogError("Failed to update PlatformRevenue with payout royalty amount.");
+                    }
 
                     // Lưu transaction cho từng report
                     foreach (var item in userSplits)
@@ -327,7 +338,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                         };
 
                         payoutTransactions.Add(payoutTransaction);
-                        
+
                         // Đánh dấu là đã được transfer/payout
                         item.Split.IsTransferred = true;
                     }
@@ -339,7 +350,7 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     {
                         item.Split.IsTransferred = false;
                     }
-                    
+
                     // Có thể throw hoặc continue tùy business logic
                     throw new BadRequestCustomException($"Failed to process payout for user {userId}: {ex.Message}");
                 }
@@ -375,154 +386,4 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             }
         });
     }
-
-    #region Chưa đụng đến
-    /// <summary>
-    /// Manual payout cho một artist cụ thể
-    /// </summary>
-    public async Task<bool> ProcessPayoutForArtistAsync(string artistId, decimal amount, bool isInstant = false, CancellationToken ct = default)
-    {
-        try
-        {
-            // Lấy thông tin artist
-            string userId = await _unitOfWork.GetCollection<Artist>()
-                .Find(x => x.UserId == artistId)
-                .Project(x => x.UserId)
-                .FirstOrDefaultAsync(ct) ?? throw new NotFoundCustomException($"Artist {artistId} not found");
-
-            // Lấy thông tin user
-            User user = await _unitOfWork.GetCollection<User>()
-                .Find(x => x.Id == userId && x.Role == UserRole.Artist)
-                .Project<User>(Builders<User>.Projection
-                    .Include(x => x.Id)
-                    .Include(x => x.FullName)
-                    .Include(x => x.StripeAccountId))
-                .FirstOrDefaultAsync(ct) ?? throw new NotFoundCustomException($"Artist for user {userId} not found");
-
-            if (string.IsNullOrEmpty(user.StripeAccountId))
-            {
-                throw new BadRequestCustomException($"Artist {user.FullName} does not have Stripe account connected");
-            }
-
-            long stripeAmount = Convert.ToInt64(amount * 100); // Convert to cents
-
-            // Kiểm tra balance
-            Balance accountBalance = await _stripeService.GetConnectedAccountBalanceAsync(user.StripeAccountId);
-            long availableBalance = accountBalance.Available.FirstOrDefault()?.Amount ?? 0;
-
-            if (availableBalance < stripeAmount)
-            {
-                throw new BadRequestCustomException($"Insufficient balance. Available: ${availableBalance / 100.0:F2}, Required: ${amount:F2}");
-            }
-
-            // Thực hiện payout
-            Payout payoutResponse = isInstant 
-                ? await _stripeService.CreateInstantPayoutAsync(user.StripeAccountId, stripeAmount)
-                : await _stripeService.CreateStandardPayoutAsync(user.StripeAccountId, stripeAmount);
-
-            // Lưu transaction
-            PayoutTransaction payoutTransaction = new()
-            {
-                UserId = artistId,
-                RoyaltyReportId = ObjectId.GenerateNewId().ToString(), // Manual payout không liên kết với specific report
-                StripeTransferId = payoutResponse.Id,
-                Amount = amount,
-                Currency = payoutResponse.Currency,
-                DestinationAccountId = user.StripeAccountId,
-                Description = $"Manual {(isInstant ? "instant" : "standard")} payout for {user.FullName}",
-                Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status),
-                Method = payoutResponse.Method,
-            };
-
-            await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(payoutTransaction, cancellationToken: ct);
-
-            _logger.LogInformation($"Successfully processed manual payout for user {artistId}, amount=${amount:F2}, payoutId={payoutResponse.Id}");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to process manual payout for user {artistId}, amount=${amount:F2}");
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Batch payout cho tất cả artists có pending royalty trong tháng
-    /// </summary>
-    public async Task<bool> ProcessPayoutsForAllArtistsAsync(int month, int year, bool isInstant = false, CancellationToken ct = default)
-    {
-        try
-        {
-            // Lấy tất cả royalty reports chưa được payout trong tháng
-            var pendingReports = await _unitOfWork.GetCollection<RoyaltyReport>()
-                .Find(r => r.Month == month && r.Year == year && 
-                          r.RoyaltySplits.Any(s => s.IsTransferred == false))
-                .ToListAsync(ct);
-
-            if (!pendingReports.Any())
-            {
-                _logger.LogInformation($"No pending royalty reports found for {month}/{year}");
-                return true;
-            }
-
-            // Nhóm theo artistId và tính tổng amount
-            var artistPayouts = pendingReports
-                .SelectMany(r => r.RoyaltySplits.Where(s => !s.IsTransferred)
-                    .Select(s => new { ArtistId = s.UserId, Amount = s.Amount, ReportId = r.Id, Split = s }))
-                .GroupBy(x => x.ArtistId)
-                .ToDictionary(g => g.Key, g => new { 
-                    TotalAmount = g.Sum(x => x.Amount),
-                    Items = g.ToList()
-                });
-
-            int successCount = 0;
-            int failCount = 0;
-
-            foreach (var artistPayout in artistPayouts)
-            {
-                try
-                {
-                    string artistId = artistPayout.Key;
-                    decimal totalAmount = artistPayout.Value.TotalAmount;
-
-                    // Process payout for this user
-                    await ProcessPayoutForArtistAsync(artistId, totalAmount, isInstant, ct);
-
-                    // Mark all splits as transferred
-                    var reportIds = artistPayout.Value.Items.Select(x => x.ReportId).Distinct();
-                    foreach (string reportId in reportIds)
-                    {
-                        UpdateDefinition<RoyaltyReport> updateDefinition = Builders<RoyaltyReport>.Update
-                            .Set("RoyaltySplits.$[elem].IsTransferred", true);
-
-                        ArrayFilterDefinition<RoyaltyReport> arrayFilter = new BsonDocumentArrayFilterDefinition<RoyaltyReport>(
-    new BsonDocument("elem.UserId", artistId));
-
-                        await _unitOfWork.GetCollection<RoyaltyReport>()
-                            .UpdateOneAsync(
-                                x => x.Id == reportId,
-                                updateDefinition,
-                                new UpdateOptions { ArrayFilters = new[] { arrayFilter } },
-                                ct);
-                    }
-
-                    successCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to process batch payout for user {artistPayout.Key}");
-                    failCount++;
-                }
-            }
-
-            _logger.LogInformation($"Batch payout completed. Success: {successCount}, Failed: {failCount}");
-            return failCount == 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to process batch payouts for {month}/{year}");
-            throw;
-        }
-    }
-    #endregion
 }
