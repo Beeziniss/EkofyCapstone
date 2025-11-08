@@ -222,8 +222,8 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         SubscriptionTier currentSubscriptionTier = Enum.Parse<SubscriptionTier>(product.Metadata["subscription_tier"]);
                                         int currentSubscriptionVersion = Convert.ToInt32(product.Metadata["subscription_version"]);
 
-                                        string userId = await _unitOfWork.GetCollection<User>().Find(x => x.StripeCustomerId == customerId)
-                                            .Project(x => x.Id)
+                                        User user = await _unitOfWork.GetCollection<User>().Find(x => x.StripeCustomerId == customerId)
+                                            //.Project(x => x.Id)
                                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {customerId}");
 
                                         string stripePriceId = invoice.Lines.Data[0].Pricing.PriceDetails.Price;
@@ -268,15 +268,17 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         if (latestVersion > currentSubscriptionVersion) // Giả sử có thay đổi gói currentSubscription
                                         {
                                             // Gói version mới muốn thay đổi sang
-                                            string latestSubscriptionId = await _unitOfWork.GetCollection<Subscription>()
+                                            Subscription latestSubscription = await _unitOfWork.GetCollection<Subscription>()
                                              .Find(x => x.Tier == currentSubscriptionTier &&
                                                 x.Status == SubscriptionStatus.Active &&
                                                 x.Version == latestVersion)
-                                             .Project(x => x.Id)
+                                             //.Project<Subscription>(Builders<Subscription>.Projection
+                                             //   .Include(x => x.Id)
+                                             //   .Include(x => x.Amount))
                                              .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found currentSubscription");
 
                                             FilterDefinition<SubscriptionPlan> subcriptionPlanFilter = Builders<SubscriptionPlan>.Filter.And(
-                                                Builders<SubscriptionPlan>.Filter.Eq(x => x.SubscriptionId, latestSubscriptionId),
+                                                Builders<SubscriptionPlan>.Filter.Eq(x => x.SubscriptionId, latestSubscription.Id),
                                                 Builders<SubscriptionPlan>.Filter.Eq(x => x.StripeProductActive, true),
                                                 Builders<SubscriptionPlan>.Filter.ElemMatch(x => x.SubscriptionPlanPrices, e => e.Interval == Enum.Parse<PeriodTime>(interval)));
 
@@ -284,7 +286,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                             string lastestStripePriceId = await _unitOfWork.GetCollection<SubscriptionPlan>()
                                                 .Find(subcriptionPlanFilter)
                                                 .Project(x => x.SubscriptionPlanPrices.First().StripePriceId)
-                                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found stripe price id with the same {interval} or currentSubscription {latestSubscriptionId}");
+                                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found stripe price id with the same {interval} or currentSubscription {latestSubscription.Id}");
+
+                                            SubscriptionPlan lastestSubscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
+                                                .Find(subcriptionPlanFilter)
+                                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active currentSubscription");
 
                                             // Cập nhật currentSubscription của customer
                                             await subscriptionService.UpdateAsync(stripeSubcription.Id, new SubscriptionUpdateOptions
@@ -302,25 +308,135 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                             });
 
                                             // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                             // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                            await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, latestSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
+                                            await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, latestSubscription.Id, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
 
                                             // Cấp quyền entitlements về currentSubscription tương ứng
-                                            await _effectiveEntitlementService.RebuildTierAsync(session, userId, UserRole.Listener, latestSubscriptionId);
+                                            await _effectiveEntitlementService.RebuildTierAsync(session, user.Id, UserRole.Listener, latestSubscription.Id);
+
+                                            // Tạo payment transaction
+                                            await _unitOfWork.GetCollection<PaymentTransaction>().InsertOneAsync(session, new PaymentTransaction
+                                            {
+                                                UserId = user.Id,
+                                                StripeSubscriptionId = stripeSubscriptionId,
+                                                StripeInvoiceId = invoice.Id,
+                                                StripePaymentMethod = [],
+                                                Amount = latestSubscription.Amount,
+                                                Currency = "vnd",
+                                                PaymentStatus = PaymentTransactionStatus.Paid,
+                                                Status = TransactionStatus.Completed,
+                                            });
+
+                                            // Tạo invoice
+                                            await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
+                                            {
+                                                UserId = user.Id,
+                                                SubscriptionSnapshot = new SubscriptionSnapshot
+                                                {
+                                                    // Subscription
+                                                    SubscriptionName = latestSubscription.Name,
+                                                    SubscriptionDescription = latestSubscription.Description,
+                                                    SubscriptionCode = latestSubscription.Code,
+                                                    SubscriptionVersion = latestSubscription.Version,
+                                                    SubscriptionAmount = latestSubscription.Amount,
+                                                    SubscriptionTier = latestSubscription.Tier,
+                                                    SubscriptionStatus = latestSubscription.Status,
+
+                                                    // Subscription Plan
+                                                    SubscriptionPlanPrices = lastestSubscriptionPlan.SubscriptionPlanPrices,
+                                                    StripeProductId = lastestSubscriptionPlan.StripeProductId,
+                                                    StripeProductActive = lastestSubscriptionPlan.StripeProductActive,
+                                                    StripeProductName = lastestSubscriptionPlan.StripeProductName,
+                                                    StripeProductImages = lastestSubscriptionPlan.StripeProductImages,
+                                                    StripeProductType = lastestSubscriptionPlan.StripeProductType,
+                                                    StripeProductMetadata = lastestSubscriptionPlan.StripeProductMetadata,
+                                                },
+                                                FullName = user.FullName,
+                                                Email = user.Email,
+                                                Country = "VN",
+                                                Amount = latestSubscription.Amount,
+                                                Currency = "vnd",
+                                                StripeInvoiceId = invoice.Id,
+                                                From = user.FullName,
+                                                To = "Ekofy",
+                                            });
+
+                                            // Cập nhật subscription revenue
+                                            await _unitOfWork.GetCollection<PlatformRevenue>()
+                                                .UpdateOneAsync(session, _ => true, Builders<PlatformRevenue>.Update.Inc(x => x.SubscriptionRevenue, latestSubscription.Amount));
 
                                             break;
                                         }
 
                                         // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
 
                                         // Tạo mới UserSubscription mỗi lần có thanh toán thành công
-                                        await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, currentSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
+                                        await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, currentSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
 
                                         // Cấp quyền entitlements về currentSubscription tương ứng
-                                        await _effectiveEntitlementService.RebuildTierAsync(session, userId, UserRole.Listener, currentSubscriptionId);
+                                        await _effectiveEntitlementService.RebuildTierAsync(session, user.Id, UserRole.Listener, currentSubscriptionId);
+
+                                        Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
+                                            .Find(x => x.Id == currentSubscriptionId)
+                                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found currentSubscription");
+
+                                        SubscriptionPlan subscriptionPlan = await _unitOfWork.GetCollection<SubscriptionPlan>()
+                                            .Find(x => x.SubscriptionId == subscription.Id)
+                                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active currentSubscription");
+
+                                        // Tạo payment transaction
+                                        await _unitOfWork.GetCollection<PaymentTransaction>().InsertOneAsync(session, new PaymentTransaction
+                                        {
+                                            UserId = user.Id,
+                                            StripeSubscriptionId = stripeSubscriptionId,
+                                            StripeInvoiceId = invoice.Id,
+                                            StripePaymentMethod = [],
+                                            Amount = subscription.Amount,
+                                            Currency = "vnd",
+                                            PaymentStatus = PaymentTransactionStatus.Paid,
+                                            Status = TransactionStatus.Completed,
+                                        });
+
+                                        // Tạo invoice
+                                        await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
+                                        {
+                                            UserId = user.Id,
+                                            SubscriptionSnapshot = new SubscriptionSnapshot
+                                            {
+                                                // Subscription
+                                                SubscriptionName = subscription.Name,
+                                                SubscriptionDescription = subscription.Description,
+                                                SubscriptionCode = subscription.Code,
+                                                SubscriptionVersion = subscription.Version,
+                                                SubscriptionAmount = subscription.Amount,
+                                                SubscriptionTier = subscription.Tier,
+                                                SubscriptionStatus = subscription.Status,
+
+                                                // Subscription Plan
+                                                SubscriptionPlanPrices = subscriptionPlan.SubscriptionPlanPrices,
+                                                StripeProductId = subscriptionPlan.StripeProductId,
+                                                StripeProductActive = subscriptionPlan.StripeProductActive,
+                                                StripeProductName = subscriptionPlan.StripeProductName,
+                                                StripeProductImages = subscriptionPlan.StripeProductImages,
+                                                StripeProductType = subscriptionPlan.StripeProductType,
+                                                StripeProductMetadata = subscriptionPlan.StripeProductMetadata,
+                                            },
+                                            FullName = user.FullName,
+                                            Email = user.Email,
+                                            Country = "VN",
+                                            Amount = subscription.Amount,
+                                            Currency = "vnd",
+                                            StripeInvoiceId = invoice.Id,
+                                            From = user.FullName,
+                                            To = "Ekofy",
+                                        });
+
+                                        // Cập nhật subscription revenue
+                                        await _unitOfWork.GetCollection<PlatformRevenue>()
+                                            .UpdateOneAsync(session, _ => true, Builders<PlatformRevenue>.Update.Inc(x => x.SubscriptionRevenue, subscription.Amount));
 
                                         break;
                                     }

@@ -544,14 +544,14 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createCheckoutSessionRequest.CancelUrl,
             ExpiresAt = DateTime.UtcNow.AddMinutes(30), // Đóng vai trò như duration của session nên không cần quan tâm múi giờ
-            InvoiceCreation = new SessionInvoiceCreationOptions
-            {
-                Enabled = true, // Tạo hóa đơn
-                //InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
-                //{
-                //    PackageDescription = $"Invoice for {subscriptionPlan.Name} plan",
-                //}
-            },
+            //InvoiceCreation = new SessionInvoiceCreationOptions
+            //{
+            //    Enabled = true, // Tạo hóa đơn
+            //    //InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
+            //    //{
+            //    //    PackageDescription = $"Invoice for {subscriptionPlan.Name} plan",
+            //    //}
+            //},
             Discounts = couponIds != null ? couponIds?.Select(x => new SessionDiscountOptions
             {
                 Coupon = x
@@ -720,7 +720,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 UserId = packageOrder.ProviderId,
                 StripeTransferId = transferResponse.Id,
                 StripePayoutId = payoutResponse.Id,
-                Amount = HelperCurrencyConverter.ConvertSgdCentsDecimalToVndDecimal(stripeAmountPackageOrder),
+                Amount = artistAmount,
                 Currency = CurrencyType.vnd.ToString(),
                 DestinationAccountId = artistStripeAccountId,
                 Description = payoutResponse.Description,
@@ -731,7 +731,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             // Cập nhật Payout Service cho Platform
             UpdateResult updateResult = await _unitOfWork.GetCollection<PlatformRevenue>()
                 .UpdateOneAsync(session, _ => true, Builders<PlatformRevenue>.Update
-                    .Inc(x => x.ServicePayoutAmount, HelperCurrencyConverter.ConvertSgdCentsDecimalToVndDecimal(stripeAmountPackageOrder))
+                    .Inc(x => x.ServicePayoutAmount, artistAmount)
                     .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
             if (updateResult.ModifiedCount == 0)
             {
