@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.ServiceInterfaces.RequestHubs;
+﻿using EkofyApp.Application.ServiceInterfaces.Requests;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using HotChocolate.Data;
@@ -8,22 +8,22 @@ namespace EkofyApp.Api.GraphQL.Query.RequestHubs;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class RequestQuery(IRequestHubService requestHubService)
+public class RequestQuery(IRequestService requestHubService)
 {
-    private readonly IRequestHubService _requestHubService = requestHubService;
+    private readonly IRequestService _requestHubService = requestHubService;
 
     [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
     [UseSorting<Track>]
-    public IQueryable<RequestHub> GetRequests()
+    public IQueryable<Request> GetRequests()
     {
         return _requestHubService.GetRequestsQueryable();
     }
 
     [AllowAnonymous]
-    public async Task<RequestHub?> GetRequestDetailByIdAsync(string requestId)
+    public async Task<Request?> GetRequestDetailByIdAsync(string requestId)
     {
         return await _requestHubService.GetRequestByIdAsync(requestId);
     }
@@ -33,7 +33,7 @@ public class RequestQuery(IRequestHubService requestHubService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<Track>]
-    public IQueryable<RequestHub> SearchRequests(string searchTerm, bool isIndividual)
+    public IQueryable<Request> SearchRequests(string searchTerm, bool isIndividual)
     {
         return _requestHubService.SearchRequests(searchTerm, isIndividual);
     }
@@ -42,7 +42,7 @@ public class RequestQuery(IRequestHubService requestHubService)
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    public IQueryable<RequestHub> GetOwnRequests()
+    public IQueryable<Request> GetOwnRequests()
     {
         return _requestHubService.GetOwnRequestsAsync();
     }

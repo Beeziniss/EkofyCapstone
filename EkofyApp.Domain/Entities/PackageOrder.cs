@@ -22,7 +22,6 @@ public sealed class PackageOrder : TimeStamped
     public string ConversationId { get; set; } = null!;
 
     public PackageOrderStatus Status { get; set; }
-    public string? Description { get; set; }
     public int RevisionCount { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public DateTimeOffset Deadline { get; set; }

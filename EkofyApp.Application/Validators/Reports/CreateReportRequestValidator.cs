@@ -15,9 +15,9 @@ public sealed class CreateReportRequestValidator : AbstractValidator<CreateRepor
             .IsInEnum().WithMessage("Invalid report type");
 
         RuleFor(x => x.Description)
-            .NotEmpty().WithMessage("Description is required")
-            .MinimumLength(10).WithMessage("Description must be at least 10 characters")
-            .MaximumLength(1000).WithMessage("Description cannot exceed 1000 characters");
+            .NotEmpty().WithMessage("PackageDescription is required")
+            .MinimumLength(10).WithMessage("PackageDescription must be at least 10 characters")
+            .MaximumLength(1000).WithMessage("PackageDescription cannot exceed 1000 characters");
 
         RuleFor(x => x.RelatedContentId)
             .Length(24).WithMessage("Invalid content ID format")

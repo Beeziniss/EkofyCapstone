@@ -10,9 +10,10 @@ public sealed class HelperCurrencyConverter
     }
 
     // Chuyển từ SGD sang VND
-    public static decimal ConvertSgdToVnd(decimal amountInSgd)
+    public static decimal ConvertSgdCentsDecimalToVndDecimal(long sgdAmountInCents)
     {
-        return amountInSgd * ExchangeRateSgdToVnd;
+        decimal sgd = sgdAmountInCents / 100m; // convert cents → SGD
+        return sgd * ExchangeRateSgdToVnd;
     }
 
     // Chuyển từ VND sang SGD

@@ -14,7 +14,7 @@ public sealed class Playlist : TimeStamped, IEntityCustom
 
     public string Name { get; set; } = null!; // DisplayName of the playlist, e.g., "Chill Vibes"
     public string NameUnsigned { get; set; } = null!; // Unsign version of the playlist name for search optimization
-    public string? Description { get; set; } // Description of the playlist
+    public string? Description { get; set; } // PackageDescription of the playlist
     public string? CoverImage { get; set; } // URL to the cover image of the playlist
 
     public List<PlaylistTracksInfo> TracksInfo { get; set; } = [];

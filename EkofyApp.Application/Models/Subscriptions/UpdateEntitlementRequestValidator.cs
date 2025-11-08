@@ -14,11 +14,11 @@ public sealed class UpdateEntitlementRequestValidator : AbstractValidator<Update
             .NotEmpty().WithMessage("Code is required.");
 
         RuleFor(x => x.Description)
-            .NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.Code) && x.ValueType != null && x.Value != null && !string.IsNullOrWhiteSpace(x.Name)).WithMessage("Description is required when Code, ValueType or Value is provided.")
-            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description)).WithMessage("Description must not exceed 500 characters.");
+            .NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.Code) && x.ValueType != null && x.Value != null && !string.IsNullOrWhiteSpace(x.Name)).WithMessage("PackageDescription is required when Code, ValueType or Value is provided.")
+            .MaximumLength(500).When(x => !string.IsNullOrEmpty(x.Description)).WithMessage("PackageDescription must not exceed 500 characters.");
 
         RuleFor(x => x.ValueType)
-            //.NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.Code) && !string.IsNullOrWhiteSpace(x.Name) && x.Value != null && !string.IsNullOrWhiteSpace(x.Description)).WithMessage("ValueType is required when Code or Value is provided.")
+            //.NotEmpty().When(x => !string.IsNullOrWhiteSpace(x.Code) && !string.IsNullOrWhiteSpace(x.Name) && x.Value != null && !string.IsNullOrWhiteSpace(x.PackageDescription)).WithMessage("ValueType is required when Code or Value is provided.")
             .IsInEnum().WithMessage("ValueType must be a valid type.");
 
         RuleFor(x => x.Value)

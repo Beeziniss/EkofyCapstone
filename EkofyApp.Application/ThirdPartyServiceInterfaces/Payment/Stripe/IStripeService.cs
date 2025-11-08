@@ -24,7 +24,7 @@ public interface IStripeService
     
     // Payout methods
     Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "sgd");
-    Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, string currency = "sgd");
+    Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "sgd");
     Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId);
     Task CancelSubscriptionAtPeriodEndAsync();
     Task ResumeSubscriptionAsync();

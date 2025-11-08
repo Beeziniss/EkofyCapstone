@@ -23,7 +23,7 @@ public sealed class Invoice : IEntityCustom // Snapshot
     //public string StripeInvoiceId { get; set; } = null!; // ID of the invoice in Stripe
     //public string StripeInvoiceNumber { get; set; } = null!; // e.g., "0001"
     //public string StripeInvoicePdf { get; set; } = null!; // URL to the PDF of the invoice
-    //public string StripeInvoiceDescription { get; set; } = null!; // Description of the invoice
+    //public string StripeInvoiceDescription { get; set; } = null!; // PackageDescription of the invoice
     //public string StripeInvoiceStatementDescriptor { get; set; } = null!; // Statement descriptor for the invoice
 
     //public string StripePaymentId { get; set; } = null!; // ID of the payment in Stripe

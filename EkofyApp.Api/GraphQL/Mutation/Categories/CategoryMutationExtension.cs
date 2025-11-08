@@ -6,8 +6,8 @@ public class CategoryMutationExtension : ObjectTypeExtension<CategoryMutation>
     {
         // You can define fields here if needed
         // For example:
-        // descriptor.Field(x => x.CreateCategory(default)).Description("Creates a new category.");
-        // descriptor.Field(x => x.UpdateCategory(default)).Description("Updates an existing category.");
-        // descriptor.Field(x => x.DeleteCategory(default)).Description("Deletes a category by its ID.");
+        // descriptor.Field(x => x.CreateCategory(default)).PackageDescription("Creates a new category.");
+        // descriptor.Field(x => x.UpdateCategory(default)).PackageDescription("Updates an existing category.");
+        // descriptor.Field(x => x.DeleteCategory(default)).PackageDescription("Deletes a category by its ID.");
     }
 }

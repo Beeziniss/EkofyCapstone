@@ -3,14 +3,14 @@ using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.RequestHubs
 {
-    public interface IRequestHubService
+    public interface IRequestService
     {
         Task<bool> BlockRequestAsync(string requestId);
         Task<bool> CreateRequestAsync(RequestCreatingRequest request);
-        IQueryable<RequestHub> GetOwnRequestsAsync();
-        Task<RequestHub?> GetRequestByIdAsync(string requestId);
-        IQueryable<RequestHub> GetRequestsQueryable();
-        IQueryable<RequestHub> SearchRequests(string searchTerm, bool isIndividual);
+        IQueryable<Request> GetOwnRequestsAsync();
+        Task<Request?> GetRequestByIdAsync(string requestId);
+        IQueryable<Request> GetRequestsQueryable();
+        IQueryable<Request> SearchRequests(string searchTerm, bool isIndividual);
         Task<bool> UpdateRequestAsync(RequestUpdatingRequest request);
     }
 }
