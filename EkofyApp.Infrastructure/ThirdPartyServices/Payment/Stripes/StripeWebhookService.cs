@@ -580,6 +580,19 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         From = checkoutSession.Customer.Email,
                         To = "Ekofy" // Tạm thời
                     });
+
+                    // Cập nhật Subscription Revenue và Service Revenue cho Platform
+                    UpdateDefinition<PlatformRevenue> updateRevenue = Builders<PlatformRevenue>.Update
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                        .Inc(x => x.SubscriptionRevenue, subscriptionSnapshot != null ? transaction.Amount : 0m)
+                        .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
+
+                    UpdateResult updateRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                        .UpdateOneAsync(session, _ => true, updateRevenue);
+                    if (updateRevenueResult.ModifiedCount == 0)
+                    {
+                        _logger.LogError("Cannot update platform revenue after checkout session completed.");
+                    }
                 }
                 else if (stripeEvent.Type == EventTypes.CheckoutSessionExpired)
                 {
@@ -592,7 +605,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
                     UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, Builders<PaymentTransaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
-                    if(updateResult.ModifiedCount == 0)
+                    if (updateResult.ModifiedCount == 0)
                     {
                         throw new UnprocessableEntityCustomException($"Cannot update payment transaction {checkoutSession.Id} to expired.");
                     }

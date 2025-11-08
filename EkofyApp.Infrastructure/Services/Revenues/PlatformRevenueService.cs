@@ -35,21 +35,29 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy."); ;
         decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
 
-        // Tính tổng doanh thu từ commission
-        IEnumerable<decimal> commissionAmounts = await _unitOfWork.GetCollection<Invoice>()
+        // Tính tổng doanh thu từ service
+        IEnumerable<decimal> serviceAmounts = await _unitOfWork.GetCollection<Invoice>()
             .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null)
-            .Project(x => x.Amount * (platformFeePercentage / 100m))
+            .Project(x => x.Amount)
             .ToListAsync();
 
-        decimal totalComissionRevenue = commissionAmounts.Sum();
+        decimal totalServiceRevenue = serviceAmounts.Sum();
 
-        // Tỉnh tổng payout amount
-        IEnumerable<decimal> payoutAmounts = await _unitOfWork.GetCollection<RoyaltyReport>()
+        // Tính tổng payout royalty amount
+        IEnumerable<decimal> royaltyPayoutAmounts = await _unitOfWork.GetCollection<RoyaltyReport>()
                 .Find(_ => true)
                 .Project(x => x.TotalRoyaltyAmount)
                 .ToListAsync();
 
-        decimal totalAmountPayout = payoutAmounts.Sum();
+        decimal totalRoyaltyPayoutAmount = royaltyPayoutAmounts.Sum();
+
+        // Tính tổng payout service amount
+        IEnumerable<decimal> servicePayoutAmounts = await _unitOfWork.GetCollection<PayoutTransaction>()
+                .Find(x => x.RoyaltyReportId == null)
+                .Project(x => x.Amount)
+                .ToListAsync();
+
+        decimal totalServicePayoutAmount = servicePayoutAmounts.Sum();
 
         // Tính tổng refund amount
         IEnumerable<decimal> refundAmounts = await _unitOfWork.GetCollection<Invoice>()
@@ -62,10 +70,11 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
         PlatformRevenue platformRevenue = new()
         {
             Currency = CurrencyType.vnd,
-            TotalSubscriptionRevenue = totalSubscriptionRevenue,
-            TotalComissionRevenue = totalComissionRevenue,
-            TotalPayoutAmount = totalAmountPayout,
-            TotalRefundAmount = totalRefundAmount,
+            SubscriptionRevenue = totalSubscriptionRevenue,
+            ServiceRevenue = totalServiceRevenue,
+            RoyaltyPayoutAmount = totalRoyaltyPayoutAmount,
+            ServicePayoutAmount = totalServicePayoutAmount,
+            RefundAmount = totalRefundAmount,
         };
 
         //await _unitOfWork.GetCollection<PlatformRevenue>().InsertOneAsync(platformRevenue);
