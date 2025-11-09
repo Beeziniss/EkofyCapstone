@@ -5,6 +5,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
+using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
@@ -88,16 +89,19 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
             entitlementclones.AddRange(additionalEntitlements);
         }
 
-        EffectiveEntitlement effectiveEntitlement = new()
-        {
-            UserId = userId,
-            Role = userRole,
-            SubscriptionId = subscription.Id,
-            Entitlements = entitlementclones,
-            ValidUntil = validUntil,
-        };
+        UpdateDefinition<EffectiveEntitlement> update = Builders<EffectiveEntitlement>.Update
+            .Set(x => x.Role, userRole)
+            .Set(x => x.SubscriptionId, subscription.Id)
+            .Set(x => x.Entitlements, entitlementclones)
+            .Set(x => x.ValidUntil, validUntil)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-        await _unitOfWork.GetCollection<EffectiveEntitlement>().ReplaceOneAsync(session, ef => ef.UserId == userId, effectiveEntitlement, new ReplaceOptions { IsUpsert = true });
+        await _unitOfWork.GetCollection<EffectiveEntitlement>()
+            .UpdateOneAsync(
+                session,
+                filter: ef => ef.UserId == userId,
+                update: update,
+                options: new UpdateOptions { IsUpsert = true });
     }
 
     public async Task RebuildTierAsync(IClientSessionHandle? session, string userId, UserRole userRole, string subscriptionId, List<AppliedEntitlement>? additionalEntitlements = null, DateTimeOffset? validUntil = null)
@@ -113,22 +117,25 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
 
         List<AppliedEntitlement> entitlements = await BuildEntitlementsForUserAsync(userRole, subscription.Code);
 
-        List<AppliedEntitlement> entitlementclones = new(entitlements);
+        List<AppliedEntitlement> entitlementclones = [.. entitlements];
         if (additionalEntitlements != null && additionalEntitlements.Count > 0)
         {
             entitlementclones.AddRange(additionalEntitlements);
         }
 
-        EffectiveEntitlement effectiveEntitlement = new()
-        {
-            UserId = userId,
-            Role = userRole,
-            SubscriptionId = subscription.Id,
-            Entitlements = entitlementclones,
-            ValidUntil = validUntil,
-        };
+        UpdateDefinition<EffectiveEntitlement> update = Builders<EffectiveEntitlement>.Update
+            .Set(x => x.Role, userRole)
+            .Set(x => x.SubscriptionId, subscription.Id)
+            .Set(x => x.Entitlements, entitlementclones)
+            .Set(x => x.ValidUntil, validUntil)
+            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-        await _unitOfWork.GetCollection<EffectiveEntitlement>().ReplaceOneAsync(session, ef => ef.UserId == userId, effectiveEntitlement, new ReplaceOptions { IsUpsert = true });
+        await _unitOfWork.GetCollection<EffectiveEntitlement>()
+            .UpdateOneAsync(
+                session,
+                filter: x => x.UserId == userId,
+                update: update,
+                options: new UpdateOptions { IsUpsert = true });
     }
 
     private async Task<List<AppliedEntitlement>> BuildEntitlementsForUserAsync(UserRole userRole, string subscriptionCode)

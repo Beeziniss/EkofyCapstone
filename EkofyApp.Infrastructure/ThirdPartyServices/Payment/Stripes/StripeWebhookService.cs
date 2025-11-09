@@ -687,13 +687,13 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         OneOffSnapshot = oneOffSnapshot,
                         SubscriptionSnapshot = subscriptionSnapshot,
 
-                        FullName = checkoutSession.Customer.Name,
-                        Email = checkoutSession.Customer.Email,
+                        FullName = checkoutSession.CustomerDetails.Name,
+                        Email = checkoutSession.CustomerDetails.Email,
                         Country = "VN", // Tạm thời
                         Amount = transaction.Amount,
                         Currency = transaction.Currency,
 
-                        From = checkoutSession.Customer.Email,
+                        From = checkoutSession.CustomerDetails.Email,
                         To = "Ekofy" // Tạm thời
                     });
 
