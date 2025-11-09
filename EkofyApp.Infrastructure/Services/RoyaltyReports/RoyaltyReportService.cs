@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Application.Models.Projections;
-using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
@@ -7,7 +6,6 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
-using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.Extensions.Logging;
@@ -308,11 +306,28 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     // Thực hiện payout thực sự
                     Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong, CurrencyType.sgd.ToString());
 
+                    // Cập nhật royalty earnings cho Artist
+                    UpdateResult updateArtistRoyaltyResult = await _unitOfWork.GetCollection<ArtistRevenue>()
+                        .UpdateOneAsync(session,
+                            x => x.UserId == userId,
+                            Builders<ArtistRevenue>.Update
+                                .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                                .Inc(x => x.RoyaltyEarnings, totalVndAmount),
+                            new UpdateOptions { IsUpsert = true },
+                            cancellationToken: ct);
+                    if (updateArtistRoyaltyResult.ModifiedCount == 0)
+                    {
+                        _logger.LogError($"Failed to update ArtistRevenue for userId={userId} with royalty earnings.");
+                    }
+
                     // Cập nhật payout royalty amount cho Platform
                     UpdateResult updatePayoutRoyaltyResult = await _unitOfWork.GetCollection<PlatformRevenue>()
                         .UpdateOneAsync(session,
                             _ => true,
-                            Builders<PlatformRevenue>.Update.Inc(x => x.RoyaltyPayoutAmount, totalVndAmount),
+                            Builders<PlatformRevenue>.Update
+                                .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                                .Inc(x => x.RoyaltyPayoutAmount, totalVndAmount),
+                            new UpdateOptions { IsUpsert = true },
                             cancellationToken: ct);
                     if (updatePayoutRoyaltyResult.ModifiedCount == 0)
                     {

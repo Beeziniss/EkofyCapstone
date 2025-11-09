@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class RoyaltyReport : IEntityCustom // Snapshot
+public sealed class RoyaltyReport // Snapshot
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

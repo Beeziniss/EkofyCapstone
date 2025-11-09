@@ -32,7 +32,7 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
         string platformFeePercentageStr = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
             .Find(x => x.Status == PolicyStatus.Active)
             .Project(x => x.PlatformFeePercentage.ToString())
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy."); ;
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
         decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
 
         // Tính tổng doanh thu từ service
@@ -77,7 +77,7 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
             RefundAmount = totalRefundAmount,
         };
 
-        //await _unitOfWork.GetCollection<PlatformRevenue>().InsertOneAsync(platformRevenue);
+        await _unitOfWork.GetCollection<PlatformRevenue>().InsertOneAsync(platformRevenue);
 
         return platformRevenue;
     }

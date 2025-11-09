@@ -697,6 +697,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         To = "Ekofy" // Tạm thời
                     });
 
+                    // Cập nhật service revenue cho Artist
+                    UpdateDefinition<ArtistRevenue> updateArtistRevenue = Builders<ArtistRevenue>.Update
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                        .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
+
+                    UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<ArtistRevenue>()
+                        .UpdateOneAsync(session, x => x.UserId == transaction.UserId, updateArtistRevenue, new UpdateOptions { IsUpsert = true });
+                    if (updateArtistRevenueResult.ModifiedCount == 0)
+                    {
+                        _logger.LogError("Cannot update artist revenue after checkout session completed.");
+                    }
+
                     // Cập nhật Subscription Revenue và Service Revenue cho Platform
                     UpdateDefinition<PlatformRevenue> updateRevenue = Builders<PlatformRevenue>.Update
                         .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
@@ -704,7 +716,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
 
                     UpdateResult updateRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
-                        .UpdateOneAsync(session, _ => true, updateRevenue);
+                        .UpdateOneAsync(session, _ => true, updateRevenue, new UpdateOptions { IsUpsert = true });
                     if (updateRevenueResult.ModifiedCount == 0)
                     {
                         _logger.LogError("Cannot update platform revenue after checkout session completed.");

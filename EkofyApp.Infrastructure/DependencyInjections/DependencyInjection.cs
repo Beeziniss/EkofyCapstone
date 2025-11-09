@@ -406,6 +406,7 @@ public static class DependencyInjection
         services.AddScoped<ITopTrackService, TopTrackService>();
         services.AddScoped<IReviewService, Services.Reviews.ReviewService>();
         services.AddScoped<IPlatformRevenueService, PlatformRevenueService>();
+        services.AddScoped<IArtistRevenueService, ArtistRevenueService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
