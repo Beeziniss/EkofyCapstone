@@ -8,8 +8,15 @@ public interface ISubscriptionService
     Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest);
     Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest);
     Task UpdateSubscriptionPlanAsync(UpdateSubscriptionPlanRequest updateSubscriptionPlanRequest);
+    Task UpdateMetadataSubscriptionAsync(UpdateMetdataSubscriptionRequest updateMetadataSubscriptionRequest);
     //Task DeleteEntitlementSubsriptionAsync(DeleteEntitlementsSubscriptionRequest deleteEntitlementsSubscriptionRequest);
-    Task DeprecateSubscriptionAsync(string subscriptionId);
+    
+    /// <summary>
+    /// Activates a subscription version and deactivates all other versions of the same tier.
+    /// </summary>
+    /// <param name="subscriptionId">The ID of the subscription to activate.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task ActivateSubscriptionAsync(string subscriptionId);
 
     /// <summary>
     /// Creates a new subscription for the user.
