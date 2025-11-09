@@ -160,150 +160,153 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
     public async Task CreateSubscriptionPlanAsync(CreateSubScriptionPlanRequest createSubScriptionPlanRequest)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
-      {
-          try
           {
-              // Kiểm tra subscription plan tồn tại thông qua Subscription Code
-              //if (await _unitOfWork.GetCollection<SubscriptionPlan>().Find(x => x..ToLowerInvariant() == createSubScriptionPlanRequest.SubscriptionCode.ToLowerInvariant() && x.Status == SubscriptionStatus.Active).AnyAsync())
-              //{
-              //    throw new ConflictCustomException("Subscription plan with the same subscription code already exists.");
-              //}
-
-              // Tạo subscription plan UserId
-              string subscriptionPlanId = ObjectId.GenerateNewId().ToString();
-
-              // Kiểm tra có subscription trươcc khi tạo
-              Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
-             .Find(x => x.Code == createSubScriptionPlanRequest.SubscriptionCode && x.Status == SubscriptionStatus.Active)
-            .Project<Subscription>(Builders<Subscription>.Projection
-          .Include(x => x.Id)
-              .Include(x => x.Amount)
-               .Include(x => x.Tier)
-              .Include(x => x.Version))
-           .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription. Please create subscription first.");
-
-              ValidateKeyMetadata(createSubScriptionPlanRequest.Metadata?.Keys.ToArray() ?? []);
-              createSubScriptionPlanRequest.Metadata ??= [];
-              createSubScriptionPlanRequest.Metadata.Add("name", createSubScriptionPlanRequest.Name);
-              createSubScriptionPlanRequest.Metadata.Add("subscription_id", subscription.Id);
-              createSubScriptionPlanRequest.Metadata.Add("subscription_tier", subscription.Tier.ToString());
-              createSubScriptionPlanRequest.Metadata.Add("subscription_version", subscription.Version.ToString());
-
-              PriceService priceService = new();
-              ProductService productService = new();
-
-              StripeList<Price> existingPrices = priceService.List(new PriceListOptions
+              try
               {
-                  LookupKeys = createSubScriptionPlanRequest.Prices.Select(x => x.LookupKey).ToList(),
-                  Limit = 50
-              });
+                  // Kiểm tra subscription plan tồn tại thông qua Subscription Code
+                  //if (await _unitOfWork.GetCollection<SubscriptionPlan>().Find(x => x..ToLowerInvariant() == createSubScriptionPlanRequest.SubscriptionCode.ToLowerInvariant() && x.Status == SubscriptionStatus.Active).AnyAsync())
+                  //{
+                  //    throw new ConflictCustomException("Subscription plan with the same subscription code already exists.");
+                  //}
 
-              // Kiểm tra nếu đã tồn tại Amount với lookup_key này
-              if (existingPrices.Data.Count > 0)
-              {
-                  throw new ConflictCustomException("Amount with the same lookup_key already exists.");
-              }
+                  // Tạo subscription plan UserId
+                  string subscriptionPlanId = ObjectId.GenerateNewId().ToString();
 
-              StripeSearchResult<Product> existingProducts = await productService.SearchAsync(new ProductSearchOptions
-              {
-                  Query = $"active:'true' AND metadata['name']:'{createSubScriptionPlanRequest.Name}'",
-                  Limit = 1
-              });
-              if (existingProducts.Data.Count > 0)
-              {
-                  throw new ConflictCustomException("Product with the same name already exists.");
-              }
+                  // 1 Subscription chỉ có duy nhất 1 SubscriptionPlan
+                  // Đã validate bên FE rồi nên ko cần check nữa
 
-              // Tạo Product mới
-              Product product = await productService.CreateAsync(new ProductCreateOptions
-              {
-                  Active = true,
-                  Name = createSubScriptionPlanRequest.Name,
-                  // Tùy chọn thêm metadata và cách thay thế lookup_key
-                  Metadata = createSubScriptionPlanRequest.Metadata,
-                  Images = createSubScriptionPlanRequest.Images,
-                  Type = "service",
-              });
+                  // Kiểm tra có subscription trước khi tạo
+                  Subscription subscription = await _unitOfWork.GetCollection<Subscription>()
+                 .Find(x => x.Code == createSubScriptionPlanRequest.SubscriptionCode && x.Status != SubscriptionStatus.Deprecated)
+                    .Project<Subscription>(Builders<Subscription>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.Amount)
+                        .Include(x => x.Tier)
+                        .Include(x => x.Version))
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found any subscription. Please create subscription first.");
 
-              // Tạo Amount với lookup_key
-              foreach (CreatePriceRequest createPriceRequest in createSubScriptionPlanRequest.Prices)
-              {
-                  decimal actualPrice = createPriceRequest.Interval switch
+                  ValidateKeyMetadata(createSubScriptionPlanRequest.Metadata?.Keys.ToArray() ?? []);
+                  createSubScriptionPlanRequest.Metadata ??= [];
+                  createSubScriptionPlanRequest.Metadata.Add("name", createSubScriptionPlanRequest.Name);
+                  createSubScriptionPlanRequest.Metadata.Add("subscription_id", subscription.Id);
+                  createSubScriptionPlanRequest.Metadata.Add("subscription_tier", subscription.Tier.ToString());
+                  createSubScriptionPlanRequest.Metadata.Add("subscription_version", subscription.Version.ToString());
+
+                  PriceService priceService = new();
+                  ProductService productService = new();
+
+                  StripeList<Price> existingPrices = priceService.List(new PriceListOptions
                   {
-                      PeriodTime.day => (subscription.Amount * 12) / 365,
-                      PeriodTime.month => subscription.Amount,             // Giá gốc là tháng
-                      PeriodTime.week => (subscription.Amount * 12) / 52,
-                      PeriodTime.year => subscription.Amount * 12,  // Giữ nguyên giá năm
-                      _ => throw new BadRequestCustomException("Invalid interval. Supported values are 'day', 'week', 'month' and 'year'.")
-                  };
+                      LookupKeys = createSubScriptionPlanRequest.Prices.Select(x => x.LookupKey).ToList(),
+                      Limit = 50
+                  });
 
-                  long stripeActualPrice = HelperCurrencyConverter.ConvertDecimalToStripeAmount(actualPrice, CurrencyType.vnd.ToString());
+                  // Kiểm tra nếu đã tồn tại Amount với lookup_key này
+                  if (existingPrices.Data.Count > 0)
+                  {
+                      throw new ConflictCustomException("Amount with the same lookup_key already exists.");
+                  }
 
-                  await priceService.CreateAsync(new PriceCreateOptions
+                  StripeSearchResult<Product> existingProducts = await productService.SearchAsync(new ProductSearchOptions
+                  {
+                      Query = $"active:'true' AND metadata['name']:'{createSubScriptionPlanRequest.Name}'",
+                      Limit = 1
+                  });
+                  if (existingProducts.Data.Count > 0)
+                  {
+                      throw new ConflictCustomException("Product with the same name already exists.");
+                  }
+
+                  // Tạo Product mới
+                  Product product = await productService.CreateAsync(new ProductCreateOptions
                   {
                       Active = true,
-                      UnitAmountDecimal = Convert.ToDecimal(stripeActualPrice),
-                      Currency = CurrencyType.vnd.ToString(),
-                      Recurring = new PriceRecurringOptions
-                      {
-                          Interval = createPriceRequest.Interval.ToString(),       // chu kỳ
-                          IntervalCount = createPriceRequest.IntervalCount,              // n chu kỳ một lần thanh toán
-                      },
-                      Product = product.Id,
-                      LookupKey = createPriceRequest.LookupKey,
+                      Name = createSubScriptionPlanRequest.Name,
                       // Tùy chọn thêm metadata và cách thay thế lookup_key
-                      Metadata = new Dictionary<string, string>
-        {
-           { "subscription_version", subscription.Version.ToString() },
-{ "subscription_plan_id", subscriptionPlanId }
-        }
+                      Metadata = createSubScriptionPlanRequest.Metadata,
+                      Images = createSubScriptionPlanRequest.Images,
+                      Type = "service",
+                  });
+
+                  // Tạo Amount với lookup_key
+                  foreach (CreatePriceRequest createPriceRequest in createSubScriptionPlanRequest.Prices)
+                  {
+                      decimal actualPrice = createPriceRequest.Interval switch
+                      {
+                          PeriodTime.day => (subscription.Amount * 12) / 365,
+                          PeriodTime.month => subscription.Amount,             // Giá gốc là tháng
+                          PeriodTime.week => (subscription.Amount * 12) / 52,
+                          PeriodTime.year => subscription.Amount * 12,  // Giữ nguyên giá năm
+                          _ => throw new BadRequestCustomException("Invalid interval. Supported values are 'day', 'week', 'month' and 'year'.")
+                      };
+
+                      long stripeActualPrice = HelperCurrencyConverter.ConvertDecimalToStripeAmount(actualPrice, CurrencyType.vnd.ToString());
+
+                      await priceService.CreateAsync(new PriceCreateOptions
+                      {
+                          Active = true,
+                          UnitAmountDecimal = Convert.ToDecimal(stripeActualPrice),
+                          Currency = CurrencyType.vnd.ToString(),
+                          Recurring = new PriceRecurringOptions
+                          {
+                              Interval = createPriceRequest.Interval.ToString(),       // chu kỳ
+                              IntervalCount = createPriceRequest.IntervalCount,              // n chu kỳ một lần thanh toán
+                          },
+                          Product = product.Id,
+                          LookupKey = createPriceRequest.LookupKey,
+                          // Tùy chọn thêm metadata và cách thay thế lookup_key
+                          Metadata = new Dictionary<string, string>
+                          {
+                            { "subscription_version", subscription.Version.ToString() },
+                            { "subscription_plan_id", subscriptionPlanId }
+                          }
+                      });
+                  }
+
+                  // Kiểm tra lại các Amount đã tạo
+                  PriceListOptions options = new()
+                  {
+                      LookupKeys = createSubScriptionPlanRequest.Prices.Select(x => x.LookupKey).ToList(),
+                      Limit = createSubScriptionPlanRequest.Prices.Count
+                  };
+                  PriceService service = new();
+                  StripeList<Price> prices = service.List(options);
+                  if (prices.Data.Count != createSubScriptionPlanRequest.Prices.Count)
+                  {
+                      throw new UnprocessableEntityCustomException("Cannot create all prices for this subscription plan.");
+                  }
+
+                  await _unitOfWork.GetCollection<SubscriptionPlan>().InsertOneAsync(new SubscriptionPlan
+                  {
+                      Id = subscriptionPlanId,
+                      SubscriptionId = subscription.Id,
+                      StripeProductId = product.Id,
+                      StripeProductActive = product.Active,
+                      StripeProductName = product.Name,
+                      StripeProductImages = product.Images,
+                      StripeProductType = product.Type,
+                      StripeProductMetadata = product.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
+                      SubscriptionPlanPrices = prices.Data.Select(price => new SubscriptionPlanPrice
+                      {
+                          StripePriceId = price.Id,
+                          StripePriceActive = price.Active,
+                          StripePriceUnitAmount = price.UnitAmount ?? 0,
+                          StripePriceCurrency = price.Currency,
+
+                          StripePriceLookupKey = price.LookupKey,
+                          StripePriceMetadata = price.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
+
+                          Interval = Enum.Parse<PeriodTime>(price.Recurring.Interval),
+                          IntervalCount = price.Recurring.IntervalCount
+                      }).ToList()
                   });
               }
-
-              // Kiểm tra lại các Amount đã tạo
-              PriceListOptions options = new()
+              catch (StripeException ex)
               {
-                  LookupKeys = createSubScriptionPlanRequest.Prices.Select(x => x.LookupKey).ToList(),
-                  Limit = createSubScriptionPlanRequest.Prices.Count
-              };
-              PriceService service = new();
-              StripeList<Price> prices = service.List(options);
-              if (prices.Data.Count != createSubScriptionPlanRequest.Prices.Count)
-              {
-                  throw new UnprocessableEntityCustomException("Cannot create all prices for this subscription plan.");
+                  _logger.LogError(ex, "Stripe API error while creating subscription plan.");
+                  throw new UnprocessableEntityCustomException("Cannot create SubscriptionPlan");
               }
-
-              await _unitOfWork.GetCollection<SubscriptionPlan>().InsertOneAsync(new SubscriptionPlan
-              {
-                  Id = subscriptionPlanId,
-                  SubscriptionId = subscription.Id,
-                  StripeProductId = product.Id,
-                  StripeProductActive = product.Active,
-                  StripeProductName = product.Name,
-                  StripeProductImages = product.Images,
-                  StripeProductType = product.Type,
-                  StripeProductMetadata = product.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
-                  SubscriptionPlanPrices = prices.Data.Select(price => new SubscriptionPlanPrice
-                  {
-                      StripePriceId = price.Id,
-                      StripePriceActive = price.Active,
-                      StripePriceUnitAmount = price.UnitAmount ?? 0,
-                      StripePriceCurrency = price.Currency,
-
-                      StripePriceLookupKey = price.LookupKey,
-                      StripePriceMetadata = price.Metadata.Select(x => new Metadata { Key = x.Key, Value = x.Value }).ToList(),
-
-                      Interval = Enum.Parse<PeriodTime>(price.Recurring.Interval),
-                      IntervalCount = price.Recurring.IntervalCount
-                  }).ToList()
-              });
-          }
-          catch (StripeException ex)
-          {
-              _logger.LogError(ex, "Stripe API error while creating subscription plan.");
-              throw new UnprocessableEntityCustomException("Cannot create SubscriptionPlan");
-          }
-      });
+          });
     }
 
     public async Task UpdateSubscriptionPlanAsync(UpdateSubscriptionPlanRequest updateSubscriptionPlanRequest)
