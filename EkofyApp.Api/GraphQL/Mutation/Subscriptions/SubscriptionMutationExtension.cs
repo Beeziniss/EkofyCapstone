@@ -15,7 +15,7 @@ public sealed class SubscriptionMutationExtension : ObjectTypeExtension<Subscrip
         descriptor.Field(x => x.UpdateSubscriptionPlanAsync(default!))
             .Authorize(HelperRoleBase.AdminRolesArray);
 
-        descriptor.Field(x => x.DeprecateSubscriptionAsync(default!))
+        descriptor.Field(x => x.ActivateSubscriptionAsync(default!))
             .Authorize(HelperRoleBase.AdminRolesArray);
 
         //descriptor.Field(x => x.UpdateEntitlementsSubscriptionAsync(default!))
