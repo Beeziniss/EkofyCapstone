@@ -463,11 +463,23 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 To = user.FullName,
             });
 
+            // Cập nhật refund amount cho Artist
+            UpdateResult artistUpdateResult = await _unitOfWork.GetCollection<ArtistRevenue>()
+                .UpdateOneAsync(session, x => x.UserId == paymentTransaction.UserId, Builders<ArtistRevenue>.Update
+                    .Inc(x => x.RefundAmount, amount)
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                    new UpdateOptions { IsUpsert = true });
+            if (artistUpdateResult.ModifiedCount == 0)
+            {
+                _logger.LogError("Failed to update RefundAmount in ArtistRevenue for user {UserId} after refunding payment intent {PaymentIntentId}", paymentTransaction.UserId, paymentIntentId);
+            }
+
             // Cập nhật Total refund amount cho Platform
             UpdateResult updateResult = await _unitOfWork.GetCollection<PlatformRevenue>()
                 .UpdateOneAsync(session, _ => true, Builders<PlatformRevenue>.Update
                     .Inc(x => x.RefundAmount, amount)
-                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                    new UpdateOptions { IsUpsert = true });
             if (updateResult.ModifiedCount == 0)
             {
                 _logger.LogError("Failed to update RefundAmount in PlatformRevenue after refunding payment intent {PaymentIntentId}", paymentIntentId);
