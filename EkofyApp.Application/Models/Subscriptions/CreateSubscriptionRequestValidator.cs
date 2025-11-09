@@ -19,8 +19,8 @@ public sealed class CreateSubscriptionRequestValidator : AbstractValidator<Creat
         RuleFor(x => x.Tier)
             .IsInEnum().WithMessage("Invalid subscription tier.");
 
-        RuleFor(x => x.Status)
-            .IsInEnum().WithMessage("Invalid subscription status.");
+        //RuleFor(x => x.Status)
+        //    .IsInEnum().WithMessage("Invalid subscription status.");
 
         //RuleForEach(x => x.Entitlements)
         //    .SetValidator(new CreateEntitlementRequestValidator());

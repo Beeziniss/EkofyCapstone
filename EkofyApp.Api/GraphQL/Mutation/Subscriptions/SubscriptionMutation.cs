@@ -28,9 +28,9 @@ public sealed class SubscriptionMutation(ISubscriptionService subscriptionServic
         return true;
     }
 
-    public async Task<bool> DeprecateSubscriptionAsync(string subscriptionId)
+    public async Task<bool> ActivateSubscriptionAsync(string subscriptionId)
     {
-        await _subscriptionService.DeprecateSubscriptionAsync(subscriptionId);
+        await _subscriptionService.ActivateSubscriptionAsync(subscriptionId);
         return true;
     }
 
