@@ -544,6 +544,16 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 {
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
 
+                    // Nhớ xóa khi test xong trên production
+                    Console.WriteLine("====================================");
+                    Console.WriteLine($"CHECKOUT: {checkoutSession.InvoiceId} || {checkoutSession.CustomerId} || {checkoutSession.SubscriptionId}");
+                    Console.WriteLine("====================================");
+
+                    if(checkoutSession.InvoiceId == null || checkoutSession.CustomerId == null || checkoutSession.SubscriptionId == null)
+                    {
+                        throw new NotFoundCustomException("NULL in checkout session.");
+                    }
+
                     // Cập nhật PaymentTransaction
                     UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
                         .Set(t => t.StripeSubscriptionId, checkoutSession.SubscriptionId)
@@ -675,6 +685,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         {
                             throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
                         }
+
+                        // Cập nhật service revenue cho Artist
+                        UpdateDefinition<ArtistRevenue> updateArtistRevenue = Builders<ArtistRevenue>.Update
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
+
+                        UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<ArtistRevenue>()
+                            .UpdateOneAsync(session, x => x.UserId == userArtistId, updateArtistRevenue, new UpdateOptions { IsUpsert = true });
+                        if (updateArtistRevenueResult.ModifiedCount == 0)
+                        {
+                            _logger.LogError("Cannot update artist revenue after checkout session completed.");
+                        }
                     }
 
                     // Tạo Invoice
@@ -696,18 +718,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         From = checkoutSession.CustomerDetails.Email,
                         To = "Ekofy" // Tạm thời
                     });
-
-                    // Cập nhật service revenue cho Artist
-                    UpdateDefinition<ArtistRevenue> updateArtistRevenue = Builders<ArtistRevenue>.Update
-                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                        .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
-
-                    UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<ArtistRevenue>()
-                        .UpdateOneAsync(session, x => x.UserId == transaction.UserId, updateArtistRevenue, new UpdateOptions { IsUpsert = true });
-                    if (updateArtistRevenueResult.ModifiedCount == 0)
-                    {
-                        _logger.LogError("Cannot update artist revenue after checkout session completed.");
-                    }
 
                     // Cập nhật Subscription Revenue và Service Revenue cho Platform
                     UpdateDefinition<PlatformRevenue> updateRevenue = Builders<PlatformRevenue>.Update
