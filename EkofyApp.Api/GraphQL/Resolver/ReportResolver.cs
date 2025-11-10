@@ -51,5 +51,16 @@ public sealed class ReportResolver
         return unitOfWork.GetCollection<Comment>().AsQueryable().Where(x => x.Id == report.RelatedContentId);
     }
 
-    // TODO: Request hub
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Request> GetRequest([Parent] Report report, [Service] IUnitOfWork unitOfWork)
+    {
+        if (report.RelatedContentType != ReportRelatedContentType.Request)
+        {
+            return Enumerable.Empty<Request>().AsQueryable();
+        }
+
+        return unitOfWork.GetCollection<Request>().AsQueryable().Where(x => x.Id == report.RelatedContentId);
+    }
 }
