@@ -23,7 +23,7 @@ public sealed class Report : TimeStamped, IEntityCustom
 
     public ReportStatus Status { get; set; } = ReportStatus.Pending;
 
-    public ReportPriority Priority { get; set; } = ReportPriority.Medium;
+    public ReportPriority Priority { get; set; } = ReportPriority.Low;
 
     [BsonRepresentation(BsonType.ObjectId)]
     public string? RelatedContentId { get; set; }

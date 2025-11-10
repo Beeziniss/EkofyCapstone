@@ -46,18 +46,18 @@ public sealed class ReportService(
     {
         string reporterId = GetCurrentUserId();
 
-        // Ki?m tra user b? báo cáo có t?n t?i không
+        // Kiểm tra user bị reported có tồn tại không
         bool isReportedUserExisted = await _unitOfWork.GetCollection<User>()
             .Find(u => u.Id == request.ReportedUserId && u.Status != UserStatus.Banned)
             .AnyAsync() ? true : throw new NotFoundCustomException("Reported user not found");
 
-        // Không cho phép t? báo cáo chính mình
+        // Không cho phép tư report chính mình
         if (reporterId == request.ReportedUserId)
         {
             throw new BadRequestCustomException("You cannot report yourself");
         }
 
-        // Ki?m tra xem ?ã báo cáo user này ch?a (trong vòng 24h)
+        // Kiểm tra xem đã report user này chưa (trong vòng 24h)
         DateTimeOffset last24Hours = HelperMethod.GetUtcPlus7TimeOffset().AddHours(-24);
         bool existingReport = await _unitOfWork.GetCollection<Report>()
             .Find(r => r.ReporterId == reporterId
@@ -71,13 +71,13 @@ public sealed class ReportService(
             throw new BadRequestCustomException("You have already reported this user in the last 24 hours");
         }
 
-        // ??m s? l?n user này b? báo cáo
+        // Đếm số lần user này bị report (trừ các report bị từ chối hoặc bác bỏ)
         long totalReportsCount = await _unitOfWork.GetCollection<Report>()
             .CountDocumentsAsync(r => r.ReportedUserId == request.ReportedUserId
                 && r.Status != ReportStatus.Rejected
                 && r.Status != ReportStatus.Dismissed);
 
-        // T? ??ng t?ng priority n?u user b? báo cáo nhi?u
+        // Tự động tặng priority nếu user bị report nhiều lần
         ReportPriority priority = totalReportsCount switch
         {
             >= 30 => ReportPriority.Critical,
@@ -110,13 +110,13 @@ public sealed class ReportService(
         string currentUserId = GetCurrentUserId();
         string role = GetCurrentUserRole();
 
-        // Ch? admin ho?c moderator t? assign
+        // Chỉ admin hoặc moderator tự assign
         if (role != UserRole.Admin.ToString() && currentUserId != moderatorId)
         {
             throw new ForbiddenCustomException("Only admin can assign reports to other moderators");
         }
 
-        // Ki?m tra moderator có t?n t?i không
+        // Kiểm tra moderator có tồn tại không
         bool isModeratorExisted = await _unitOfWork.GetCollection<User>()
             .Find(u => u.Id == moderatorId && u.Role == UserRole.Moderator)
             .AnyAsync() ? true : throw new NotFoundCustomException("Moderator not found");
@@ -141,7 +141,7 @@ public sealed class ReportService(
         string moderatorId = GetCurrentUserId();
         string role = GetCurrentUserRole();
 
-        // Ch? moderator và admin m?i x? lý ???c
+        // Chỉ moderator và admin mới xử lý được
         if (role != UserRole.Moderator.ToString() && role != UserRole.Admin.ToString())
         {
             throw new ForbiddenCustomException("You don't have permission to process reports");
@@ -174,7 +174,7 @@ public sealed class ReportService(
                 throw new UnprocessableEntityCustomException("Failed to update report");
             }
 
-            // Th?c hi?n hành ??ng v?i user n?u báo cáo ???c approve
+            // Thực hiện hành động với user nếu báo cáo được approve
             if (request.Status == ReportStatus.Approved && request.ActionTaken != ReportAction.NoAction)
             {
                 await ApplyActionToUserAsync(report.ReportedUserId, request);

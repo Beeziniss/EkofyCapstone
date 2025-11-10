@@ -119,6 +119,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             // Case: Hủy vào cuối kỳ hạn
                             if (status == "active" && stripeSubscription.CancelAtPeriodEnd == true)
                             {
+                                // Cập nhật trạng thái CancelAtEndOfPeriod trong UserSubscription
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), true);
+
                                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                                 // Không cần dùng background job để kiểm tra và hủy gói currentSubscription vào đúng ngày PeriodEnd
                                 // Có thể gửi email nhắc nhở user vào khoảng n ngày trước PeriodEnd
@@ -164,8 +167,15 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             // Chưa biết được vì đang sandbox nên lúc nào cũng thanh toán thành công
                             else if (status == "past_due" || status == "unpaid")
                             {
-                                _logger.LogInformation($"Subscription {stripeSubscription.Id} is past due or unpaid for user {userId}.");
-                                // Không làm gì hết hoặc gửi email thông báo cho user
+                                // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
+
+                                // Tạo mới UserSubscription mỗi lần có thanh toán thành công
+                                // StripeSubscription Id null
+                                await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+
+                                // Hạ cấp quyền entitlements về Free
+                                await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
                             }
 
                             break;
@@ -543,16 +553,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
                 {
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
-
-                    // Nhớ xóa khi test xong trên production
-                    Console.WriteLine("====================================");
-                    Console.WriteLine($"CHECKOUT: {checkoutSession.InvoiceId} || {checkoutSession.CustomerId} || {checkoutSession.SubscriptionId}");
-                    Console.WriteLine("====================================");
-
-                    if(checkoutSession.InvoiceId == null || checkoutSession.CustomerId == null || checkoutSession.SubscriptionId == null)
-                    {
-                        throw new NotFoundCustomException("NULL in checkout session.");
-                    }
 
                     // Cập nhật PaymentTransaction
                     UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
