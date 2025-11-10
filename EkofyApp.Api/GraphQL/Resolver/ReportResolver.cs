@@ -7,7 +7,7 @@ using MongoDB.Driver;
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(Report))]
-public sealed class ReportResolver : ObjectTypeExtension<Report>
+public sealed class ReportResolver
 {
     [UseProjection]
     [UseFiltering]
