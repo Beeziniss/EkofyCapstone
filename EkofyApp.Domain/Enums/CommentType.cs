@@ -10,5 +10,5 @@ public enum CommentType
     [EnumMember(Value = "Album")]
     Album,
     [EnumMember(Value = "Request")]
-    RequestHub
+    Request
 }

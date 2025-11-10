@@ -304,7 +304,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
             CommentType.Album => await _unitOfWork.GetCollection<Album>()
                 .Find(a => a.Id == targetId)
                 .AnyAsync(),
-            CommentType.RequestHub => await _unitOfWork.GetCollection<Request>()
+            CommentType.Request => await _unitOfWork.GetCollection<Request>()
                 .Find(r => r.Id == targetId)
                 .AnyAsync(),
             _ => false
