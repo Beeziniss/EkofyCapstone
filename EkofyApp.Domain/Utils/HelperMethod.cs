@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using System.Globalization;
@@ -18,8 +19,17 @@ public sealed class HelperMethod
         return validBitrates;
     }
 
-    public static string[] GetValidBitratesArray()
+    public static string[] GetAllowedBitratesForUser(List<AppliedEntitlement> appliedEntitlements)
     {
+        string maxBitrate = Convert.ToString(appliedEntitlements.Where(x => x.Code == "audio_high_quality").Select(x => x.Value).FirstOrDefault()) ?? throw new NotFoundCustomException("Not found entitlement code audio_high_quality");
+
+        string maxBitrateDefault = "128kbps"; // Mặc định
+
+        if (maxBitrate == maxBitrateDefault)
+        {
+            return ["128kbps"];
+        }
+
         return ["128kbps", "256kbps", "320kbps"];
     }
 
