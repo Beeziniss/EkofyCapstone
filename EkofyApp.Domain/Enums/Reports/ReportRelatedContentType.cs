@@ -11,6 +11,6 @@ public enum ReportRelatedContentType
     Listener,
     [EnumMember(Value = "Comment")]
     Comment,
-    [EnumMember(Value = "RequestHub")]
+    [EnumMember(Value = "Request")]
     RequestHub
 }

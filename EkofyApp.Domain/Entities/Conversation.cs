@@ -14,7 +14,7 @@ public sealed class Conversation : TimeStamped, IEntityCustom
     public List<string> UserIds { get; set; } = []; // Exactly 2 users
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string RequestHubId { get; set; } = null!;
+    public string? RequestHubId { get; set; }
 
     public ConversationStatus Status { get; set; } = ConversationStatus.Pending;
 

@@ -6,7 +6,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities
 {
-    public sealed class RequestHub : TimeStamped, IEntityCustom
+    public sealed class Request : TimeStamped, IEntityCustom
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]

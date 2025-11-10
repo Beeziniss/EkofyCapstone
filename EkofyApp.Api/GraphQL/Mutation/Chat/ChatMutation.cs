@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.ServiceInterfaces.Chat;
+﻿using EkofyApp.Application.Models.Conversations;
+using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Chat;
@@ -12,6 +13,12 @@ public sealed class ChatMutation(IChatService chatService)
     public async Task<bool> UpdateConversationStatusAsync(string conversationId, ConversationStatus status)
     {
         await _chatService.UpdateConversationStatusAsync(conversationId, status);
+        return true;
+    }
+
+    public async Task<bool> AddConversationFromRequestHubAsync(CreateConversationRequest request)
+    {
+        await _chatService.AddConversationFromRequestHubAsync(request);
         return true;
     }
 }

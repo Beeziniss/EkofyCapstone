@@ -25,6 +25,16 @@ public class ArtistPackageQuery(IArtistPackageService artistPackageService)
         return _artistPackageService.GetArtistPackages();
     }
 
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<ArtistPackage>]
+    public IQueryable<ArtistPackage> GetArtistPackagesInConversation(string artistId)
+    {
+        return _artistPackageService.GetArtistPackagesInConversation(artistId);
+    }
+
     [AuthorizeRoles(HelperRoleBase.ArtistModeratorRoles)]
     [UseFiltering]
     public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)

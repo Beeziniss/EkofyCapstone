@@ -4,11 +4,12 @@ namespace EkofyApp.Application.Models.ArtistPackage
 {
     public class CreateArtistPackageRequest
     {
-        public string PackageName { get; set; } = null!;
+        public string PackageName { get; init; } = null!;
         public string ArtistId { get; init; } = null!;
-        public decimal Amount { get; set; }
-        public int EstimateDeliveryDays { get; set; }
-        public string? Description { get; set; }
-        public List<Metadata> ServiceDetails { get; set; } = [];
+        public decimal Amount { get; init; }
+        public int EstimateDeliveryDays { get; init; }
+        public string? Description { get; init; }
+        public List<Metadata> ServiceDetails { get; init; } = [];
+        public int MaxRevision { get; init; }
     }
 }

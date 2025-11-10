@@ -24,8 +24,8 @@ using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Reports;
-using EkofyApp.Application.ServiceInterfaces.RequestHubs;
 using EkofyApp.Application.ServiceInterfaces.Revenues;
+using EkofyApp.Application.ServiceInterfaces.Requests;
 using EkofyApp.Application.ServiceInterfaces.Reviews;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
@@ -73,8 +73,8 @@ using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Reports;
-using EkofyApp.Infrastructure.Services.RequestHubs;
 using EkofyApp.Infrastructure.Services.Revenues;
+using EkofyApp.Infrastructure.Services.Requests;
 using EkofyApp.Infrastructure.Services.Reviews;
 using EkofyApp.Infrastructure.Services.RoyaltyReports;
 using EkofyApp.Infrastructure.Services.Subscriptions;
@@ -385,7 +385,7 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IWorkService, WorkService>();
         services.AddScoped<IRecordingService, RecordingService>();
-        services.AddScoped<IRequestHubService, RequestHubService>();
+        services.AddScoped<IRequestService, RequestService>();
         services.AddScoped<ICouponCustomService, CouponCustomService>();
         services.AddScoped<IBillingPortalConfigurationService, BillingPortalConfigurationService>();
         services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
@@ -753,7 +753,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(UserEngagementTargetType), new EnumMemberSerializer<UserEngagementTargetType>());
         BsonSerializer.RegisterSerializer(typeof(UserEngagementAction), new EnumMemberSerializer<UserEngagementAction>());
 
-        // RequestHub
+        // Request
         BsonSerializer.RegisterSerializer(typeof(RequestStatus), new EnumMemberSerializer<RequestStatus>());
 
         // Chat
@@ -798,7 +798,7 @@ public static class DependencyInjection
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
-            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction"];
+            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction", "request"];
         });
 
         // Background Jobs Services
