@@ -471,7 +471,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.InvoicePaymentSigningSecret);
                 switch (stripeEvent.Type)
                 {
-                    case EventTypes.InvoicePaymentSucceeded:
+                    case EventTypes.InvoicePaymentPaid:
                         {
                             InvoicePayment invoicePayment = stripeEvent.Data.Object as InvoicePayment ?? throw new ArgumentNullCustomException("Invoice payment is NULL");
 
