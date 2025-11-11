@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
+using EkofyApp.Application.Models.AudioFeatures;
 using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
@@ -21,13 +23,14 @@ using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, ILogger<TrackService> logger) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, ILogger<TrackService> logger) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
+    private readonly IRecommendationService _recommendationService = recommendationService;
     private readonly ILogger<TrackService> _logger = logger;
 
     public async Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year)
@@ -561,6 +564,27 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             .ToListAsync();
     }
 
+    public IQueryable<Track> GetEuclideanRecommendedTracksByTrackId(string trackId, AudioFeatureWeight audioFeatureWeight, int limit = 10)
+    {
+        AudioFeature audioFeature = _unitOfWork.GetCollection<Track>()
+            .Find(t => t.Id == trackId)
+            .Project(t => t.AudioFeature)
+            .FirstOrDefault() ?? throw new NotFoundCustomException($"Track with ID {trackId} not found.");
+
+        return _recommendationService.GetEuclideanRecommendedTracks(audioFeature, audioFeatureWeight, limit);
+    }
+
+    public IQueryable<Track> GetCosineRecommendedTracksByTrackId(string trackId, AudioFeatureWeight audioFeatureWeight, int limit = 10)
+    {
+        AudioFeature audioFeature = _unitOfWork.GetCollection<Track>()
+            .Find(t => t.Id == trackId)
+            .Project(t => t.AudioFeature)
+            .FirstOrDefault() ?? throw new NotFoundCustomException($"Track with ID {trackId} not found.");
+
+        return _recommendationService.GetCosineRecommendedTracks(audioFeature, audioFeatureWeight, limit);
+    }
+
+    #region Không đụng đến
     public async Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id)
     {
         Track track = await _unitOfWork.GetCollection<Track>()
@@ -570,4 +594,5 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
         return _mapper.Map<TrackResponse>(track);
     }
+    #endregion
 }
