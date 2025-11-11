@@ -1,10 +1,12 @@
-﻿using EkofyApp.Application.Models.Tracks;
+﻿using EkofyApp.Application.Models.AudioFeatures;
+using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
@@ -90,6 +92,27 @@ public class TrackQuery(ITrackService trackService, ICommentService trackComment
     public async Task<IEnumerable<Track>> GetTrackBySemanticSearch(string term)
     {
         return await _trackService.GetAllTracksBySemanticAsync(term);
+    }
+
+    [AllowAnonymous]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Track>]
+    public IQueryable<Track> GetRecommendedTracksByTrackId(RecommendationAlgorithm algorithm, string trackId, AudioFeatureWeight audioFeatureWeight, int limit)
+    {
+        if(algorithm == RecommendationAlgorithm.Euclidean)
+        {
+            return _trackService.GetEuclideanRecommendedTracksByTrackId(trackId, audioFeatureWeight, limit);
+        }
+        else if(algorithm == RecommendationAlgorithm.Cosine)
+        {
+            return _trackService.GetCosineRecommendedTracksByTrackId(trackId, audioFeatureWeight, limit);
+        }
+        else
+        {
+            throw new BadRequestCustomException("Invalid recommendation algorithm.");
+        }
     }
 
     #region Original

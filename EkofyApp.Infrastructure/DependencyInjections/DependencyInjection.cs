@@ -117,6 +117,8 @@ using Stripe;
 using Syncfusion.Licensing;
 using System.Security.Claims;
 using System.Text;
+using EkofyApp.Application.ServiceInterfaces.Recommendations;
+using EkofyApp.Infrastructure.Services.Recommendations;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
 public static class DependencyInjection
@@ -307,35 +309,35 @@ public static class DependencyInjection
             MongoClientSettings settings = MongoClientSettings.FromConnectionString(mongoDbSettings.ConnectionString);
 
             #region Logging configuration
-            settings.ClusterConfigurator = builder =>
-            {
-                builder.Subscribe<CommandStartedEvent>(e =>
-                {
-                    // Lọc các field không cần thiết
-                    BsonDocument filtered = [.. e.Command.Elements
-                            .Where(el =>
-                                el.Name != "lsid" &&
-                                el.Name != "signature" &&
-                                el.Name != "$clusterTime")];
-                    //el.DisplayName != "$db" &&
-                    //el.DisplayName != "cursor")];
+            //settings.ClusterConfigurator = builder =>
+            //{
+            //    builder.Subscribe<CommandStartedEvent>(e =>
+            //    {
+            //        // Lọc các field không cần thiết
+            //        BsonDocument filtered = [.. e.Command.Elements
+            //                .Where(el =>
+            //                    el.Name != "lsid" &&
+            //                    el.Name != "signature" &&
+            //                    el.Name != "$clusterTime")];
+            //        //el.DisplayName != "$db" &&
+            //        //el.DisplayName != "cursor")];
 
-                    // Log JSON format sau khi đã lọc
-                    string json = JsonConvert.SerializeObject(JObject.Parse(filtered.ToJson()), Formatting.Indented);
-                    logger.LogInformation("[MongoDB Command] {CommandName}:\n{Json}", e.CommandName, json);
-                });
+            //        // Log JSON format sau khi đã lọc
+            //        string json = JsonConvert.SerializeObject(JObject.Parse(filtered.ToJson()), Formatting.Indented);
+            //        logger.LogInformation("[MongoDB Command] {CommandName}:\n{Json}", e.CommandName, json);
+            //    });
 
-                // Optional: log command success/failure
-                builder.Subscribe<CommandSucceededEvent>(e =>
-                {
-                    logger.LogInformation("[MongoDB Succeeded] {CommandName} - Duration: {Duration}", e.CommandName, e.Duration);
-                });
+            //    // Optional: log command success/failure
+            //    builder.Subscribe<CommandSucceededEvent>(e =>
+            //    {
+            //        logger.LogInformation("[MongoDB Succeeded] {CommandName} - Duration: {Duration}", e.CommandName, e.Duration);
+            //    });
 
-                builder.Subscribe<CommandFailedEvent>(e =>
-                {
-                    logger.LogError(e.Failure, "[MongoDB Failed] {CommandName}", e.CommandName);
-                });
-            };
+            //    builder.Subscribe<CommandFailedEvent>(e =>
+            //    {
+            //        logger.LogError(e.Failure, "[MongoDB Failed] {CommandName}", e.CommandName);
+            //    });
+            //};
             return new MongoClient(settings);
             #endregion
 
@@ -407,6 +409,7 @@ public static class DependencyInjection
         services.AddScoped<IReviewService, Services.Reviews.ReviewService>();
         services.AddScoped<IPlatformRevenueService, PlatformRevenueService>();
         services.AddScoped<IArtistRevenueService, ArtistRevenueService>();
+        services.AddScoped<IRecommendationService, RecommendationService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
