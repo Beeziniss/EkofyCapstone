@@ -11,8 +11,8 @@ public enum RestrictionAction
     Comment,
     [EnumMember(Value = "UploadTrack")]
     UploadTrack,
-    [EnumMember(Value = "CreateRequestHub")]
-    CreateRequestHub,
+    [EnumMember(Value = "CreateRequest")]
+    CreateRequest,
     [EnumMember(Value = "CreateDirectRequest")]
     CreateDirectRequest,
 }

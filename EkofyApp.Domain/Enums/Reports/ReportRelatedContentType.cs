@@ -12,5 +12,5 @@ public enum ReportRelatedContentType
     [EnumMember(Value = "Comment")]
     Comment,
     [EnumMember(Value = "Request")]
-    RequestHub
+    Request
 }

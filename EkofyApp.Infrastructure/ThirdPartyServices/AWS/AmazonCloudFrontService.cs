@@ -1,13 +1,17 @@
 ﻿using Amazon.CloudFront;
 using Amazon.S3;
 using Amazon.S3.Model;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
+using EkofyApp.Domain.EmbeddedDocuments;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -15,11 +19,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.AWS;
-public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings, IHttpContextAccessor httpContextAccessor) : IAmazonCloudFrontService
+public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSettings, IHttpContextAccessor httpContextAccessor, IUnitOfWork unitOfWork) : IAmazonCloudFrontService
 {
     private readonly IAmazonS3 _s3Client = s3Client;
     private readonly AWSSetting _aWSSettings = aWSSettings;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
     public void ValidateHlsToken(string expectedTrackId, string token)
     {
@@ -190,7 +195,13 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 content = await reader.ReadToEndAsync();
             }
 
-            string[] bitrates = HelperMethod.GetValidBitratesArray(); // Sau này có thể lấy thêm từ cấu hình hoặc database
+            // Kiểm tra effective entitlements của user để lọc bitrates nếu cần thiết
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirstValue("userId") ?? throw new UnauthorizedCustomException("Your session is limit");
+
+            List<AppliedEntitlement> appliedEntitlements = await _unitOfWork.GetCollection<EffectiveEntitlement>()
+                .Find(x => x.UserId == userId && x.Entitlements.Any(x => x.Code == "audio_high_quality")).Project(x => x.Entitlements).FirstOrDefaultAsync();
+
+            string[] bitrates = HelperMethod.GetAllowedBitratesForUser(appliedEntitlements); // Sau này có thể lấy thêm từ cấu hình hoặc database
 
             foreach (string bitrate in bitrates)
             {

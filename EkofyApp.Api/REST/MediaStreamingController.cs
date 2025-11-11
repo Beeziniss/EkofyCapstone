@@ -46,7 +46,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
         return File(keyBytes, "application/octet-stream");
     }
 
-    // Đây là endpoint để FE gọi lấy master.m3u8, nội dung sẽ trỏ đến các bitrate.m3u8 qua API proxy của bạn
+    // Đây là endpoint để FE gọi lấy master.m3u8, nội dung sẽ trỏ đến các bitrate.m3u8 qua API proxy
     [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpGet("cloudfront/{trackId}/master.m3u8")]
     public async Task<IActionResult> GetMasterPlaylist(string trackId, [FromQuery] string token)
     {

@@ -708,7 +708,6 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CouponStatus), new EnumMemberSerializer<CouponStatus>());
         BsonSerializer.RegisterSerializer(typeof(CouponPurposeType), new EnumMemberSerializer<CouponPurposeType>());
         
-
         // BillingPortalConfiguration
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionUpdate), new EnumMemberSerializer<StripeSubscriptionUpdate>());
@@ -738,6 +737,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(ReportAction), new EnumMemberSerializer<ReportAction>());
         BsonSerializer.RegisterSerializer(typeof(ReportPriority), new EnumMemberSerializer<ReportPriority>());
         BsonSerializer.RegisterSerializer(typeof(ReportRelatedContentType), new EnumMemberSerializer<ReportRelatedContentType>());
+        BsonSerializer.RegisterSerializer(typeof(RestrictionAction), new EnumMemberSerializer<RestrictionAction>());
 
         // Comment
         BsonSerializer.RegisterSerializer(typeof(CommentType), new EnumMemberSerializer<CommentType>());
@@ -798,7 +798,7 @@ public static class DependencyInjection
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
-            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction"];
+            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction", "request"];
         });
 
         // Background Jobs Services
