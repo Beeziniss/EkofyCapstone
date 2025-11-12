@@ -14,7 +14,7 @@ public interface IAuthenticationService
     Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest);
     Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest);
     Task<AuthModeratorTokenResponse> LoginModeratorAsync(LoginRequest loginRequest);
-    Task LogoutAsync();
+    Task LogoutAsync(bool isMobile = false);
     Task<AccessTokenResponse> RefreshNewTokenAsync();
     Task RegisterArtistAsync(ArtistRegisterRequest registerRequest);
     Task RegisterListenerAsync(ListenerRegisterRequest registerRequest);

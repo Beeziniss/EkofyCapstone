@@ -101,12 +101,12 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         {
                             StripeSubscription stripeSubscription = stripeEvent.Data.Object as StripeSubscription ?? throw new ArgumentNullCustomException("Subscription is NULL");
 
-                            User user = await _unitOfWork.GetCollection<User>().Find(x => x.StripeCustomerId == stripeSubscription.CustomerId)
+                            User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == stripeSubscription.Metadata["user_id"])
                                 .Project<User>(Builders<User>.Projection
                                     .Include(x => x.Id)
                                     .Include(x => x.Email)
                                     .Include(x => x.FullName))
-                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.CustomerId}");
+                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.Metadata["user_id"]}");
 
                             DateTimeOffset periodEndAt = await _unitOfWork.GetCollection<UserSubscription>()
                                 .Find(x => x.StripeSubscriptionId == stripeSubscription.Id && x.IsActive == true)
@@ -138,9 +138,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         {
                             StripeSubscription stripeSubscription = stripeEvent.Data.Object as StripeSubscription ?? throw new ArgumentNullCustomException("Subscription is NULL");
 
-                            string userId = await _unitOfWork.GetCollection<User>().Find(x => x.StripeCustomerId == stripeSubscription.CustomerId)
+                            string userId = await _unitOfWork.GetCollection<User>().Find(x => x.Id == stripeSubscription.Metadata["user_id"])
                                 .Project(x => x.Id)
-                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.CustomerId}");
+                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.Metadata["user_id"]}");
 
                             string status = stripeSubscription.Status; // canceled, incomplete_expired, incomplete, trialing, active, past_due
 
@@ -208,7 +208,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         {
                             StripeInvoice invoice = stripeEvent.Data.Object as StripeInvoice ?? throw new ArgumentNullCustomException("NULL");
 
-                            string customerId = invoice.CustomerId;
+                            string userId = invoice.Parent.SubscriptionDetails.Metadata["user_id"];
                             string stripeSubscriptionId = invoice.Parent.SubscriptionDetails.SubscriptionId;
                             string stripeProductId = invoice.Lines.Data[0].Pricing.PriceDetails.Product;
 
@@ -232,9 +232,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         SubscriptionTier currentSubscriptionTier = Enum.Parse<SubscriptionTier>(product.Metadata["subscription_tier"]);
                                         int currentSubscriptionVersion = Convert.ToInt32(product.Metadata["subscription_version"]);
 
-                                        User user = await _unitOfWork.GetCollection<User>().Find(x => x.StripeCustomerId == customerId)
+                                        User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
                                             //.Project(x => x.Id)
-                                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {customerId}");
+                                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the user {userId}");
 
                                         string stripePriceId = invoice.Lines.Data[0].Pricing.PriceDetails.Price;
 
