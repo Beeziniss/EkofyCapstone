@@ -1,4 +1,4 @@
-﻿using EkofyApp.Api.GraphQL.Mutation.RequestHubs;
+using EkofyApp.Api.GraphQL.Mutation.RequestHubs;
 using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
@@ -19,6 +19,14 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
                 .Authorize(HelperRoleBase.ArtistRolesArray);
             descriptor.Field(x => x.SwitchStatusByRequestorAsync(default!))
                 .Authorize(HelperRoleBase.ListenerRolesArray);
-        }
+
+            descriptor.Field(x => x.CreateReviewAsync(default!))
+                .Authorize(HelperRoleBase.ListenerRolesArray);
+
+            descriptor.Field(x => x.UpdateReviewAsync(default!))
+                .Authorize(HelperRoleBase.ListenerModeratorAdminRolesArray);
+
+            descriptor.Field(x => x.DeleteReviewHardAsync(default!))
+                .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
     }
 }

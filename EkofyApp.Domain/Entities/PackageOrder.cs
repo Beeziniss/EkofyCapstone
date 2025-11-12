@@ -30,5 +30,7 @@ public sealed class PackageOrder : TimeStamped
     public decimal PlatformFeePercentage { get; set; }
     public decimal ArtistFeePercentage => 100m - PlatformFeePercentage;
 
+    public Review? Review { get; set; }
+
     public string? BackgroundJobId { get; set; }
 }

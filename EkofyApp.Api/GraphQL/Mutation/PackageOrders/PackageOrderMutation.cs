@@ -1,5 +1,6 @@
-﻿using EkofyApp.Application.ServiceInterfaces.PackageOrders;
-using EkofyApp.Application.Models.PackageOrders;
+﻿using EkofyApp.Application.Models.PackageOrders;
+using EkofyApp.Application.Models.Reviews;
+using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 
 namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
 {
@@ -43,5 +44,22 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
             return true;
         }
 
+        public async Task<bool> CreateReviewAsync(CreateReviewRequest createReviewRequest)
+        {
+            await _packageOrderService.CreateReviewAsync(createReviewRequest);
+            return true;
+        }
+
+        public async Task<bool> UpdateReviewAsync(UpdateReviewRequest updateReviewRequest)
+        {
+            await _packageOrderService.UpdateReviewAsync(updateReviewRequest);
+            return true;
+        }
+
+        public async Task<bool> DeleteReviewHardAsync(string reviewId)
+        {
+            await _packageOrderService.DeleteReviewHardAsync(reviewId);
+            return true;
+        }
     }
 }
