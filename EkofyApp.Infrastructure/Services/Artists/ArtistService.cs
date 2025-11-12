@@ -428,4 +428,55 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // Send rejection email to user
         BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterReject, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email, approvalRequest.RejectionReason ?? string.Empty));
     }
+
+    public async Task<ArtistRevenueResponse> ComputeArtistRevenueByArtistIdAsync(string artistId)
+    {
+        string userId = await _unitOfWork.GetCollection<Artist>()
+            .Find(x => x.Id == artistId)
+            .Project(x => x.UserId)
+            .FirstOrDefaultAsync() ?? throw new KeyNotFoundException($"User with ArtistId {artistId} not found.");
+
+        // Tính tổng royalty earnings cho artist
+        IEnumerable<decimal> royaltyEarnings = await _unitOfWork.GetCollection<RoyaltyReport>()
+            .Find(x => x.RoyaltySplits.Any(rs => rs.UserId == userId))
+            .Project(x => x.RoyaltySplits.Where(rs => rs.UserId == userId).Sum(rs => rs.Amount))
+            .ToListAsync();
+
+        decimal totalRoyaltyEarnings = royaltyEarnings.Sum();
+
+        // Tính tổng service revenue cho artist
+        IEnumerable<decimal> serviceRevenues = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
+            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && x.UserId == userId)
+            .Project(x => x.Amount)
+            .ToListAsync();
+
+        decimal totalServiceRevenue = serviceRevenues.Sum();
+
+        // Tính tổng refund amount cho artist
+        IEnumerable<decimal> refundAmounts = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
+            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Refund && x.SubscriptionSnapshot == null && x.UserId == userId)
+            .Project(x => x.Amount)
+            .ToListAsync();
+
+        decimal totalRefundAmount = refundAmounts.Sum();
+
+        ArtistRevenueResponse artistRevenue = new()
+        {
+            RoyaltyEarnings = totalRoyaltyEarnings,
+            ServiceRevenue = totalServiceRevenue,
+            RefundAmount = totalRefundAmount,
+        };
+
+        UpdateResult updateResult = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(x => x.UserId == userId, Builders<Artist>.Update
+                .Inc(x => x.RoyaltyEarnings, totalRoyaltyEarnings)
+                .Inc(x => x.ServiceRevenue, totalServiceRevenue)
+                .Inc(x => x.RefundAmount, totalRefundAmount)
+                .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+        if (updateResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException($"Failed to update revenue for artist with ID {artistId}.");
+        }
+
+        return artistRevenue;
+    }
 }

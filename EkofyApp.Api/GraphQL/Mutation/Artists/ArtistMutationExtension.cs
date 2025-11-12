@@ -14,5 +14,8 @@ public class ArtistMutationExtension : ObjectTypeExtension<ArtistMutation>
 
         descriptor.Field(x => x.RejectArtistRegistrationAsync(default!))
             .Authorize(HelperRoleBase.ModeratorRolesArray);
+
+        descriptor.Field(x => x.ComputeArtistRevenueByArtistIdAsync(default!))
+            .Authorize(HelperRoleBase.ArtistModeratorAdminRolesArray);
     }
 }

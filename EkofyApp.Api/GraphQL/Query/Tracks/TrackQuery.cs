@@ -16,10 +16,9 @@ namespace EkofyApp.Api.GraphQL.Query.Tracks;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class TrackQuery(ITrackService trackService, ICommentService trackCommentService, IRedisCacheService redisCacheService, IAmazonCloudFrontService amazonCloudFrontService)
+public class TrackQuery(ITrackService trackService, IRedisCacheService redisCacheService, IAmazonCloudFrontService amazonCloudFrontService)
 {
     private readonly ITrackService _trackService = trackService;
-    private readonly ICommentService _trackCommentService = trackCommentService;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
