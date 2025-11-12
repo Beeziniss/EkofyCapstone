@@ -305,6 +305,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 },
             ],
             Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
+            CustomerEmail = user.Email,
             Mode = "payment",
             SuccessUrl = createPaymentCheckoutSessionRequest.SuccessUrl,
             CancelUrl = createPaymentCheckoutSessionRequest.CancelUrl,
@@ -551,6 +552,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 },
             ],
             Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
+            CustomerEmail = user.Email,
             Mode = "subscription",
             //OriginContext = "web",
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,

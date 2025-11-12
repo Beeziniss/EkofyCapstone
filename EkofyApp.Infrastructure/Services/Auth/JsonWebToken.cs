@@ -18,7 +18,7 @@ public sealed class JsonWebToken : IJsonWebToken
         _redisCacheService = redisCacheService;
     }
 
-    public async Task<AccessTokenResponse> GenerateAccessTokenAsync(IEnumerable<Claim> claims)
+    public async Task<AccessTokenResponse> GenerateAccessTokenAsync(IEnumerable<Claim> claims, bool isMobile = false)
     {
         //generate access token and refresh token (overload method)
         string accessToken = GenerateAccessToken(claims);
@@ -28,7 +28,14 @@ public sealed class JsonWebToken : IJsonWebToken
         string userId = claims.FirstOrDefault(c => c.Type == "userId")!.Value.ToString();
 
         //lưu vào redis 7 ngày
-        await _redisCacheService.SetGenericAsync("jwt:" + userId, refreshToken, TimeSpan.FromDays(7));
+        if (isMobile)
+        {
+            await _redisCacheService.SetGenericAsync("jwt_mobile:" + userId, refreshToken, TimeSpan.FromDays(7));
+        }
+        else
+        {
+            await _redisCacheService.SetGenericAsync("jwt:" + userId, refreshToken, TimeSpan.FromDays(7));
+        }
 
         return new AccessTokenResponse
         {
@@ -47,11 +54,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
         string userID = principal.FindFirst(c => c.Type == "userId")?.Value!;
 
-        Console.WriteLine("==========++++++++********** "+userID);
-
         string? tokenInRedis = await _redisCacheService.GetStringAsync("jwt:" + userID);
-
-        Console.WriteLine("==========++++++++********** " + tokenInRedis);
 
         if (tokenInRedis is null || oldRefreshToken != tokenInRedis)
         {
@@ -103,9 +106,20 @@ public sealed class JsonWebToken : IJsonWebToken
         return decodedToken;
     }
 
-    public async Task RevokeToken(string userId) { 
+    public async Task RevokeToken(string userId, bool isMobile = false)
+    {
+        if(isMobile)
+        {
+            if (await _redisCacheService.GetStringAsync("jwt_mobile:" + userId) is null)
+            {
+                return;
+            }
 
-        if(await _redisCacheService.GetStringAsync("jwt:" + userId) is null)
+            await _redisCacheService.RemoveAsync("jwt_mobile:" + userId);
+            return;
+        }
+
+        if (await _redisCacheService.GetStringAsync("jwt:" + userId) is null)
         {
             return;
         }
@@ -140,8 +154,8 @@ public sealed class JsonWebToken : IJsonWebToken
 
             signingCredentials: new SigningCredentials(
                                 new SymmetricSecurityKey(symmetricKey),
-                                SecurityAlgorithms.HmacSha256Signature) 
-                                //use HmacSha256Signature algorithm to sign token
+                                SecurityAlgorithms.HmacSha256Signature)
+        //use HmacSha256Signature algorithm to sign token
         );
         //write token with tokenDescriptor above
         string token = tokenHandler.WriteToken(tokenDescriptor);
