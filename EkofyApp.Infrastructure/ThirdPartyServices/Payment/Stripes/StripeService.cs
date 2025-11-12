@@ -464,8 +464,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             });
 
             // Cập nhật refund amount cho Artist
-            UpdateResult artistUpdateResult = await _unitOfWork.GetCollection<ArtistRevenue>()
-                .UpdateOneAsync(session, x => x.UserId == paymentTransaction.UserId, Builders<ArtistRevenue>.Update
+            UpdateResult artistUpdateResult = await _unitOfWork.GetCollection<Artist>()
+                .UpdateOneAsync(session, x => x.UserId == paymentTransaction.UserId, Builders<Artist>.Update
                     .Inc(x => x.RefundAmount, amount)
                     .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
                     new UpdateOptions { IsUpsert = true });
