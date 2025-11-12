@@ -1,7 +1,6 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
-using EkofyApp.Infrastructure.Services.PackageOrders;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.PackageOrders
@@ -21,6 +20,5 @@ namespace EkofyApp.Api.GraphQL.Query.PackageOrders
         {
             return _packageOrderService.GetPackageOrders();
         }
-
     }
 }

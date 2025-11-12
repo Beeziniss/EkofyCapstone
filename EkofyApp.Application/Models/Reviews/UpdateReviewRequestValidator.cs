@@ -5,8 +5,8 @@ public sealed class UpdateReviewRequestValidator : AbstractValidator<UpdateRevie
 {
     public UpdateReviewRequestValidator()
     {
-        RuleFor(x => x.ReviewId)
-            .NotEmpty().WithMessage("ReviewId is required.");
+        RuleFor(x => x.PackageOrderId)
+            .NotEmpty().WithMessage("PackageOrderId is required.");
 
         When(x => x.Rating.HasValue, () =>
         {
@@ -17,8 +17,8 @@ public sealed class UpdateReviewRequestValidator : AbstractValidator<UpdateRevie
         When(x => x.Comment != null, () =>
         {
             RuleFor(x => x.Comment!)
-                .NotEmpty().WithMessage("Comment cannot be empty.")
-                .MaximumLength(1000).WithMessage("Comment cannot exceed 1000 characters.");
+                .NotEmpty().WithMessage("Content cannot be empty.")
+                .MaximumLength(1000).WithMessage("Content cannot exceed 1000 characters.");
         });
     }
 }
