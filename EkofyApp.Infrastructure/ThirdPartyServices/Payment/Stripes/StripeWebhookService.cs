@@ -636,7 +636,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             RevisionCount = 0,
                             Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
                             PlatformFeePercentage = platformFeePercentage,
-                            ArtistFeePercentage = 100m - platformFeePercentage,
                         });
 
                         oneOffSnapshot = new()
@@ -678,7 +677,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             throw new UnprocessableEntityCustomException("Cannot update conversation status to in progress");
                         }
 
-                        // Cập nhật trạng thái của Request Hub
+                        // Cập nhật trạng thái của Requests Hub
                         UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
                                 .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
                         if(updateRequestHub.ModifiedCount == 0)

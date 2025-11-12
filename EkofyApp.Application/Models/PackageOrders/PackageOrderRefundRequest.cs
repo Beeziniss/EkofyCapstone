@@ -3,7 +3,7 @@
     public sealed record PackageOrderRefundRequest
     {
         public string Id { get; init; } = default!;
-        public int ArtistPercentageAmount { get; init; }
-        public int RequestorPercentageAmount { get; init; }
+        public decimal ArtistPercentageAmount { get; init; }
+        public decimal RequestorPercentageAmount { get; init; }
     }
 }

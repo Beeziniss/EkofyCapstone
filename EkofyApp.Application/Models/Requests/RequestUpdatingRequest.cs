@@ -1,7 +1,7 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 
-namespace EkofyApp.Application.Models.RequestHub
+namespace EkofyApp.Application.Models.Requests
 {
     public record RequestUpdatingRequest
     {

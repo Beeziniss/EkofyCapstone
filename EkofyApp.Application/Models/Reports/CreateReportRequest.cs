@@ -3,7 +3,7 @@ using EkofyApp.Domain.Enums.Reports;
 namespace EkofyApp.Application.Models.Reports;
 
 /// <summary>
-/// Request ?? t?o báo cáo vi ph?m
+/// Requests ?? t?o báo cáo vi ph?m
 /// </summary>
 public sealed class CreateReportRequest
 {

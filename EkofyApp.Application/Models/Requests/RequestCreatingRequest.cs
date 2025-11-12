@@ -1,6 +1,6 @@
 ﻿using EkofyApp.Domain.EmbeddedDocuments;
 
-namespace EkofyApp.Application.Models.RequestHub
+namespace EkofyApp.Application.Models.Requests
 {
     public sealed record RequestCreatingRequest
     {
