@@ -28,6 +28,6 @@ public interface IStripeService
     Task<Balance> GetConnectedAccountBalanceAsync(string connectedAccountId);
     Task CancelSubscriptionAtPeriodEndAsync();
     Task ResumeSubscriptionAsync();
-    Task EscrowReleaseAsync(string packageOrderId);
+    Task EscrowReleaseAsync(string packageOrderId, decimal? amount = null);
     Task RefundAsync(string paymentIntentId, decimal amount, RefundReasonType reason);
 }

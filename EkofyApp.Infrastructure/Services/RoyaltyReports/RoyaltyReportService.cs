@@ -307,10 +307,10 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                     Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong, CurrencyType.sgd.ToString());
 
                     // Cập nhật royalty earnings cho Artist
-                    UpdateResult updateArtistRoyaltyResult = await _unitOfWork.GetCollection<ArtistRevenue>()
+                    UpdateResult updateArtistRoyaltyResult = await _unitOfWork.GetCollection<Artist>()
                         .UpdateOneAsync(session,
                             x => x.UserId == userId,
-                            Builders<ArtistRevenue>.Update
+                            Builders<Artist>.Update
                                 .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
                                 .Inc(x => x.RoyaltyEarnings, totalVndAmount),
                             new UpdateOptions { IsUpsert = true },

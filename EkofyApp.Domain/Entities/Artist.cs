@@ -38,4 +38,10 @@ public sealed class Artist : TimeStamped, IEntityCustom
     public List<LegalDocument> LegalDocuments { get; set; } = []; // List of legal documents associated with the artist, e.g., contracts, agreements, etc.
 
     public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
+
+    // Revenue
+    public decimal RoyaltyEarnings { get; set; } = default;
+    public decimal ServiceRevenue { get; set; } = default; // Tiền chưa trừ hoa hồng
+    public decimal GrossRevenue => RoyaltyEarnings + ServiceRevenue;
+    public decimal RefundAmount { get; set; } = default;
 }

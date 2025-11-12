@@ -464,8 +464,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             });
 
             // Cập nhật refund amount cho Artist
-            UpdateResult artistUpdateResult = await _unitOfWork.GetCollection<ArtistRevenue>()
-                .UpdateOneAsync(session, x => x.UserId == paymentTransaction.UserId, Builders<ArtistRevenue>.Update
+            UpdateResult artistUpdateResult = await _unitOfWork.GetCollection<Artist>()
+                .UpdateOneAsync(session, x => x.UserId == paymentTransaction.UserId, Builders<Artist>.Update
                     .Inc(x => x.RefundAmount, amount)
                     .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
                     new UpdateOptions { IsUpsert = true });
@@ -665,7 +665,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     }
 
     // Giải ngân tiền từ Platform sang Artist
-    public async Task EscrowReleaseAsync(string packageOrderId)
+    public async Task EscrowReleaseAsync(string packageOrderId, decimal? amount = null)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
@@ -677,10 +677,19 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                     .Include(x => x.ProviderId))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found package order.");
 
-            decimal amountPackageOrder = await _unitOfWork.GetCollection<PaymentTransaction>()
+            decimal amountPackageOrder;
+
+            if (amount != null)
+            {
+                amountPackageOrder = amount.Value;
+            }
+            else
+            {
+                amountPackageOrder = await _unitOfWork.GetCollection<PaymentTransaction>()
                 .Find(x => x.Id == packageOrder.PaymentTransactionId)
                 .Project(x => x.Amount)
                 .FirstOrDefaultAsync();
+            }
 
             if (amountPackageOrder <= 0)
             {

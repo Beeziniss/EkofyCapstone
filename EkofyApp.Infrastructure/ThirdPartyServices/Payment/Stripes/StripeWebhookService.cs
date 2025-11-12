@@ -687,11 +687,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         }
 
                         // Cập nhật service revenue cho Artist
-                        UpdateDefinition<ArtistRevenue> updateArtistRevenue = Builders<ArtistRevenue>.Update
+                        UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
                             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
                             .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
 
-                        UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<ArtistRevenue>()
+                        UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
                             .UpdateOneAsync(session, x => x.UserId == userArtistId, updateArtistRevenue, new UpdateOptions { IsUpsert = true });
                         if (updateArtistRevenueResult.ModifiedCount == 0)
                         {

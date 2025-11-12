@@ -33,4 +33,9 @@ public class ArtistMutation(IArtistService artistService)
         return true;
     }
     #endregion
+
+    public async Task<ArtistRevenueResponse> ComputeArtistRevenueByArtistIdAsync(string artistId)
+    {
+        return await _artistService.ComputeArtistRevenueByArtistIdAsync(artistId);
+    }
 }

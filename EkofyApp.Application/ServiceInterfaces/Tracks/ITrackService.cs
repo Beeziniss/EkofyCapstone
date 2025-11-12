@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Recordings;
+﻿using EkofyApp.Application.Models.AudioFeatures;
+using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Works;
@@ -26,5 +27,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Tracks
         Task UpdateStreamCount(string trackId);
         IQueryable<Track> GetFavoriteTracks();
         Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year);
+        IQueryable<Track> GetEuclideanRecommendedTracksByTrackId(string trackId, AudioFeatureWeight audioFeatureWeight, int limit = 10);
+        IQueryable<Track> GetCosineRecommendedTracksByTrackId(string trackId, AudioFeatureWeight audioFeatureWeight, int limit = 10);
     }
 }
