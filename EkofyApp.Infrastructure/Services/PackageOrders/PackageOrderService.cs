@@ -1,4 +1,5 @@
 ﻿using EkofyApp.Application.Models.PackageOrders;
+using EkofyApp.Application.Models.Reviews;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
@@ -8,16 +9,19 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Hangfire;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
     [Queue("request")]
-    public sealed class PackageOrderService(IUnitOfWork unitOfWork, IStripeService stripeService) : IPackageOrderService
+    public sealed class PackageOrderService(IUnitOfWork unitOfWork, IStripeService stripeService, IHttpContextAccessor httpContextAccessor) : IPackageOrderService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IStripeService _stripeService = stripeService;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+
         public IQueryable<PackageOrder> GetPackageOrders()
         {
             return _unitOfWork.GetCollection<PackageOrder>().AsQueryable();
@@ -226,7 +230,115 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             return result.ModifiedCount > 0;
         }
 
+        #region Review
+        public async Task<ReviewResponse> GetAverageRatingBaseOnPackageAsync(string packageId)
+        {
+            List<int> reviews = await _unitOfWork.GetCollection<PackageOrder>()
+                    .Find(x => x.ArtistPackageId == packageId && x.Review != null)
+                    .Project(x => x.Review!.Rating)
+                    .ToListAsync();
 
+            if (reviews.Count == 0)
+            {
+                return new ReviewResponse
+                {
+                    AverageRating = 0,
+                    TotalReviews = 0
+                };
+            }
+
+            return new ReviewResponse
+            {
+                AverageRating = Convert.ToInt32(Math.Round(reviews.Average())),
+                TotalReviews = reviews.Count
+            };
+        }
+
+        public async Task CreateReviewAsync(CreateReviewRequest createReviewRequest)
+        {
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+            if (await _unitOfWork.GetCollection<PackageOrder>().Find(x => x.ClientId == userId && x.Id == createReviewRequest.PackageOrderId).AnyAsync())
+            {
+                throw new ConflictCustomException("You have already reviewed this package order");
+            }
+
+            // Tạo review
+            UpdateResult updateResult = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
+                x => x.Id == createReviewRequest.PackageOrderId,
+                Builders<PackageOrder>.Update
+                    .Set(x => x.CreatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                    .Set(x => x.UpdatedAt, null)
+                    .Set(x => x.Review, new Review
+                    {
+                        Rating = createReviewRequest.Rating,
+                        Content = createReviewRequest.Content
+                    })
+            );
+            if (updateResult.ModifiedCount == 0)
+            {
+                throw new UnprocessableEntityCustomException("Cannot create review");
+            }
+        }
+
+        public async Task UpdateReviewAsync(UpdateReviewRequest updateReviewRequest)
+        {
+            // Kiểm tra review có tồn tại không
+            if (!await _unitOfWork.GetCollection<PackageOrder>()
+                    .Find(x => x.Id == updateReviewRequest.PackageOrderId && x.Review != null)
+                    .AnyAsync())
+            {
+                throw new NotFoundCustomException("Review does not exist");
+            }
+
+            List<UpdateDefinition<PackageOrder>> updates = [Builders<PackageOrder>.Update.Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())];
+
+            if (updateReviewRequest.Rating != null)
+            {
+                updates.Add(Builders<PackageOrder>.Update.Set(r => r.Review!.Rating, updateReviewRequest.Rating.Value));
+            }
+
+            if (updateReviewRequest.Comment != null)
+            {
+                updates.Add(Builders<PackageOrder>.Update.Set(r => r.Review!.Content, updateReviewRequest.Comment));
+            }
+
+            UpdateDefinition<PackageOrder> updateDefinition = Builders<PackageOrder>.Update.Combine(updates);
+
+            UpdateResult updateResult = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
+                r => r.Id == updateReviewRequest.PackageOrderId,
+                updateDefinition
+            );
+            if (updateResult.ModifiedCount == 0)
+            {
+                throw new UnprocessableEntityCustomException("Cannot update review");
+            }
+        }
+
+        public async Task DeleteReviewHardAsync(string packageOrderId)
+        {
+            // Kiểm tra review có tồn tại không
+            if (!await _unitOfWork.GetCollection<PackageOrder>()
+                        .Find(x => x.Id == packageOrderId && x.Review != null)
+                        .AnyAsync())
+            {
+                throw new NotFoundCustomException("Review does not exist");
+            }
+
+            DeleteResult deleteResult = await _unitOfWork.GetCollection<PackageOrder>().DeleteOneAsync(r => r.Id == packageOrderId);
+            if (deleteResult.DeletedCount == 0)
+            {
+                throw new UnprocessableEntityCustomException("Cannot delete review");
+            }
+        }
+
+        public async Task<bool> CheckClientReviewedPackageOrderAsync(string clientId, string packageOrderId)
+        {
+            return await _unitOfWork.GetCollection<PackageOrder>()
+                .Find(x => x.Id == packageOrderId && x.ClientId == clientId && x.Review != null)
+                .AnyAsync();
+        }
+        #endregion
 
         #region FOR BACKGROUND JOB
         // Ở ĐÂY CHỈ THỰC HIỆN BACKGROUND JOB VÀO MỖI 12H SÁNG VÀ TRƯA ĐỂ TRÁNH CẬP NHẬT NHIỀU LÊN DB

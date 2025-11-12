@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class PaymentTransaction : TimeStamped, IEntityCustom // Snapshot of a payment transaction
+public sealed class PaymentTransaction : TimeStamped // Snapshot of a payment transaction
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
