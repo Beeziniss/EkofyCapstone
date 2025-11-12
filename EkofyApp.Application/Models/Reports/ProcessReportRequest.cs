@@ -4,7 +4,7 @@ using EkofyApp.Domain.Enums.Reports;
 namespace EkofyApp.Application.Models.Reports;
 
 /// <summary>
-/// Request ?? moderator x? lý báo cáo
+/// Requests ?? moderator x? lý báo cáo
 /// </summary>
 public sealed record class ProcessReportRequest
 {

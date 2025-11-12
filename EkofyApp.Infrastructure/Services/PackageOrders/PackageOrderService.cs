@@ -131,8 +131,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
                 update);
 
-            //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY -- NOT DONE
-            await _stripeService.EscrowReleaseAsync(packageOrderId);
+            //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
+            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(packageOrderId, null));
 
             return result.ModifiedCount > 0;
         }
@@ -213,15 +213,12 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                       .FirstOrDefaultAsync()
                         ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
 
-            //REFUND HERE -- vì ở đây refund 100% nên ko cần chia nhỏ tiền ra
-            await _stripeService.RefundAsync(transaction.StripePaymentId, Math.Ceiling(transaction.Amount * request.RequestorPercentageAmount / 100), RefundReasonType.requested_by_customer);
-
-            Thread.Sleep(5000);
-
-            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Completed));
+            await _stripeService.RefundAsync(transaction.StripePaymentId!, (transaction.Amount * request.RequestorPercentageAmount / 100m), RefundReasonType.requested_by_customer);
 
             //Giải ngân do công việc đã đóng và đã refund *******************************************************************
-            //await _stripeService.EscrowReleaseAsync(request.Id);
+            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, (transaction.Amount * request.ArtistPercentageAmount / 100m)));
+            
+            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Completed));
 
             return result.ModifiedCount > 0;
         }

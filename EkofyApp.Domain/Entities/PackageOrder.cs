@@ -28,7 +28,7 @@ public sealed class PackageOrder : TimeStamped
     public DateTimeOffset? CompletedAt { get; set; }
     public bool IsEscrowReleased { get; set; } = false;
     public decimal PlatformFeePercentage { get; set; }
-    public decimal ArtistFeePercentage { get; set; }
+    public decimal ArtistFeePercentage => 100m - PlatformFeePercentage;
 
     public string? BackgroundJobId { get; set; }
 }

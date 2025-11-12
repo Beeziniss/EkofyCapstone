@@ -8,7 +8,9 @@ namespace EkofyApp.Application.ServiceInterfaces.PackageOrders
         Task<bool> AcceptRequestByArtist(string packageOrderId);
         Task<bool> ApproveAndCloseRequest(string packageOrderId);
         IQueryable<PackageOrder> GetPackageOrders();
+        Task<bool> RefundPartially(PackageOrderRefundRequest request);
         Task<bool> SendRedoRequest(RedoRequest request);
         Task<bool> SubmitDeliverytAsync(SubmitDeliveryRequest request);
+        Task<bool> SwitchStatusByRequestor(ChangeOrderStatusRequest request);
     }
 }

@@ -25,5 +25,23 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
             return true;
         }
 
+        public async Task<bool> AcceptRequestByArtistAsync(string packageOrderId)
+        {
+            await _packageOrderService.AcceptRequestByArtist(packageOrderId);
+            return true;
+        }
+
+        public async Task<bool> SwitchStatusByRequestorAsync(ChangeOrderStatusRequest request)
+        {
+            await _packageOrderService.SwitchStatusByRequestor(request);
+            return true;
+        }
+
+        public async Task<bool> RefundPartiallyAsync(PackageOrderRefundRequest request)
+        {
+            await _packageOrderService.RefundPartially(request);
+            return true;
+        }
+
     }
 }

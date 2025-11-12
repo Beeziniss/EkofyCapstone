@@ -529,9 +529,9 @@ public static class DependencyInjection
             //    OnMessageReceived = context =>
             //    {
             //        // Check if the token is present without "Bearer" prefix
-            //        if (context.Request.Headers.ContainsKey("Authorization"))
+            //        if (context.Requests.Headers.ContainsKey("Authorization"))
             //        {
-            //            var token = context.Request.Headers.Authorization.ToString();
+            //            var token = context.Requests.Headers.Authorization.ToString();
             //            if (!token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             //            {
             //                context.Token = token; // Set token without "Bearer" prefix
@@ -613,8 +613,8 @@ public static class DependencyInjection
             PartnerCode = Environment.GetEnvironmentVariable("MOMO_PARTNER_CODE") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Partner Code is not set in the environment variables"),
             ReturnUrl = Environment.GetEnvironmentVariable("MOMO_RETURN_URL") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Return URL is not set in the environment variables"),
             NotifyUrl = Environment.GetEnvironmentVariable("MOMO_NOTIFY_URL") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Notify URL is not set in the environment variables"),
-            RequestTypeQR = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_QR") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Request Type QR is not set in the environment variables"),
-            RequestTypeVisa = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_VISA") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Request Type Visa is not set in the environment variables")
+            RequestTypeQR = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_QR") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Requests Type QR is not set in the environment variables"),
+            RequestTypeVisa = Environment.GetEnvironmentVariable("MOMO_REQUEST_TYPE_VISA") ?? throw new UnconfiguredEnvironmentCustomException("Momo's Requests Type Visa is not set in the environment variables")
         };
 
         // Register MomoSetting with DI
@@ -755,8 +755,9 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(UserEngagementTargetType), new EnumMemberSerializer<UserEngagementTargetType>());
         BsonSerializer.RegisterSerializer(typeof(UserEngagementAction), new EnumMemberSerializer<UserEngagementAction>());
 
-        // Request
+        // Requests
         BsonSerializer.RegisterSerializer(typeof(RequestStatus), new EnumMemberSerializer<RequestStatus>());
+        BsonSerializer.RegisterSerializer(typeof(RequestType), new EnumMemberSerializer<RequestType>());
 
         // Chat
         BsonSerializer.RegisterSerializer(typeof(ConversationStatus), new EnumMemberSerializer<ConversationStatus>());
@@ -764,6 +765,10 @@ public static class DependencyInjection
         // Refund
         BsonSerializer.RegisterSerializer(typeof(RefundReasonType), new EnumMemberSerializer<RefundReasonType>());
         BsonSerializer.RegisterSerializer(typeof(RefundTransactionStatus), new EnumMemberSerializer<RefundTransactionStatus>());
+
+        //Package Order
+        BsonSerializer.RegisterSerializer(typeof(PackageOrderStatus), new EnumMemberSerializer<PackageOrderStatus>());
+
     }
 
     public static void AddHangfire(this IServiceCollection service)
