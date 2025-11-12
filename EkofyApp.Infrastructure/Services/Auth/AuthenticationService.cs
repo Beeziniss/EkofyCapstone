@@ -215,7 +215,12 @@ public sealed class AuthenticationService(
         ];
 
         // Tạo access token
-        AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims);
+        bool isMobile = false;
+        if (loginRequest.IsMobile)
+        {
+            isMobile = true;
+        }
+        AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims, isMobile);
 
         CookieOptions cookieOptions = new()
         {
@@ -545,12 +550,12 @@ public sealed class AuthenticationService(
         return await _jsonWebToken.GenerateRefreshTokenAsync(refreshToken);
     }
 
-    public async Task LogoutAsync()
+    public async Task LogoutAsync(bool isMobile = false)
     {
         string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
                         ?? throw new UnauthorizedCustomException("You have not login yet.");
 
-        await _jsonWebToken.RevokeToken(userId);
+        await _jsonWebToken.RevokeToken(userId, isMobile);
     }
 
     private async Task<string> GenerateAndSetOtpAsync(string email)

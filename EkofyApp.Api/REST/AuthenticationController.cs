@@ -151,9 +151,9 @@ public class AuthenticationController(IAuthenticationService authenticationServi
 
 
     [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("logout")]
-    public async Task<IActionResult> LogoutAsync()
+    public async Task<IActionResult> LogoutAsync(bool isMobile = false)
     {
-        await _authenticationService.LogoutAsync();
+        await _authenticationService.LogoutAsync(isMobile);
         return Ok(new { Message = "Logout Successfully" });
     }
 
