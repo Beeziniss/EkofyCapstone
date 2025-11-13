@@ -128,15 +128,15 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         {
             // find and update package order. If not found, return false
             var update = Builders<PackageOrder>.Update
-                .Set(po => po.Status, PackageOrderStatus.Completed)
+                .Set(po => po.Status, PackageOrderStatus.Dispersed)
                 .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            
+            //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
+            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(packageOrderId, null));
 
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
                 po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
                 update);
-
-            //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
-            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(packageOrderId, null));
 
             return result.ModifiedCount > 0;
         }
@@ -170,22 +170,22 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 //REFUND HERE -- vì ở đây refund 100% nên ko cần chia nhỏ tiền ra
                 await _stripeService.RefundAsync(transaction.StripePaymentId, transaction.Amount, RefundReasonType.requested_by_customer);
 
-                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Completed);
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
             }
 
 
             //nếu đã làm việc thì sẽ chuyển qua cho mod xử lý
-            if (orderPackage.Status == PackageOrderStatus.InProgress && request.Status == PackageOrderStatus.Refund)
+            if (orderPackage.Status == PackageOrderStatus.InProgress && request.Status == PackageOrderStatus.Disputed)
             {
-                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
             }
 
             // trường hợp refund nhưng hủy trước khi mod duyệt
-            if (orderPackage.Status == PackageOrderStatus.Refund && request.Status == PackageOrderStatus.InProgress)
+            if (orderPackage.Status == PackageOrderStatus.Disputed && request.Status == PackageOrderStatus.InProgress)
             {
                 var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress);
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
@@ -200,7 +200,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             // 1 là cho refund và thực hiện refund
             var orderPackage = await _unitOfWork.GetCollection<PackageOrder>()
                                           .Find(po => po.Id == request.Id &&
-                                                      po.Status == PackageOrderStatus.Refund)
+                                                      po.Status == PackageOrderStatus.Disputed)
                                           .Project<PackageOrder>(Builders<PackageOrder>.Projection
                                             .Include(po => po.Status)
                                             .Include(po => po.PaymentTransactionId))
@@ -222,7 +222,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             //Giải ngân do công việc đã đóng và đã refund *******************************************************************
             BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, (transaction.Amount * request.ArtistPercentageAmount / 100m)));
             
-            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Completed));
+            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund));
 
             return result.ModifiedCount > 0;
         }
@@ -355,10 +355,12 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             var update = Builders<PackageOrder>.Update
                 .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
                 .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                .Set(po => po.Status, PackageOrderStatus.Completed);
-            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+                .Set(po => po.Status, PackageOrderStatus.Dispersed);            
             // TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
             await _stripeService.EscrowReleaseAsync(packageOrderId);
+
+            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+
             // có lỗi thì thông báo HERE!
         }
 
@@ -370,7 +372,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 Builders<PackageOrder>.Filter.Lt(po => po.Deadline, HelperMethod.GetUtcPlus7TimeOffset())
                 );
 
-            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
+            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
             await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
         }
         #endregion

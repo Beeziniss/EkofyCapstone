@@ -28,5 +28,6 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
 
             descriptor.Field(x => x.DeleteReviewHardAsync(default!))
                 .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
+        }
     }
 }
