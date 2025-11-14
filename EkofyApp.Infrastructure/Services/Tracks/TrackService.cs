@@ -211,7 +211,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
             ReleaseInfo = new()
             {
-                IsRelease = createTrackRequest.IsReleased,
+                IsRelease = createTrackRequest.IsRelease,
                 ReleaseDate = createTrackRequest.ReleaseDate,
                 ReleaseStatus = createTrackRequest.ReleaseStatus,
             },

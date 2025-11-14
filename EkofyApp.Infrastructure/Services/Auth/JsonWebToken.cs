@@ -30,11 +30,11 @@ public sealed class JsonWebToken : IJsonWebToken
         //lưu vào redis 7 ngày
         if (isMobile)
         {
-            await _redisCacheService.SetGenericAsync("jwt_mobile:" + userId, refreshToken, TimeSpan.FromDays(7));
+            await _redisCacheService.SetStringAsync("jwt_mobile:" + userId, refreshToken, TimeSpan.FromDays(7));
         }
         else
         {
-            await _redisCacheService.SetGenericAsync("jwt:" + userId, refreshToken, TimeSpan.FromDays(7));
+            await _redisCacheService.SetStringAsync("jwt:" + userId, refreshToken, TimeSpan.FromDays(7));
         }
 
         return new AccessTokenResponse
