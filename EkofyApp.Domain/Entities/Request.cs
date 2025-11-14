@@ -14,6 +14,8 @@ namespace EkofyApp.Domain.Entities
         [BsonRepresentation(BsonType.ObjectId)]
         public string RequestUserId { get; set; } = null!;
         [BsonRepresentation(BsonType.ObjectId)]
+        public string? RequestToArtistId { get; set; } = null!;
+        [BsonRepresentation(BsonType.ObjectId)]
         public string? PackageId { get; set; }
         public string? Title { get; set; }
         public string? TitleUnsigned { get; set; }
@@ -29,5 +31,6 @@ namespace EkofyApp.Domain.Entities
         public DateTimeOffset Deadline { get; set; }
         public RequestStatus Status { get; set; }
         public DateTimeOffset? RequestCreatedTime { get; set; } // cuar request chung
+        public string? Notes { get; set; }
     }
 }

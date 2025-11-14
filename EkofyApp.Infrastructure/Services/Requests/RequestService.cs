@@ -48,6 +48,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 Request directRequest = new()
                 {
                     RequestUserId = userId,
+                    RequestToArtistId = request.ArtistId,
                     Budget = request.Budget,
                     Deadline = request.Deadline,
                     Requirements = request.Requirements,
@@ -86,7 +87,8 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 throw new BadRequestCustomException("Invalid status update!");
             }
 
-            var update = Builders<Request>.Update.Set(r => r.Status, request.Status);
+            var update = Builders<Request>.Update.Set(r => r.Status, request.Status)
+                                                 .Set(r => r.Notes,  "The request is " + request.Status.ToString().ToLower() + " by the artist");
             var result = await _unitOfWork.GetCollection<Request>().UpdateOneAsync(r => r.Id == request.RequestId, update);
 
             return result.ModifiedCount > 0;
@@ -238,7 +240,9 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 Builders<Request>.Filter.Lte(rh => rh.RequestCreatedTime, HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3)),
                 Builders<Request>.Filter.Eq(rh => rh.Status, RequestStatus.Pending)
             );
-            var update = Builders<Request>.Update.Set(rh => rh.Status, RequestStatus.Rejected);
+            var update = Builders<Request>.Update.Set(rh => rh.Status, RequestStatus.Rejected)
+                                                 .Set(rh => rh.Notes, "The request is reject by the system because of overdue!");
+
 
             //GỬI THÔNG BÁO ĐÂY
 
