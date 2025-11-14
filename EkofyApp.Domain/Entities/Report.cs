@@ -5,7 +5,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
 
-public sealed class Report : TimeStamped, IEntityCustom
+public sealed class Report : TimeStamped
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
