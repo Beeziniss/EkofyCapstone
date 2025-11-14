@@ -7,23 +7,23 @@ namespace EkofyApp.Api.GraphQL.Mutation.Comments;
 [MutationType]
 public sealed class CommentMutation(ICommentService trackCommentService)
 {
-    private readonly ICommentService _trackCommentService = trackCommentService;
+    private readonly ICommentService _commentService = trackCommentService;
 
     public async Task<bool> CreateCommentAsync(CreateCommentRequest request)
     {
-        await _trackCommentService.CreateCommentAsync(request);
+        await _commentService.CreateCommentAsync(request);
         return true;
     }
 
     public async Task<bool> UpdateCommentAsync(UpdateTrackCommentRequest request)
     {
-        await _trackCommentService.UpdateCommentAsync(request);
+        await _commentService.UpdateCommentAsync(request);
         return true;
     }
 
     public async Task<bool> DeleteCommentAsync(DeleteCommentRequest request)
     {
-        await _trackCommentService.DeleteCommentAsync(request);
+        await _commentService.DeleteCommentAsync(request);
         return true;
     }
 }
