@@ -15,5 +15,19 @@ namespace EkofyApp.Api.GraphQL.Resolver
         {
             return unitOfWork.GetCollection<Listener>().AsQueryable().Where(x => x.UserId == request.RequestUserId);
         }
+
+        [UseProjection]
+        [UseFiltering]
+        [UseSorting]
+        public IQueryable<Artist> GetArtist([Parent] Request request, [Service] IUnitOfWork unitOfWork)
+        {
+            var artist_packages = unitOfWork.GetCollection<ArtistPackage>().AsQueryable();
+            var artists = unitOfWork.GetCollection<Artist>().AsQueryable();
+
+            return from ap in artist_packages
+                   join a in artists on ap.ArtistId equals a.Id
+                   where ap.Id == request.PackageId
+                   select a;
+        }
     }
 }
