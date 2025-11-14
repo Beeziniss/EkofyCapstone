@@ -31,16 +31,21 @@ namespace EkofyApp.Infrastructure.Services.Requests
         {
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            bool isPackageExist = await _unitOfWork.GetCollection<ArtistPackage>()
+            var artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
                                             .Find(r => r.Id == request.PackageId).Limit(1)
-                                            .AnyAsync();
-            bool isPublicRequestExist = await _unitOfWork.GetCollection<Request>()
+                                            .Project<ArtistPackage>(Builders<ArtistPackage>.Projection
+                                                .Include(ap => ap.ArtistId))
+                                            .FirstOrDefaultAsync()
+                                ?? throw new BadRequestCustomException("Package not found!"); ;
+
+
+            var publicRequest = await _unitOfWork.GetCollection<Request>()
                                             .Find(r => r.Id == request.PublicRequestId).Limit(1)
-                                            .AnyAsync();
-            if (!isPackageExist || !isPublicRequestExist)
-            {
-                throw new BadRequestCustomException("Package or Public Request not found!");
-            }
+                                            .Project<Request>(Builders<Request>.Projection
+                                                .Include(r => r.DetailDescription))
+                                            .FirstOrDefaultAsync()
+                                ?? throw new BadRequestCustomException("Public Request not found!"); ;
+
 
             //Nếu là direct request thif tạo mới 
             if (isDirectRequest)
@@ -48,7 +53,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 Request directRequest = new()
                 {
                     RequestUserId = userId,
-                    RequestToArtistId = request.ArtistId,
+                    ArtistId = request.ArtistId,
                     Budget = request.Budget,
                     Deadline = request.Deadline,
                     Requirements = request.Requirements,
@@ -65,6 +70,8 @@ namespace EkofyApp.Infrastructure.Services.Requests
             //nếu public request thì đổi status của request đã có sẵn và chờ artist duyệt
             var update = Builders<Request>.Update.Set(r => r.Status, RequestStatus.Pending)
                                                  .Set(r => r.PackageId, request.PackageId)
+                                                 .Set(r => r.Requirements, publicRequest.DetailDescription)
+                                                 .Set(r => r.ArtistId, artistPackage.ArtistId)
                                                  .Set(r => r.RequestCreatedTime, HelperMethod.GetUtcPlus7TimeOffset());
             var result = await _unitOfWork.GetCollection<Request>().UpdateOneAsync(r => r.Id == request.PublicRequestId, update);
             return result.ModifiedCount > 0;

@@ -14,7 +14,7 @@ namespace EkofyApp.Domain.Entities
         [BsonRepresentation(BsonType.ObjectId)]
         public string RequestUserId { get; set; } = null!;
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? RequestToArtistId { get; set; } = null!;
+        public string? ArtistId { get; set; } = null!;
         [BsonRepresentation(BsonType.ObjectId)]
         public string? PackageId { get; set; }
         public string? Title { get; set; }

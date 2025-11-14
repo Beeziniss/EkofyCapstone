@@ -1,4 +1,4 @@
-using EkofyApp.Api.GraphQL.Mutation.RequestHubs;
+using EkofyApp.Api.GraphQL.Mutation.Requests;
 using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders

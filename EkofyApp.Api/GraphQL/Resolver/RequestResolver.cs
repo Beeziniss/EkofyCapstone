@@ -21,7 +21,7 @@ namespace EkofyApp.Api.GraphQL.Resolver
         [UseSorting]
         public IQueryable<Artist> GetArtist([Parent] Request request, [Service] IUnitOfWork unitOfWork)
         {
-            return unitOfWork.GetCollection<Artist>().AsQueryable().Where(x => x.Id == request.RequestToArtistId);
+            return unitOfWork.GetCollection<Artist>().AsQueryable().Where(x => x.Id == request.ArtistId);
         }
 
         [UseProjection]
