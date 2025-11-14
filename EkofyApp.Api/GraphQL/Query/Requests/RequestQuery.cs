@@ -4,7 +4,7 @@ using EkofyApp.Domain.Utils;
 using HotChocolate.Data;
 using Microsoft.AspNetCore.Authorization;
 
-namespace EkofyApp.Api.GraphQL.Query.RequestHubs;
+namespace EkofyApp.Api.GraphQL.Query.Requests;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
