@@ -150,7 +150,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
             claims: claims,
 
-            expires: HelperMethod.GetUtcPlus7Time().Add(TimeSpan.FromDays(expiresInDays)),
+            expires: DateTime.Now.Add(TimeSpan.FromDays(expiresInDays)),
 
             signingCredentials: new SigningCredentials(
                                 new SymmetricSecurityKey(symmetricKey),
