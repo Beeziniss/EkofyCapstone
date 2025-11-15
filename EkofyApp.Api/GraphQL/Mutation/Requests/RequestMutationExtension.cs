@@ -6,6 +6,10 @@ namespace EkofyApp.Api.GraphQL.Mutation.Requests
     {
         protected override void Configure(IObjectTypeDescriptor<RequestMutation> descriptor)
         {
+            descriptor.Field(f => f.SendRequest(default!, default))
+                .Authorize(HelperRoleBase.ListenerRolesArray);
+            descriptor.Field(f => f.ChangeRequestStatusAsync(default!))
+                .Authorize(HelperRoleBase.ListenerArtistRolesArray);
             descriptor.Field(f => f.CreatePublicRequestAsync(default!))
                 .Authorize(HelperRoleBase.ListenerRolesArray);
             descriptor.Field(x => x.UpdatePublicRequestAsync(default!))

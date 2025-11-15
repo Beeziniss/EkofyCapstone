@@ -8,9 +8,9 @@ namespace EkofyApp.Api.GraphQL.Query.Requests;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public class RequestQuery(IRequestService requestHubService)
+public class RequestQuery(IRequestService requestService)
 {
-    private readonly IRequestService _requestHubService = requestHubService;
+    private readonly IRequestService _requestService = requestService;
 
     [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
@@ -19,13 +19,13 @@ public class RequestQuery(IRequestService requestHubService)
     [UseSorting<Track>]
     public IQueryable<Request> GetRequests()
     {
-        return _requestHubService.GetRequestsQueryable();
+        return _requestService.GetRequestsQueryable();
     }
 
     [AllowAnonymous]
     public async Task<Request?> GetRequestDetailByIdAsync(string requestId)
     {
-        return await _requestHubService.GetRequestByIdAsync(requestId);
+        return await _requestService.GetRequestByIdAsync(requestId);
     }
 
     [AllowAnonymous]
@@ -35,7 +35,7 @@ public class RequestQuery(IRequestService requestHubService)
     [UseSorting<Track>]
     public IQueryable<Request> SearchRequests(string searchTerm, bool isIndividual)
     {
-        return _requestHubService.SearchRequests(searchTerm, isIndividual);
+        return _requestService.SearchRequests(searchTerm, isIndividual);
     }
 
     [AuthorizeRoles(HelperRoleBase.ListenerRoles)]
@@ -44,6 +44,6 @@ public class RequestQuery(IRequestService requestHubService)
     [UseFiltering]
     public IQueryable<Request> GetOwnRequests()
     {
-        return _requestHubService.GetOwnRequestsAsync();
+        return _requestService.GetOwnRequestsAsync();
     }
 }
