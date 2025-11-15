@@ -3,7 +3,7 @@ using EkofyApp.Domain.Enums.Reports;
 namespace EkofyApp.Application.Models.Reports;
 
 /// <summary>
-/// Request ?? l?y danh sách báo cáo (v?i filter)
+/// Requests ?? l?y danh sách báo cáo (v?i filter)
 /// </summary>
 public sealed class GetReportsRequest
 {

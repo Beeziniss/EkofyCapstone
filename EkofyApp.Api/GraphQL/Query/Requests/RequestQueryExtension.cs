@@ -1,4 +1,4 @@
-﻿namespace EkofyApp.Api.GraphQL.Query.RequestHubs
+﻿namespace EkofyApp.Api.GraphQL.Query.Requests
 {
     public class RequestQueryExtension
     {

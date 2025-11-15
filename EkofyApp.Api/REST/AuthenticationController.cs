@@ -142,7 +142,7 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         return Ok(new { Message = "Password changed successfully" });
     }
 
-    [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("refresh-token")]
+    [AllowAnonymous, HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshTokenAsync() 
     {
         var result = await _authenticationService.RefreshNewTokenAsync();

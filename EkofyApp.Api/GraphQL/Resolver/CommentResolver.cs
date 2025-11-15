@@ -46,5 +46,5 @@ public sealed class CommentResolver
         return unitOfWork.GetCollection<Track>().AsQueryable().Where(x => x.Id == comment.TargetId);
     }
 
-    // TODO: Request Hub comment resolver
+    // TODO: Requests Hub comment resolver
 }

@@ -23,6 +23,7 @@ using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity.Data;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Claims;
@@ -230,7 +231,7 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        if(loginRequest.IsRememberMe)
+        if (loginRequest.IsRememberMe)
         {
             _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
         }
@@ -402,7 +403,7 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        if(loginRequest.IsRememberMe)
+        if (loginRequest.IsRememberMe)
         {
             _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
         }
@@ -466,7 +467,7 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        if(loginRequest.IsRememberMe)
+        if (loginRequest.IsRememberMe)
         {
             _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
         }
@@ -528,7 +529,7 @@ public sealed class AuthenticationService(
             MaxAge = TimeSpan.FromDays(7)
         };
 
-        if(loginRequest.IsRememberMe)
+        if (loginRequest.IsRememberMe)
         {
             _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", token.RefreshToken, cookieOptions);
         }
@@ -546,6 +547,16 @@ public sealed class AuthenticationService(
     {
         string refreshToken = _httpContextAccessor.HttpContext?.Request.Cookies["refresh_token"]
                               ?? throw new BadRequestCustomException("Refresh token is missing.");
+
+        CookieOptions cookieOptions = new()
+        {
+            Secure = true,
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            MaxAge = TimeSpan.FromDays(7)
+        };
+
+        _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", refreshToken, cookieOptions);
 
         return await _jsonWebToken.GenerateRefreshTokenAsync(refreshToken);
     }
@@ -661,7 +672,7 @@ public sealed class AuthenticationService(
             }
         }
 
-        
+
     }
 
     public async Task ResendOtpAsync(string email)
@@ -728,7 +739,7 @@ public sealed class AuthenticationService(
         ));
     }
 
-    public async Task ForgotPasswordAsync(ForgotPasswordRequest forgotPasswordRequest)
+    public async Task ForgotPasswordAsync(Application.Models.Auth.ForgotPasswordRequest forgotPasswordRequest)
     {
         string normalizedEmail = forgotPasswordRequest.Email.Trim().ToLowerInvariant();
 
@@ -752,7 +763,7 @@ public sealed class AuthenticationService(
         ));
     }
 
-    public async Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest)
+    public async Task ResetPasswordAsync(Application.Models.Auth.ResetPasswordRequest resetPasswordRequest)
     {
         string normalizedEmail = resetPasswordRequest.Email.Trim().ToLowerInvariant();
 
@@ -780,13 +791,13 @@ public sealed class AuthenticationService(
 
         // Cập nhật password
         string newPasswordHash = HashPassword(resetPasswordRequest.NewPassword);
-        
+
         UpdateDefinition<User> updateDefinition = Builders<User>.Update
             .Set(u => u.PasswordHash, newPasswordHash)
             .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
         await _unitOfWork.GetCollection<User>().UpdateOneAsync(
-            u => u.Id == user.Id, 
+            u => u.Id == user.Id,
             updateDefinition
         );
 

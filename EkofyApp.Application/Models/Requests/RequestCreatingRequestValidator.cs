@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 
-namespace EkofyApp.Application.Models.RequestHub
+namespace EkofyApp.Application.Models.Requests
 {
     public class RequestCreatingRequestValidator : AbstractValidator<RequestCreatingRequest>
     {

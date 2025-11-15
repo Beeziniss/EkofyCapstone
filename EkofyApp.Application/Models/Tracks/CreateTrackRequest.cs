@@ -20,7 +20,7 @@ public sealed record class CreateTrackRequest
     public bool IsExplicit { get; init; }
     public string? Lyrics { get; init; }
 
-    public bool IsReleased { get; init; }
+    public bool IsRelease { get; init; }
     public DateTimeOffset? ReleaseDate { get; init; }
     public ReleaseStatus ReleaseStatus { get; init; }
 

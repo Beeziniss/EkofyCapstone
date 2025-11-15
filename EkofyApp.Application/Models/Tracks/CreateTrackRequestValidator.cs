@@ -62,9 +62,9 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                 switch (model.ReleaseStatus)
                 {
                     case ReleaseStatus.Official:
-                        if (!model.IsReleased)
+                        if (!model.IsRelease)
                         {
-                            context.AddFailure(nameof(model.IsReleased), "IsRelease must be true when ReleaseStatus is Official.");
+                            context.AddFailure(nameof(model.IsRelease), "IsRelease must be true when ReleaseStatus is Official.");
                         }
                         if (model.ReleaseDate != null)
                         {
@@ -73,13 +73,13 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                         break;
 
                     case ReleaseStatus.NotAnnounced:
-                        if (!model.IsReleased)
+                        if (!model.IsRelease)
                         {
                             break;
                         }
-                        if (model.IsReleased)
+                        if (model.IsRelease)
                         {
-                            context.AddFailure(nameof(model.IsReleased), "IsRelease must be false when ReleaseStatus is Not Announced.");
+                            context.AddFailure(nameof(model.IsRelease), "IsRelease must be false when ReleaseStatus is Not Announced.");
                         }
                         if (model.ReleaseDate == null)
                         {
@@ -93,9 +93,9 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                     //    // Ví dụ giả định muốn:
                     //    // - IsRelease = false
                     //    // - ReleaseDate = null
-                    //    if (model.IsReleased)
+                    //    if (model.IsRelease)
                     //    {
-                    //        context.AddFailure(nameof(model.IsReleased), $"IsRelease must be false when ReleaseStatus is {model.ReleaseStatus}.");
+                    //        context.AddFailure(nameof(model.IsRelease), $"IsRelease must be false when ReleaseStatus is {model.ReleaseStatus}.");
                     //    }
                     //    if (model.ReleaseDate != null)
                     //    {
@@ -105,7 +105,7 @@ public sealed class CreateTrackRequestValidator : AbstractValidator<CreateTrackR
                 }
 
                 // Thêm điều kiện riêng cho ngày phát hành tức có status là Not Annouced nếu chọn phát hành
-                if (model.IsReleased && model.ReleaseStatus != ReleaseStatus.Official)
+                if (model.IsRelease && model.ReleaseStatus != ReleaseStatus.Official)
                 {
                     if (model.ReleaseDate == null)
                     {
