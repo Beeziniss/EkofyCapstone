@@ -89,7 +89,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
             }
 
             // chỉ cho update trong các status này
-            if(request.Status != RequestStatus.Canceled || request.Status != RequestStatus.Confirmed || request.Status != RequestStatus.Rejected)
+            if(request.Status != RequestStatus.Canceled && request.Status != RequestStatus.Confirmed && request.Status != RequestStatus.Rejected)
             {
                 throw new BadRequestCustomException("Invalid status update!");
             }
