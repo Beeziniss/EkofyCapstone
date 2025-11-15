@@ -3,6 +3,8 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.EmbeddedDocuments;
+
+[BsonIgnoreExtraElements]
 public sealed class AppliedEntitlement
 {
     [BsonRepresentation(BsonType.ObjectId)]
