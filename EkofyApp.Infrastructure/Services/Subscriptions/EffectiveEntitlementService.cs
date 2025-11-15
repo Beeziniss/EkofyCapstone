@@ -6,7 +6,6 @@ using EkofyApp.Domain.Enums.Subcriptions;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
-using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Subscriptions;
