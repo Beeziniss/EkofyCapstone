@@ -11,12 +11,12 @@ using System.Collections.Concurrent;
 namespace EkofyApp.Infrastructure.Services.Chat;
 public class ChatHub(IUnitOfWork unitOfWork) : Hub
 {
-    private static readonly ConcurrentDictionary<string, string> OnlineUsers = []; // readerId -> senderConnectionId
+    private static readonly ConcurrentDictionary<string, HashSet<string>> OnlineUsers = []; // readerId -> senderConnectionId
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
     public override async Task OnConnectedAsync()
     {
-        string? userId = Context.User?.FindFirst("UserId")?.Value;
+        string? userId = Context.User?.FindFirst("userId")?.Value;
 
         if (string.IsNullOrEmpty(userId))
         {
@@ -26,24 +26,40 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
             return;
         }
 
-        // Ghi đè kết nối cũ nếu đã tồn tại (tránh trùng user)
-        OnlineUsers.AddOrUpdate(userId, Context.ConnectionId, (key, oldValue) => Context.ConnectionId);
+        HashSet<string> connections = OnlineUsers.GetOrAdd(userId, _ => []);
+
+        lock (connections)
+        {
+            connections.Add(Context.ConnectionId);
+        }
 
         await base.OnConnectedAsync();
     }
 
     // Ngắt kết nối
-    public override Task OnDisconnectedAsync(Exception? exception)
+    public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        string? userId = OnlineUsers
-            .FirstOrDefault(x => x.Value == Context.ConnectionId).Key;
+        string? userId = Context.User?.FindFirst("userId")?.Value;
 
-        if (!string.IsNullOrEmpty(userId))
+        if (!string.IsNullOrEmpty(userId) && OnlineUsers.TryGetValue(userId, out HashSet<string>? connections))
         {
-            OnlineUsers.TryRemove(userId, out _);
+            lock (connections)
+            {
+                connections.Remove(Context.ConnectionId);
+
+                if (connections.Count == 0)
+                {
+                    OnlineUsers.TryRemove(userId, out _);
+                    Console.WriteLine($"{userId} completely disconnected.");
+                }
+                else
+                {
+                    Console.WriteLine($"{userId} disconnected from one tab: {Context.ConnectionId}");
+                }
+            }
         }
 
-        return base.OnDisconnectedAsync(exception);
+        await base.OnDisconnectedAsync(exception);
     }
 
     // SEND MESSAGE
@@ -117,11 +133,17 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
 
             await _unitOfWork.GetCollection<Message>().InsertOneAsync(message);
 
-            // SignalR push to receiver
-            if (OnlineUsers.TryGetValue(chatMessageRequest.ReceiverId, out string? receiverConnectionId))
+            // Gửi tới tất cả connection của người nhận
+            if (OnlineUsers.TryGetValue(chatMessageRequest.ReceiverId, out HashSet<string>? receiverConnections))
             {
-                await Clients.Client(receiverConnectionId).SendAsync("ReceiveMessage", message);
+                await Clients.Clients(receiverConnections.ToList()).SendAsync("ReceiveMessage", message);
             }
+
+            // Optional: cũng có thể gửi về cho tất cả kết nối của sender nếu muốn sync
+            //if (OnlineUsers.TryGetValue(chatMessageRequest.SenderId, out HashSet<string>? senderConnections))
+            //{
+            //    await Clients.Clients(senderConnections.ToList()).SendAsync("MessageSent", message);
+            //}
 
             // Optional: return ack
             //await Clients.Caller.SendAsync("MessageSent", message);
@@ -159,9 +181,9 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
         Conversation otherUser = await _unitOfWork.GetCollection<Conversation>().Find(x => x.Id == conversationId).FirstOrDefaultAsync();
         string? partnerUserId = otherUser.UserIds.FirstOrDefault(u => u != readerId);
 
-        if (partnerUserId != null && OnlineUsers.TryGetValue(partnerUserId, out string? connectionId))
+        if (partnerUserId != null && OnlineUsers.TryGetValue(partnerUserId, out HashSet<string>? partnerConnections))
         {
-            await Clients.Client(connectionId).SendAsync("MessageSeen", new
+            await Clients.Clients(partnerConnections.ToList()).SendAsync("MessageSeen", new
             {
                 ConversationId = conversationId,
                 SeenBy = readerId
@@ -176,7 +198,7 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
         if (result.ModifiedCount == 0)
         {
             // Không tìm thấy message hoặc không có quyền xóa
-            await Clients.Caller.SendAsync("ReceiveException", "Message not found or you don't have permission to delete this message.");
+            await Clients.Caller.SendAsync("ReceiveException", "Content not found or you don't have permission to delete this message.");
             return;
         }
         // Gửi cho cả người gửi + người nhận để cập nhật UI
@@ -188,14 +210,14 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
 
         List<string> connectionIds = [];
 
-        if (OnlineUsers.TryGetValue(msg.SenderId, out string? senderConnectionId))
+        if (OnlineUsers.TryGetValue(msg.SenderId, out HashSet<string>? senderConnections))
         {
-            connectionIds.Add(senderConnectionId);
+            connectionIds.AddRange(senderConnections);
         }
 
-        if (OnlineUsers.TryGetValue(msg.ReceiverId, out string? receiverConnectionId))
+        if (OnlineUsers.TryGetValue(msg.ReceiverId, out HashSet<string>? receiverConnections))
         {
-            connectionIds.Add(receiverConnectionId);
+            connectionIds.AddRange(receiverConnections);
         }
 
         await Clients.Clients(connectionIds).SendAsync("MessageDeleted", new

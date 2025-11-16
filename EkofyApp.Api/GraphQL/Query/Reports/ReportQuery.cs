@@ -1,3 +1,5 @@
+using EkofyApp.Api.GraphQL;
+using EkofyApp.Application.Models.Reports;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
@@ -21,8 +23,12 @@ public sealed class ReportQuery(IReportService reportService)
         return _reportService.GetReports();
     }
 
-    //public async Task<ReportStatisticsResponse> GetReportStatisticsAsync()
-    //{
-    //    return await _reportService.GetReportStatisticsAsync();
-    //}
+    /// <summary>
+    /// L?y th?ng kê v? reports - ch? dành cho Moderator và Admin
+    /// </summary>
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
+    public async Task<ReportStatisticsResponse> GetReportStatisticsAsync()
+    {
+        return await _reportService.GetReportStatisticsAsync();
+    }
 }

@@ -1,11 +1,10 @@
 ﻿using EkofyApp.Domain.Enums;
-using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class UserEngagement : IEntityCustom
+public sealed class UserEngagement
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.Models.TrackComments;
+﻿using EkofyApp.Application.Models.Comments;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;

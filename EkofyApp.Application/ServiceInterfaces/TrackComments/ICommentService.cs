@@ -1,4 +1,4 @@
-using EkofyApp.Application.Models.TrackComments;
+using EkofyApp.Application.Models.Comments;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.TrackComments;

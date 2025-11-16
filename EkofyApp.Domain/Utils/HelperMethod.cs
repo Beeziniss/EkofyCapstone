@@ -7,8 +7,69 @@ using System.Text;
 using TimeZoneConverter;
 
 namespace EkofyApp.Domain.Utils;
+
 public sealed class HelperMethod
 {
+    public static string BuildContentNotification(NotificationActionType action, NotificationRelatedType? relatedType, string? relatedName, string actorName)
+    {
+        return (action, relatedType) switch
+        {
+            // FOLLOW
+            (NotificationActionType.Follow, null)
+            => $"{actorName} started following you.",
+
+            // Release
+            (NotificationActionType.Release, NotificationRelatedType.Track)
+                => $"{actorName} released a new track \"{relatedName ?? "Unknown"}\".",
+
+            (NotificationActionType.Release, NotificationRelatedType.Album)
+                => $"{actorName} released a new album \"{relatedName ?? "Unknown"}\".",
+
+            // LIKE
+            (NotificationActionType.Like, NotificationRelatedType.Track)
+                => $"{actorName} liked your track \"{relatedName ?? "Unknown"}\".",
+
+            (NotificationActionType.Like, NotificationRelatedType.Album)
+                => $"{actorName} liked your album \"{relatedName ?? "Unknown"}\".",
+
+            (NotificationActionType.Like, NotificationRelatedType.Playlist)
+                => $"{actorName} liked your playlist.",
+
+            // COMMENT
+            (NotificationActionType.Comment, NotificationRelatedType.Track)
+                => $"{actorName} commented on your track \"{relatedName ?? "Unknown"}\".",
+
+            (NotificationActionType.Comment, NotificationRelatedType.Request)
+            => $"{actorName} commented on your request \"{relatedName ?? "Unknown"}\".",
+
+            (NotificationActionType.Comment, NotificationRelatedType.Comment)
+                => $"{actorName} replied to your comment.",
+
+            // REVIEW
+            (NotificationActionType.Review, NotificationRelatedType.Review)
+                => $"{actorName} reviewed your service.",
+
+            // ORDER
+            (NotificationActionType.OrderCompleted, NotificationRelatedType.Order)
+                => $"Your order #{relatedName ?? "N/A"} has been completed.",
+
+            (NotificationActionType.OrderCreated, NotificationRelatedType.Order)
+                => $"{actorName} created a new order for you.",
+
+            // REQUEST
+            (NotificationActionType.RequestCreated, NotificationRelatedType.Request)
+                => $"{actorName} submitted a new request.",
+
+            (NotificationActionType.RequestApproved, NotificationRelatedType.Request)
+                => "Your request has been approved.",
+
+            (NotificationActionType.RequestRejected, NotificationRelatedType.Request)
+                => "Your request has been rejected.",
+
+            _ => "You have a new notification."
+        };
+    }
+
     public static IEnumerable<long> GetValidBitratesEnumrable()
     {
         // Đơn vị kbps -> 128000 tương đương 128 kbps
@@ -117,7 +178,7 @@ public sealed class HelperMethod
             throw new ArgumentException("Date time string cannot be null or empty.", nameof(dateTimeString));
         }
 
-        if (!DateTimeOffset.TryParseExact(dateTimeString, "dd-MM-yyyy HH:mm:ss", 
+        if (!DateTimeOffset.TryParseExact(dateTimeString, "dd-MM-yyyy HH:mm:ss",
             CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset result))
         {
             throw new FormatException($"Invalid date time format. Expected format: dd-MM-yyyy HH:mm:ss. Actual: {dateTimeString}");

@@ -1,7 +1,7 @@
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 
-namespace EkofyApp.Application.Models.TrackComments;
+namespace EkofyApp.Application.Models.Comments;
 
 public sealed record CommentResponse
 {
@@ -34,6 +34,7 @@ public sealed record CommenterInfo
 {
     public string UserId { get; init; } = null!;
     public string FullName { get; init; } = null!;
+    public string Avatar { get; init; } = null!;
     public string Email { get; init; } = null!;
     public UserRole Role { get; init; }
     public bool IsVerified { get; init; }

@@ -5,6 +5,7 @@ using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
+using EkofyApp.Infrastructure.Services.Notifications;
 using Hangfire;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -137,7 +138,8 @@ public sealed class Program
         app.UseWebSockets();
         app.MapGraphQL("/graphql");
 
-        app.MapHub<ChatHub>("/chat");
+        app.MapHub<ChatHub>("/hub/chat");
+        app.MapHub<NotificationHub>("/hub/notification");
 
         app.MapHealthChecks("/health");
 

@@ -1,8 +1,7 @@
-using EkofyApp.Application.Models.Reports;
 using EkofyApp.Domain.Enums.Reports;
 using FluentValidation;
 
-namespace EkofyApp.Application.Validators.Reports;
+namespace EkofyApp.Application.Models.Reports;
 
 public sealed class ProcessReportRequestValidator : AbstractValidator<ProcessReportRequest>
 {
