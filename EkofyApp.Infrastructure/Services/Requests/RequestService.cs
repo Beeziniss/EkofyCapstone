@@ -46,7 +46,6 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 {
                     RequestUserId = userId,
                     ArtistId = request.ArtistId,
-                    Budget = request.Budget,
                     Deadline = request.Deadline,
                     Requirements = request.Requirements,
                     Status = RequestStatus.Pending,
@@ -174,15 +173,20 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                                      .Project<Request>(Builders<Request>.Projection
                                                         .Include(rh => rh.RequestUserId)
                                                         .Include(rh => rh.Deadline))
-                                                     .FirstOrDefaultAsync();
+                                                     .FirstOrDefaultAsync()
+                                 ?? throw new BadRequestCustomException("Invalid to update this request!");
 
             //check xem bài request này có đúng là của người đang muốn sửa ko
             if (requestHub.RequestUserId != userId)
             {
                 throw new ForbiddenCustomException("You do not have permission to edit request!");
             }
+            if (request.Status is not null && request.Status != RequestStatus.Deleted)
+            {
+                throw new BadRequestCustomException("Invalid status update!");
+            }
 
-            List<UpdateDefinition<Request>> updatedFields = new();
+            List<UpdateDefinition<Request>> updatedFields = [];
 
             UpdateDefinitionBuilder<Request> updateBuilder = Builders<Request>.Update;
 
