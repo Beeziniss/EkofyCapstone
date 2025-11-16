@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Albums;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ServiceInterfaces.Artists;
@@ -20,6 +21,7 @@ using EkofyApp.Application.ServiceInterfaces.Invoices;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Listeners;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
@@ -56,6 +58,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.Albums;
 using EkofyApp.Infrastructure.Services.ApprovalHistories;
 using EkofyApp.Infrastructure.Services.ArtistPackages;
 using EkofyApp.Infrastructure.Services.Artists;
@@ -69,6 +72,7 @@ using EkofyApp.Infrastructure.Services.Entitlements;
 using EkofyApp.Infrastructure.Services.Jobs;
 using EkofyApp.Infrastructure.Services.Listeners;
 using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
+using EkofyApp.Infrastructure.Services.Notifications;
 using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.Recommendations;
@@ -370,6 +374,7 @@ public static class DependencyInjection
         services.AddScoped<ITrackService, TrackService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
+        services.AddScoped<IAlbumService, AlbumService>();
         services.AddScoped<IArtistService, ArtistService>();
         services.AddScoped<IListenerService, ListenerService>();
         services.AddScoped<IAudioAnalysisService, AudioFeatureService>();
@@ -396,6 +401,7 @@ public static class DependencyInjection
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ICommentService, CommentService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
@@ -499,8 +505,8 @@ public static class DependencyInjection
                     // Các segment được bảo mật
                     IEnumerable<string?> securedSegments = new[]
                     {
-                        Environment.GetEnvironmentVariable("SPOTIFYPOOL_HUB_COUNT_STREAM_URL"),
-                        Environment.GetEnvironmentVariable("SPOTIFYPOOL_HUB_PLAYLIST_URL"),
+                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_CHAT_URL"),
+                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_NOTIFICATION_URL"),
 
                     }.Where(segment => !string.IsNullOrWhiteSpace(segment)); // Lọc ra các segment không rỗng
 
@@ -754,6 +760,10 @@ public static class DependencyInjection
 
         // Chat
         BsonSerializer.RegisterSerializer(typeof(ConversationStatus), new EnumMemberSerializer<ConversationStatus>());
+
+        // Notification
+        BsonSerializer.RegisterSerializer(typeof(NotificationActionType), new EnumMemberSerializer<NotificationActionType>());
+        BsonSerializer.RegisterSerializer(typeof(NotificationRelatedType), new EnumMemberSerializer<NotificationRelatedType>());
 
         // Refund
         BsonSerializer.RegisterSerializer(typeof(RefundReasonType), new EnumMemberSerializer<RefundReasonType>());

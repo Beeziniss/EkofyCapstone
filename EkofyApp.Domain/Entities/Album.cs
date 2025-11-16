@@ -5,7 +5,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Album : TimeStamped, IEntityCustom
+public sealed class Album : TimeStamped
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -18,7 +18,7 @@ public sealed class Album : TimeStamped, IEntityCustom
 
     [BsonRepresentation(BsonType.ObjectId)]
     public List<string> TrackIds { get; set; } = []; // List of track IDs in the album
-    public List<ArtistInfo> ArtistInfos { get; set; } = []; // Information about the artists involved in the album
+    public List<ContributingArtist> ContributingArtists { get; set; } = []; // Information about the artists involved in the album
 
     public string CoverImage { get; set; } = null!; // URL to the cover image of the album
     public string? ThumbnailImage { get; set; } // URL to the thumbnail image of the album

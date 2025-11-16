@@ -48,10 +48,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="Exceptions\" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<Protobuf Include="..\Protos\audio_analysis.proto" GrpcServices="Client" />
 	</ItemGroup>
 

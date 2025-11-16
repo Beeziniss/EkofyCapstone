@@ -165,7 +165,7 @@ public class TestController : ControllerBase
 
     //    return Ok(new
     //    {
-    //        Message = "Upload UseCase Handler Successfully",
+    //        Content = "Upload UseCase Handler Successfully",
     //    });
     //}
 
@@ -525,7 +525,7 @@ public class TestController : ControllerBase
     //    // --- Trả về kết quả ---
     //    return Ok(new
     //    {
-    //        Message = "Migration to add unsigned fields completed successfully!",
+    //        Content = "Migration to add unsigned fields completed successfully!",
     //        ArtistsUpdated = artistWriteModels.Count,
     //        ListenersUpdated = listenerWriteModels.Count,
     //        TracksUpdated = trackWriteModels.Count,

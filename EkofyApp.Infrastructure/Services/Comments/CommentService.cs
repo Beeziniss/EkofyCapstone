@@ -1,20 +1,27 @@
-using EkofyApp.Application.Models.TrackComments;
+using EkofyApp.Application.Models.Comments;
+using EkofyApp.Application.Models.Notifications;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Infrastructure.Services.Notifications;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
+using Serilog;
 
 namespace EkofyApp.Infrastructure.Services.Comments;
 
-public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : ICommentService
+public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IHubContext<NotificationHub> hubContext, INotificationService notificationService) : ICommentService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IHubContext<NotificationHub> _hubContext = hubContext;
+    private readonly INotificationService _notificationService = notificationService;
 
     public IQueryable<Comment> GetTrackComments()
     {
@@ -62,6 +69,26 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                 await UpdateParentReplyCounts(session, comment.ParentCommentId, comment.RootCommentId!, 1);
             }
         });
+
+        // Send notifications based on comment type
+        if (string.IsNullOrEmpty(request.ParentCommentId))
+        {
+            // This is a root comment - notify the content creator
+            switch (request.CommentType)
+            {
+                case CommentType.Track:
+                    await SendTrackCommentNotificationAsync(request.TargetId, userId);
+                    break;
+                case CommentType.Request:
+                    await SendRequestCommentNotificationAsync(request.TargetId, userId);
+                    break;
+            }
+        }
+        else
+        {
+            // This is a reply comment - notify the parent comment author
+            await SendReplyNotificationAsync(request.ParentCommentId, userId);
+        }
     }
 
     public async Task UpdateCommentAsync(UpdateTrackCommentRequest request)
@@ -137,14 +164,14 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
     {
         // Get total thread count
         long totalThreads = await _unitOfWork.GetCollection<Comment>()
-            .CountDocumentsAsync(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted);
+            .CountDocumentsAsync(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted && c.IsVisible);
 
         // Build sort definition based on request
         SortDefinition<Comment> sortDefinition = GetSortDefinition(request.SortOrder);
 
         // Get root comments
         List<Comment> rootComments = await _unitOfWork.GetCollection<Comment>()
-            .Find(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted)
+            .Find(c => c.TargetId == request.TargetId && c.CommentType == request.CommentType && c.Depth == 0 && !c.IsDeleted && c.IsVisible)
             .Sort(sortDefinition)
             .Skip((request.Page - 1) * request.PageSize)
             .Limit(request.PageSize)
@@ -156,7 +183,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
         {
             // Get a few top-level replies for preview (e.g., first 3)
             List<Comment> previewReplies = await _unitOfWork.GetCollection<Comment>()
-                .Find(c => c.ParentCommentId == rootComment.Id && !c.IsDeleted)
+                .Find(c => c.ParentCommentId == rootComment.Id && !c.IsDeleted && c.IsVisible)
                 .SortBy(c => c.CreatedAt)
                 //.Limit(3)
                 .ToListAsync();
@@ -463,6 +490,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
         {
             UserId = user.Id,
             FullName = user.FullName,
+            Avatar = listener?.AvatarImage ?? artist?.AvatarImage ?? string.Empty,
             Email = user.Email,
             Role = user.Role,
             IsVerified = listener?.IsVerified ?? artist?.IsVerified ?? false,
@@ -551,5 +579,181 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
         }
 
         return allReplyIds;
+    }
+
+    // Helper method to send notification to track creator for root comment
+    private async Task SendTrackCommentNotificationAsync(string trackId, string commenterId)
+    {
+        try
+        {
+            // Get track information to find the creator
+            var track = await _unitOfWork.GetCollection<Track>()
+                .Find(t => t.Id == trackId)
+                .Project(t => new { t.Id, t.Name, t.CreatedBy })
+                .FirstOrDefaultAsync();
+
+            if (track != null && track.CreatedBy != commenterId)
+            {
+                // Get commenter info
+                var commenterInfo = await GetCommenterInfoAsync(commenterId);
+                string commenterName = commenterInfo.Artist?.StageName ?? 
+                                     commenterInfo.Listener?.DisplayName ?? 
+                                     commenterInfo.FullName;
+
+                string content = HelperMethod.BuildContentNotification(NotificationActionType.Comment, NotificationRelatedType.Track, track.Name, commenterName);
+
+                await _unitOfWork.GetCollection<Notification>()
+                    .InsertOneAsync(new Notification
+                    {
+                        ActorId = commenterId,
+                        TargetId = track.CreatedBy!,
+                        Content = content,
+                        Action = NotificationActionType.Comment,
+                        RelatedId = trackId,
+                        RelatedType = NotificationRelatedType.Track,
+                    });
+
+                await _hubContext.Clients.User(track.CreatedBy!).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                    Avatar = commenterInfo.Listener?.AvatarImage ?? commenterInfo.Artist?.AvatarImage ?? string.Empty
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the comment creation
+            Log.Error($"Error sending track comment notification: {ex}");
+        }
+    }
+
+    // Helper method to send notification to user being replied to
+    private async Task SendReplyNotificationAsync(string parentCommentId, string replierId)
+    {
+        try
+        {
+            // Get parent comment information
+            var parentComment = await _unitOfWork.GetCollection<Comment>()
+                .Find(c => c.Id == parentCommentId && !c.IsDeleted)
+                .Project(c => new { c.CommenterId, c.TargetId, c.CommentType })
+                .FirstOrDefaultAsync();
+
+            if (parentComment != null && parentComment.CommenterId != replierId)
+            {
+                // Get replier info
+                var replierInfo = await GetCommenterInfoAsync(replierId);
+                string replierName = replierInfo.Artist?.StageName ?? 
+                                   replierInfo.Listener?.DisplayName ?? 
+                                   replierInfo.FullName;
+
+                // Get target name (track, playlist, etc.)
+                string targetName = await GetTargetNameAsync(parentComment.TargetId, parentComment.CommentType);
+                
+                string content = HelperMethod.BuildContentNotification(NotificationActionType.Comment, NotificationRelatedType.Comment, null, replierName);
+                
+                await _unitOfWork.GetCollection<Notification>()
+                    .InsertOneAsync(new Notification
+                    {
+                        ActorId = replierId,
+                        TargetId = parentComment.CommenterId,
+                        Content = content,
+                        Action = NotificationActionType.Reply,
+                        RelatedId = parentComment.TargetId,
+                    });
+
+                await _hubContext.Clients.User(parentComment.CommenterId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                    Avatar = replierInfo.Listener?.AvatarImage ?? replierInfo.Artist?.AvatarImage ?? string.Empty
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the comment creation
+            Log.Error($"Error sending reply notification: {ex}");
+        }
+    }
+
+    // Helper method to send notification to request creator for root comment
+    private async Task SendRequestCommentNotificationAsync(string requestId, string commenterId)
+    {
+        try
+        {
+            // Get request information to find the creator
+            var request = await _unitOfWork.GetCollection<Request>()
+                .Find(r => r.Id == requestId)
+                .Project(r => new { r.Id, r.Title, r.RequestUserId })
+                .FirstOrDefaultAsync();
+
+            if (request != null && request.RequestUserId != commenterId)
+            {
+                // Get commenter info
+                var commenterInfo = await GetCommenterInfoAsync(commenterId);
+                string commenterName = commenterInfo.Artist?.StageName ?? 
+                                     commenterInfo.Listener?.DisplayName ?? 
+                                     commenterInfo.FullName;
+
+                string content = HelperMethod.BuildContentNotification(NotificationActionType.Comment, NotificationRelatedType.Request, request.Title, commenterName);
+
+                await _unitOfWork.GetCollection<Notification>()
+                    .InsertOneAsync(new Notification
+                    {
+                        ActorId = commenterId,
+                        TargetId = request.RequestUserId,
+                        Content = content,
+                        Action = NotificationActionType.Comment,
+                        RelatedId = requestId,
+                        RelatedType = NotificationRelatedType.Request,
+                    });
+
+                await _hubContext.Clients.User(request.RequestUserId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                    Avatar = commenterInfo.Listener?.AvatarImage ?? commenterInfo.Artist?.AvatarImage ?? string.Empty
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the comment creation
+            Log.Error($"Error sending request comment notification: {ex}");
+        }
+    }
+
+    // Helper method to get target name based on comment type
+    private async Task<string> GetTargetNameAsync(string targetId, CommentType commentType)
+    {
+        try
+        {
+            return commentType switch
+            {
+                CommentType.Track => await _unitOfWork.GetCollection<Track>()
+                    .Find(t => t.Id == targetId)
+                    .Project(t => t.Name)
+                    .FirstOrDefaultAsync() ?? "Unknown Track",
+                    
+                CommentType.Playlist => await _unitOfWork.GetCollection<Playlist>()
+                    .Find(p => p.Id == targetId)
+                    .Project(p => p.Name)
+                    .FirstOrDefaultAsync() ?? "Unknown Playlist",
+                    
+                CommentType.Album => await _unitOfWork.GetCollection<Album>()
+                    .Find(a => a.Id == targetId)
+                    .Project(a => a.Name)
+                    .FirstOrDefaultAsync() ?? "Unknown Album",
+                    
+                CommentType.Request => await _unitOfWork.GetCollection<Request>()
+                    .Find(r => r.Id == targetId)
+                    .Project(r => r.Title)
+                    .FirstOrDefaultAsync() ?? "Unknown Request",
+                    
+                _ => "Unknown Content"
+            };
+        }
+        catch
+        {
+            return "Unknown Content";
+        }
     }
 }

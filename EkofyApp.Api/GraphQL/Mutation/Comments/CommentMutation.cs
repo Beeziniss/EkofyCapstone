@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.Models.TrackComments;
+﻿using EkofyApp.Application.Models.Comments;
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Comments;

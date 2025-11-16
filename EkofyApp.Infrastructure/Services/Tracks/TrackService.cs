@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using EkofyApp.Application.Models.AudioFeatures;
+using EkofyApp.Application.Models.Notifications;
 using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Uploads;
@@ -7,6 +8,7 @@ using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
+using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
@@ -14,7 +16,9 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Infrastructure.Services.Notifications;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
@@ -23,7 +27,7 @@ using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, ILogger<TrackService> logger) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, IUserService userService, IHubContext<NotificationHub>  hubContext, ILogger<TrackService> logger) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
@@ -31,6 +35,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
     private readonly IRecommendationService _recommendationService = recommendationService;
+    private readonly IUserService _userService = userService;
+    private readonly IHubContext<NotificationHub> _hubContext = hubContext;
     private readonly ILogger<TrackService> _logger = logger;
 
     public async Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year)
@@ -114,6 +120,75 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         if (result.ModifiedCount == 0)
         {
             throw new UnprocessableEntityCustomException($"Track {trackId} was not modified. It may have been released by another process.");
+        }
+
+        // Gửi notification
+        Track track = await _unitOfWork.GetCollection<Track>()
+            .Find(t => t.Id == trackId)
+            .Project<Track>(Builders<Track>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Name)
+                .Include(x => x.CreatedBy))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Artist for track {trackId} not found.");
+
+        UserRole userRole = await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == track.CreatedBy)
+            .Project(u => u.Role)
+            .FirstOrDefaultAsync();
+
+        NotificationUserInfo? notificationUserInfo = null;
+        switch (userRole)
+        {
+            case UserRole.Listener:
+                notificationUserInfo = await _unitOfWork.GetCollection<Listener>()
+                    .Find(l => l.Id == track.CreatedBy)
+                    .Project(x => new NotificationUserInfo
+                    {
+                        Name = x.DisplayName,
+                        Avatar = x.AvatarImage ?? "https://res.cloudinary.com/dofnn7sbx/image/upload/v1730097883/60d5dc467b950c5ccc8ced95_spotify-for-artists_on4me9.jpg"
+                    })
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {track.CreatedBy}");
+
+                break;
+            case UserRole.Artist:
+                notificationUserInfo = await _unitOfWork.GetCollection<Artist>()
+                    .Find(a => a.Id == track.CreatedBy)
+                    .Project(x => new NotificationUserInfo
+                    {
+                        Name = x.StageName,
+                        Avatar = x.AvatarImage ?? "https://res.cloudinary.com/dofnn7sbx/image/upload/v1730097883/60d5dc467b950c5ccc8ced95_spotify-for-artists_on4me9.jpg"
+                    })
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {track.CreatedBy}");
+
+                break;
+        }
+
+        IEnumerable<string> followerIds = _userService.GetFollowersByUserId(track.CreatedBy!).Select(x => x.Id);
+
+        List<Notification> notifications = [];
+        string content = HelperMethod.BuildContentNotification(NotificationActionType.Release, NotificationRelatedType.Track, track.Name, notificationUserInfo!.Name);
+        foreach (string followerId in followerIds)
+        {
+            notifications.Add(new Notification
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                ActorId = track.CreatedBy!,
+                TargetId = followerId,
+                RelatedId = trackId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Track,
+                Action = NotificationActionType.Release,
+            });
+        }
+
+        if (notifications.Count > 0)
+        {
+            await _unitOfWork.GetCollection<Notification>().InsertManyAsync(notifications);
+            await _hubContext.Clients.Users(followerIds).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+                Avatar = notificationUserInfo!.Avatar,
+            });
         }
     }
 
@@ -323,7 +398,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
 
             if (listLength > 0)
-            { 
+            {
                 // Cache hit - check if track exists in Redis list
                 return await _redisCacheService.ListContainsAsync(cacheKey, trackId);
             }
