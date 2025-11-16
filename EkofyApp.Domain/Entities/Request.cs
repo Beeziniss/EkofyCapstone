@@ -23,7 +23,7 @@ namespace EkofyApp.Domain.Entities
         public string? SummaryUnsigned { get; set; }
         public string? DetailDescription { get; set; }
         public string? Requirements { get; set; } // cho direct request
-        public RequestBudget Budget { get; set; } = null!;
+        public RequestBudget? Budget { get; set; }
         public DateTimeOffset? PostCreatedTime { get; set; } // public request
         public DateTimeOffset? UpdatedAt { get; set; } // public request
         public RequestType Type { get; set; }

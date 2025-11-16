@@ -39,14 +39,6 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                 ?? throw new BadRequestCustomException("Package not found!"); ;
 
 
-            var publicRequest = await _unitOfWork.GetCollection<Request>()
-                                            .Find(r => r.Id == request.PublicRequestId).Limit(1)
-                                            .Project<Request>(Builders<Request>.Projection
-                                                .Include(r => r.DetailDescription))
-                                            .FirstOrDefaultAsync()
-                                ?? throw new BadRequestCustomException("Public Request not found!"); ;
-
-
             //Nếu là direct request thif tạo mới 
             if (isDirectRequest)
             {
@@ -54,7 +46,6 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 {
                     RequestUserId = userId,
                     ArtistId = request.ArtistId,
-                    Budget = request.Budget,
                     Deadline = request.Deadline,
                     Requirements = request.Requirements,
                     Status = RequestStatus.Pending,
@@ -66,6 +57,13 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 await _unitOfWork.GetCollection<Request>().InsertOneAsync(directRequest);
                 return true;
             }
+
+            var publicRequest = await _unitOfWork.GetCollection<Request>()
+                                            .Find(r => r.Id == request.PublicRequestId).Limit(1)
+                                            .Project<Request>(Builders<Request>.Projection
+                                                .Include(r => r.DetailDescription))
+                                            .FirstOrDefaultAsync()
+                                ?? throw new BadRequestCustomException("Public Request not found!");
 
             //nếu public request thì đổi status của request đã có sẵn và chờ artist duyệt
             var update = Builders<Request>.Update.Set(r => r.Status, RequestStatus.Pending)
@@ -175,15 +173,20 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                                      .Project<Request>(Builders<Request>.Projection
                                                         .Include(rh => rh.RequestUserId)
                                                         .Include(rh => rh.Deadline))
-                                                     .FirstOrDefaultAsync();
+                                                     .FirstOrDefaultAsync()
+                                 ?? throw new BadRequestCustomException("Invalid to update this request!");
 
             //check xem bài request này có đúng là của người đang muốn sửa ko
             if (requestHub.RequestUserId != userId)
             {
                 throw new ForbiddenCustomException("You do not have permission to edit request!");
             }
+            if (request.Status is not null && request.Status != RequestStatus.Deleted)
+            {
+                throw new BadRequestCustomException("Invalid status update!");
+            }
 
-            List<UpdateDefinition<Request>> updatedFields = new();
+            List<UpdateDefinition<Request>> updatedFields = [];
 
             UpdateDefinitionBuilder<Request> updateBuilder = Builders<Request>.Update;
 

@@ -6,7 +6,6 @@ namespace EkofyApp.Application.Models.Requests
     {
         public string? PublicRequestId { get; init; }
         public string ArtistId { get; init; } = null!;
-        public RequestBudget Budget { get; init; } = null!;
         public DateTimeOffset Deadline { get; init; }
         public string? Requirements { get; set; }
         public string PackageId { get; init; } = null!;
