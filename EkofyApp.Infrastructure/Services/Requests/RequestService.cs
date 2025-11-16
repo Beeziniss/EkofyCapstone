@@ -39,14 +39,6 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                 ?? throw new BadRequestCustomException("Package not found!"); ;
 
 
-            var publicRequest = await _unitOfWork.GetCollection<Request>()
-                                            .Find(r => r.Id == request.PublicRequestId).Limit(1)
-                                            .Project<Request>(Builders<Request>.Projection
-                                                .Include(r => r.DetailDescription))
-                                            .FirstOrDefaultAsync()
-                                ?? throw new BadRequestCustomException("Public Request not found!"); ;
-
-
             //Nếu là direct request thif tạo mới 
             if (isDirectRequest)
             {
@@ -66,6 +58,13 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 await _unitOfWork.GetCollection<Request>().InsertOneAsync(directRequest);
                 return true;
             }
+
+            var publicRequest = await _unitOfWork.GetCollection<Request>()
+                                            .Find(r => r.Id == request.PublicRequestId).Limit(1)
+                                            .Project<Request>(Builders<Request>.Projection
+                                                .Include(r => r.DetailDescription))
+                                            .FirstOrDefaultAsync()
+                                ?? throw new BadRequestCustomException("Public Request not found!");
 
             //nếu public request thì đổi status của request đã có sẵn và chờ artist duyệt
             var update = Builders<Request>.Update.Set(r => r.Status, RequestStatus.Pending)
