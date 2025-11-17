@@ -162,6 +162,88 @@ public sealed class UserService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
             .AnyAsync();
     }
 
+    #region Restrictions
+    // Kiểm tra comment restrction của user
+    public async Task<bool> CheckCommentRestrictionAsync(string userId)
+    {
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
+
+        return await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId && 
+                       u.Restrictions.Any(r => 
+                           r.Action == RestrictionAction.Comment &&
+                           (r.Type == RestrictionType.Banned || r.Type == RestrictionType.Suspended)))
+            .AnyAsync();
+    }
+
+    // Kiểm tra report restriction của user
+    public async Task<bool> CheckReportRestrictionAsync(string userId)
+    {
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
+
+        return await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId && 
+                       u.Restrictions.Any(r => 
+                           r.Action == RestrictionAction.Report &&
+                           (r.Type == RestrictionType.Banned || r.Type == RestrictionType.Suspended)))
+            .AnyAsync();
+    }
+
+    // Kiểm tra upload track restriction của user
+    public async Task<bool> CheckUploadTrackRestrictionAsync(string userId)
+    {
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
+
+        return await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId && 
+                       u.Restrictions.Any(r => 
+                           r.Action == RestrictionAction.UploadTrack &&
+                           (r.Type == RestrictionType.Banned || r.Type == RestrictionType.Suspended)))
+            .AnyAsync();
+    }
+
+    // Kiểm tra create public request restriction của user
+    public async Task<bool> CheckCreatePublicRequestRestrictionAsync(string userId)
+    {
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
+
+        return await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId && 
+                       u.Restrictions.Any(r => 
+                           r.Action == RestrictionAction.CreatePublicRequest &&
+                           (r.Type == RestrictionType.Banned || r.Type == RestrictionType.Suspended)))
+            .AnyAsync();
+    }
+
+    // Kiểm tra send request restriction của user
+    public async Task<bool> CheckSendRequestRestrictionAsync(string userId)
+    {
+        DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
+
+        return await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId && 
+                       u.Restrictions.Any(r => 
+                           r.Action == RestrictionAction.SendRequest &&
+                           (r.Type == RestrictionType.Banned || r.Type == RestrictionType.Suspended)))
+            .AnyAsync();
+    }
+
+    // Kiểm tra general restriction method for multiple actions
+    public async Task<bool> CheckMultipleRestrictionsAsync(params RestrictionAction[] actions)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
+            ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        return await _unitOfWork.GetCollection<User>()
+            .Find(u => u.Id == userId &&
+                       u.Restrictions.Any(r =>
+                           r.Action.HasValue && // Ensure r.Action is not null before accessing .Value
+                           actions.Contains(r.Action.Value) &&
+                           (r.Type == RestrictionType.Banned || r.Type == RestrictionType.Suspended)))
+            .AnyAsync();
+    }
+    #endregion
+
     public IQueryable<UserEngagement> GetUserEngagement()
     {
         return _unitOfWork.GetCollection<UserEngagement>().AsQueryable();

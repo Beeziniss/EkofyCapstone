@@ -1,5 +1,7 @@
 ﻿using EkofyApp.Application.Models.RequestHub;
 using EkofyApp.Application.ServiceInterfaces.Requests;
+using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Api.GraphQL.Mutation.RequestHubs
 {
