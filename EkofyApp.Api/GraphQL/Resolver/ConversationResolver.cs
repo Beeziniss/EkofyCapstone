@@ -5,7 +5,6 @@ using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using HotChocolate.Data;
 using MongoDB.Driver;
-using System.Threading.Tasks;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
