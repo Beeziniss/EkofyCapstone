@@ -5,6 +5,7 @@ using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe.Forwarding;
 
@@ -32,24 +33,28 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper) : IChatS
             .AsQueryable();
     }
 
-    public async Task AddConversationGeneralAsync(CreateConversationRequest request)
+    public async Task<string> AddConversationGeneralAsync(List<string> userIds)
     {
         //check xem da co conversation cua 2 nguoi nay chua
-        bool isExistingConversation = await _unitOfWork.GetCollection<Conversation>()
-            .Find(c => request.UserIds.All(id => c.UserIds.Contains(id)))
-            .AnyAsync();
-        if (isExistingConversation)
+        string conversationId = await _unitOfWork.GetCollection<Conversation>()
+            .Find(c => userIds.All(id => c.UserIds.Contains(id)) && c.RequestHubId == null)
+            .Project(x => x.Id)
+            .FirstOrDefaultAsync();
+        if (!string.IsNullOrEmpty(conversationId))
         {
-            return;
+            return conversationId;
         }
 
         //chua co thi tao moi conversation
+        string newConversationId = ObjectId.GenerateNewId().ToString();
         await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(new()
         {
-            UserIds = request.UserIds,
-            RequestHubId = request.RequestHubId,
+            Id = newConversationId,
+            UserIds = userIds,
             Status = ConversationStatus.None,
         });
+
+        return newConversationId;
     }
 
     public async Task AddConversationFromRequestHubAsync(CreateConversationRequest request)
