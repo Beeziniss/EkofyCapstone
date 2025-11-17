@@ -8,9 +8,9 @@ namespace EkofyApp.Domain.Enums
         Enabled,
         [EnumMember(Value = "Disabled")]
         Disabled,
-        [EnumMember(Value = "Pending")]
-        Pending,
-        [EnumMember(Value = "Rejected")]
-        Rejected
+        //[EnumMember(Value = "Pending")]
+        //Pending,
+        //[EnumMember(Value = "Rejected")]
+        //Rejected
     }
 }

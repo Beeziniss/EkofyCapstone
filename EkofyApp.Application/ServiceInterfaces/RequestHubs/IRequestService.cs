@@ -1,4 +1,4 @@
-﻿using EkofyApp.Application.Models.RequestHub;
+﻿using EkofyApp.Application.Models.Requests;
 using EkofyApp.Domain.Entities;
 
 namespace EkofyApp.Application.ServiceInterfaces.RequestHubs

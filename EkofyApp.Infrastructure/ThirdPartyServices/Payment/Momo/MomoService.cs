@@ -17,7 +17,7 @@ public sealed class MomoService(IMomoApi momoApi, MomoSetting momoSetting, ILogg
 
     public async Task<MomoPaymentResponse> CreatePaymentQRLinkAsync(CreateMomoPaymentRequest createMomoPaymentRequest)
     {
-        _logger.LogInformation("Creating Momo payment link with request: {@Request}", createMomoPaymentRequest);
+        _logger.LogInformation("Creating Momo payment link with request: {@Requests}", createMomoPaymentRequest);
 
         string requestId = ObjectId.GenerateNewId().ToString();
         string extraData = "";
@@ -66,7 +66,7 @@ public sealed class MomoService(IMomoApi momoApi, MomoSetting momoSetting, ILogg
 
     public async Task<MomoPaymentResponse> CreatePaymentLinkVisaAsync(CreateMomoPaymentRequest createMomoPaymentRequest)
     {
-        _logger.LogInformation("Creating Momo payment link with request: {@Request}", createMomoPaymentRequest);
+        _logger.LogInformation("Creating Momo payment link with request: {@Requests}", createMomoPaymentRequest);
 
         string requestId = ObjectId.GenerateNewId().ToString();
         string extraData = "";
@@ -104,7 +104,7 @@ public sealed class MomoService(IMomoApi momoApi, MomoSetting momoSetting, ILogg
         //};
 
         //string jsonPaymentRequest = JsonConvert.SerializeObject(paymentRequest);
-        //Console.WriteLine("JSON Request: " + jsonPaymentRequest);
+        //Console.WriteLine("JSON Requests: " + jsonPaymentRequest);
 
         //using (var client = new HttpClient())
         //{

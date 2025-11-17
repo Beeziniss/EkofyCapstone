@@ -35,10 +35,10 @@ public class ArtistPackageQuery(IArtistPackageService artistPackageService)
         return _artistPackageService.GetArtistPackagesInConversation(artistId);
     }
 
-    [AuthorizeRoles(HelperRoleBase.ArtistModeratorRoles)]
-    [UseFiltering]
-    public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
-    {
-        return await _artistPackageService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
-    }
+    //[AuthorizeRoles(HelperRoleBase.ArtistModeratorRoles)]
+    //[UseFiltering]
+    //public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
+    //{
+    //    return await _artistPackageService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
+    //}
 }

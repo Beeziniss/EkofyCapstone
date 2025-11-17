@@ -38,19 +38,5 @@ namespace EkofyApp.Api.GraphQL.Mutation.ArtistPackages
             await _artistPackageService.ChangeArtistPackageStatusAsync(updateStatusRequest);
             return true;
         }
-
-        [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
-        public async Task<bool> ApproveArtistPackageAsync(string id)
-        {
-            await _artistPackageService.ApproveArtistPackageAsync(id);
-            return true;
-        }
-
-        [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
-        public async Task<bool> RejectArtistPackageAsync(string id)
-        {
-            await _artistPackageService.RejectArtistPackageAsync(id);
-            return true;
-        }
     }
 }

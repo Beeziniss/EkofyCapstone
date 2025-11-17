@@ -10,12 +10,12 @@ namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
         Task ChangeArtistPackageStatusAsync(UpdateStatusArtistPackageRequest updateStatusRequest);
         Task CreateArtistPackageAsync(CreateArtistPackageRequest createRequest);
         Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest);
-        Task ApproveArtistPackageAsync(string id);
+        //Task ApproveArtistPackageAsync(string id);
         Task DeleteArtistPackageAsync(string id);
 
         // New methods for Redis functionality
-        Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
-        Task RejectArtistPackageAsync(string id);
+        //Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
+        //Task RejectArtistPackageAsync(string id);
         IQueryable<ArtistPackage> GetArtistPackagesInConversation(string artistId);
     }
 }

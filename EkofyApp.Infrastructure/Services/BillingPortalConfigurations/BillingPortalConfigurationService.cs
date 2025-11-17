@@ -122,12 +122,12 @@ public sealed class BillingPortalConfigurationService(IUnitOfWork unitOfWork, IL
         });
     }
 
-    public async Task UpdateBillingPortalConfiguration()
+    public void UpdateBillingPortalConfiguration()
     {
 
     }
 
-    public async Task DeleteBillingPortalConfiguration()
+    public void DeleteBillingPortalConfiguration()
     {
 
     }

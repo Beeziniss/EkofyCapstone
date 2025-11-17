@@ -1,4 +1,4 @@
-﻿namespace EkofyApp.Application.Models.RequestHub
+﻿namespace EkofyApp.Application.Models.Requests
 {
     public sealed class RequestUpdatingRequestValidator
     {

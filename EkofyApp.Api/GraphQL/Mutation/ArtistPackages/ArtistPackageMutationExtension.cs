@@ -16,8 +16,8 @@ namespace EkofyApp.Api.GraphQL.Mutation.ArtistPackages
             descriptor.Field(x => x.ChangeArtistPackageStatusAsync(default!))
                 .Authorize(roles: HelperRoleBase.ArtistRolesArray);
 
-            descriptor.Field(x => x.ApproveArtistPackageAsync(default!))
-                .Authorize(roles: HelperRoleBase.ModeratorRolesArray);
+            descriptor.Field(x => x.DeleteArtistPackageAsync(default!))
+                .Authorize(roles: HelperRoleBase.ArtistRolesArray);
 
         }
     }
