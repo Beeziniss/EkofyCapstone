@@ -26,6 +26,18 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         return _unitOfWork.GetCollection<Playlist>().AsQueryable();
     }
 
+    public IQueryable<Playlist> GetOwnPlaylists()
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        IQueryable<Playlist> query = _unitOfWork.GetCollection<Playlist>()
+            .Find(x => x.UserId == userId)
+            .ToEnumerable()
+            .AsQueryable();
+
+        return query;
+    }
+
     public IQueryable<Playlist> GetFavoritePlaylists()
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
