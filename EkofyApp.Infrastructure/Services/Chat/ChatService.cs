@@ -11,6 +11,7 @@ using MongoDB.Driver;
 using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
+
 public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor) : IChatService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -39,7 +40,7 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCon
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        IEnumerable<string> userIds = [userId, otherUserId];
+        List<string> userIds = [userId, otherUserId];
 
         //check xem da co conversation cua 2 nguoi nay chua
         string conversationId = await _unitOfWork.GetCollection<Conversation>()
@@ -63,26 +64,33 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCon
         return newConversationId;
     }
 
-    public async Task AddConversationFromRequestHubAsync(CreateConversationRequest request)
+    public async Task<string> AddConversationFromRequestHubAsync(CreateConversationRequest request)
     {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        List<string> userIds = [userId, request.OtherUserId];
+
         //check xem da co conversation cua 2 nguoi nay chua
-        var isExistingConversation = await _unitOfWork.GetCollection<Conversation>()
-            .Find(c => request.UserIds.All(id => c.UserIds.Contains(id)) &&
+        string conversationId = await _unitOfWork.GetCollection<Conversation>()
+            .Find(c => userIds.All(id => c.UserIds.Contains(id)) && c.Status != ConversationStatus.None &&
                        request.RequestHubId == c.RequestHubId)
-            .AnyAsync();
-        if (isExistingConversation)
+            .Project(x => x.Id)
+            .FirstOrDefaultAsync();
+        if (!string.IsNullOrEmpty(conversationId))
         {
-            return;
+            return conversationId;
         }
 
         //chua co thi tao moi conversation
-        var conversation = new Conversation() 
+        Conversation conversation = new()
         {
-            UserIds = request.UserIds,
+            UserIds = userIds,
             RequestHubId = request.RequestHubId,
             Status = ConversationStatus.Pending
         };
         await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(conversation);
+
+        return conversation.Id;
     }
 
     public async Task UpdateConversationStatusAsync(string conversationId, ConversationStatus status)
