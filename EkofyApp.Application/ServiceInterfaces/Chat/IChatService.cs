@@ -5,7 +5,7 @@ using EkofyApp.Domain.Enums;
 namespace EkofyApp.Application.ServiceInterfaces.Chat;
 public interface IChatService
 {
-    Task AddConversationFromRequestHubAsync(CreateConversationRequest request);
+    Task<string> AddConversationFromRequestHubAsync(CreateConversationRequest request);
     Task<string> AddConversationGeneralAsync(string otherUserId);
     IQueryable<Conversation> GetConversations();
     IQueryable<Conversation> GetConversationsByUserId(string userId);
