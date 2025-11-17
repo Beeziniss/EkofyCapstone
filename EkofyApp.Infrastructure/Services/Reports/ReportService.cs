@@ -368,20 +368,25 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                             ? HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value)
                             : null;
 
-                    accountRestrictions.Add(new Restriction
+                    Restriction restriction = new()
                     {
-                        Type = RestrictionType.Suspended,
+                        Type = RestrictionType.Banned,
                         Action = restrictionActionDetail.RestrictionAction,
                         Reason = restrictionActionDetail.Note,
                         RestrictedAt = HelperMethod.GetUtcPlus7TimeOffset(),
                         Expired = restrictionExpiry
-                    });
+                    };
 
                     if (restrictionExpiry != null)
                     {
+                        restriction.Type = RestrictionType.Suspended;
+                        restriction.Expired = restrictionExpiry;
+
                         // Xóa restriction sau khi hết hạn
                         BackgroundJob.Schedule<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(report.ReportedUserId), restrictionExpiry.Value);
                     }
+
+                    accountRestrictions.Add(restriction);
                 }
 
                 User userRestrictedEntitlement = await _unitOfWork.GetCollection<User>()

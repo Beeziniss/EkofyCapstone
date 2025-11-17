@@ -64,7 +64,7 @@ public sealed class ReportMutation(IReportService reportService)
     /// Ch? admin m?i có quy?n th?c hi?n
     /// </summary>
     [AuthorizeRoles(HelperRoleBase.AdminRoles)]
-    public async Task<bool> UnbanUserAsync(string reportId)
+    public async Task<bool> RestoreUserAsync(string reportId)
     {
         return await _reportService.UnbanUserAsync(reportId);
     }
