@@ -1,18 +1,18 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.Conversations;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using HotChocolate.Data;
 using MongoDB.Driver;
+using System.Threading.Tasks;
 
 namespace EkofyApp.Api.GraphQL.Resolver;
 
 [ExtendObjectType(typeof(Conversation))]
 public sealed class ConversationResolver
 {
-    [UseProjection]
-    [UseFiltering]
-    [UseSorting<User>]
-    public IQueryable<User> GetOwnerUserConversationAsync([Parent] Conversation conversation, [Service] IUnitOfWork unitOfWork, [Service] IHttpContextAccessor httpContextAccessor)
+    public async Task<ConversationResponse> GetOwnerProfileConversationAsync([Parent] Conversation conversation, [Service] IUnitOfWork unitOfWork, [Service] IHttpContextAccessor httpContextAccessor)
     {
         string userId = httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
             ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -21,19 +21,64 @@ public sealed class ConversationResolver
 
         IEnumerable<string> intersectList = conversation.UserIds.Intersect(userIds);
 
-        return unitOfWork.GetCollection<User>().Find(x => intersectList.Contains(x.Id)).ToEnumerable().AsQueryable();
+        UserRole userRole = await unitOfWork.GetCollection<User>()
+            .Find(x => intersectList.Contains(x.Id))
+            .Project(x => x.Role)
+            .FirstOrDefaultAsync();
+
+        if (userRole == UserRole.Listener)
+        {
+            return await unitOfWork.GetCollection<Listener>()
+                .Find(x => intersectList.Contains(x.UserId))
+                .Project(x => new ConversationResponse()
+                {
+                    Nickname = x.DisplayName,
+                    Avatar = x.AvatarImage ?? string.Empty
+                })
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Listener not found");
+        }
+
+        return await unitOfWork.GetCollection<Artist>()
+            .Find(x => intersectList.Contains(x.UserId))
+            .Project(x => new ConversationResponse()
+            {
+                Nickname = x.StageName,
+                Avatar = x.AvatarImage ?? string.Empty
+            })
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
     }
 
-    [UseProjection]
-    [UseFiltering]
-    [UseSorting<User>]
-    public IQueryable<User> GetOtherUserConversationAsync([Parent] Conversation conversation, [Service] IUnitOfWork unitOfWork, [Service] IHttpContextAccessor httpContextAccessor)
+    public async Task<ConversationResponse> GetOtherProfileConversationAsync([Parent] Conversation conversation, [Service] IUnitOfWork unitOfWork, [Service] IHttpContextAccessor httpContextAccessor)
     {
         string userId = httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
             ?? throw new UnauthorizedCustomException("Your session is limit");
 
         IEnumerable<string> otherUserIds = conversation.UserIds.Where(id => id != userId).Distinct();
 
-        return unitOfWork.GetCollection<User>().Find(x => otherUserIds.Contains(x.Id)).ToEnumerable().AsQueryable();
+        UserRole userRole = unitOfWork.GetCollection<User>()
+            .Find(x => otherUserIds.Contains(x.Id))
+            .Project(x => x.Role)
+            .FirstOrDefault();
+
+        if (userRole == UserRole.Listener)
+        {
+            return await unitOfWork.GetCollection<Listener>()
+                .Find(x => otherUserIds.Contains(x.UserId))
+                .Project(x => new ConversationResponse()
+                {
+                    Nickname = x.DisplayName,
+                    Avatar = x.AvatarImage ?? string.Empty
+                })
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Listener not found");
+        }
+
+        return await unitOfWork.GetCollection<Artist>()
+            .Find(x => otherUserIds.Contains(x.UserId))
+            .Project(x => new ConversationResponse()
+            {
+                Nickname = x.StageName,
+                Avatar = x.AvatarImage ?? string.Empty
+            })
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
     }
 }
