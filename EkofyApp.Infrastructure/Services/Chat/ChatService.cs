@@ -5,15 +5,17 @@ using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
-public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper) : IChatService
+public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor) : IChatService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     public IQueryable<Message> GetMessages()
     {
@@ -33,11 +35,15 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper) : IChatS
             .AsQueryable();
     }
 
-    public async Task<string> AddConversationGeneralAsync(List<string> userIds)
+    public async Task<string> AddConversationGeneralAsync(string otherUserId)
     {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        IEnumerable<string> userIds = [userId, otherUserId];
+
         //check xem da co conversation cua 2 nguoi nay chua
         string conversationId = await _unitOfWork.GetCollection<Conversation>()
-            .Find(c => userIds.All(id => c.UserIds.Contains(id)) && c.RequestHubId == null)
+            .Find(c => userIds.All(id => c.UserIds.Contains(id)) && c.Status == ConversationStatus.None && c.RequestHubId == null)
             .Project(x => x.Id)
             .FirstOrDefaultAsync();
         if (!string.IsNullOrEmpty(conversationId))
