@@ -12,7 +12,7 @@ public class ChatQuery(IChatService chatGraphQLService)
     private readonly IChatService _chatGraphQLService = chatGraphQLService;
 
     [AuthorizeRoles(HelperRoleBase.FullRoles)]
-    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UsePaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
     [UseSorting<Message>]
