@@ -11,7 +11,6 @@ using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
-using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Application.ServiceInterfaces.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.EmySound;
@@ -30,7 +29,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class TrackMutation(ITrackService trackService, IArtistService artistService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IUserService userService, IHttpContextAccessor httpContextAccessor)
+public sealed class TrackMutation(ITrackService trackService, IArtistService artistService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IHttpContextAccessor httpContextAccessor)
 {
     private readonly ITrackService _trackService = trackService;
     private readonly IArtistService _artistService = artistService;
@@ -43,18 +42,10 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     private readonly IRecordingService _recordingService = recordingService;
     private readonly IEmySoundService _emySoundService = emySoundService;
     private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
-    private readonly IUserService _userService = userService;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest, bool isTesting = false)
     {
-        // Kiểm tra hạn chế upload track
-        bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.UploadTrack);
-        if (hasAnyRestriction)
-        {
-            throw new UnauthorizedAccessException("You are restricted from uploading track.");
-        }
-
         //using Stream stream = file.OpenReadStream();
         // Đọc toàn bộ file vào mảng byte[]
         byte[] fileBytes;

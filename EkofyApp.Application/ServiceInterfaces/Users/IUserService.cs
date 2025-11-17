@@ -1,7 +1,6 @@
 ﻿using EkofyApp.Application.Models.UserEngagements;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Domain.Entities;
-using EkofyApp.Domain.Enums;
 
 namespace EkofyApp.Application.ServiceInterfaces.Users;
 public interface IUserService
@@ -22,5 +21,4 @@ public interface IUserService
     IQueryable<User> GetFollowersByArtistId(string artistId);
     IQueryable<User> GetFollowingsByArtistId(string artistId);
     IQueryable<PaymentTransaction> GetPaymentTransactionsByUserId(string userId);
-    Task<bool> CheckMultipleRestrictionsAsync(params RestrictionAction[] actions);
 }
