@@ -333,9 +333,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                                 Action = null,
                                 Reason = request.Note,
                                 RestrictedAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                                Expired = request.SuspensionDays.HasValue
-                                            ? suspensionExpiry
-                                            : null
+                                Expired = suspensionExpiry
                             })
                             .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
                         new FindOneAndUpdateOptions<User, User>
@@ -351,11 +349,11 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 // Ẩn tất cả content liên quan đến user
                 await HideUserContentAsync(session, report.ReportedUserId, request.Note ?? "User suspended due to policy violation");
 
-                // Xóa restriction sau khi hết hạn
-                BackgroundJob.Schedule<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(report.ReportedUserId), suspensionExpiry);
+                // Schedule job để xóa restriction sau khi hết hạn
+                await ScheduleRemoveExpiredRestrictionJobAsync(session, report.Id, report.ReportedUserId, suspensionExpiry);
 
                 // Gửi email
-                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.TemporarySuspension, userSuspended.Email, userSuspended.FullName, userSuspended.Email, request.Note!, HelperMethod.GetUtcPlus7TimeOffset().AddDays(request.SuspensionDays.Value).ToString("dd/MM/yyyy HH:mm:ss")));
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.TemporarySuspension, userSuspended.Email, userSuspended.FullName, userSuspended.Email, request.Note!, suspensionExpiry.ToString("dd/MM/yyyy HH:mm:ss")));
 
                 break;
 
@@ -382,8 +380,8 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                         restriction.Type = RestrictionType.Suspended;
                         restriction.Expired = restrictionExpiry;
 
-                        // Xóa restriction sau khi hết hạn
-                        BackgroundJob.Schedule<IBackgoundService>(x => x.RemoveExpiredRestrictionAsync(report.ReportedUserId), restrictionExpiry.Value);
+                        // Schedule job để xóa restriction sau khi hết hạn
+                        await ScheduleRemoveExpiredRestrictionJobAsync(session, report.Id, report.ReportedUserId, restrictionExpiry.Value);
                     }
 
                     accountRestrictions.Add(restriction);
@@ -426,7 +424,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                                     .Set(r => r.Status, RequestStatus.Blocked)
                                     .Set(r => r.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
                             );
-                        if(requestUpdateResult.ModifiedCount == 0)
+                        if (requestUpdateResult.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to remove reported request");
                         }
@@ -441,7 +439,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                                     .Set(c => c.IsVisible, false)
                                     .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
                             );
-                        if(updateResult.ModifiedCount == 0)
+                        if (updateResult.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to remove reported comment");
                         }
@@ -462,7 +460,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                                     })
                                     .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
                             );
-                        if(trackUpdateResult.ModifiedCount == 0)
+                        if (trackUpdateResult.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Failed to remove reported track");
                         }
@@ -671,6 +669,22 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
+            // Kiểm tra user hiện tại và restrictions
+            User currentUser = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == userId)
+                .FirstOrDefaultAsync();
+
+            if (currentUser == null)
+            {
+                throw new NotFoundCustomException("User not found.");
+            }
+
+            // Nếu user đã được unban thủ công (status = Active), không cần làm gì
+            if (currentUser.Status == UserStatus.Active)
+            {
+                return; // Exit early, user đã được unban thủ công
+            }
+
             UpdateResult updateResult = await _unitOfWork.GetCollection<User>()
             .UpdateOneAsync(session,
                 u => u.Id == userId,
@@ -688,55 +702,82 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
             if (updateResult.ModifiedCount == 0)
             {
-                throw new UnprocessableEntityCustomException("No restrictions were removed.");
+                // Không có restrictions nào được xóa, có thể do đã được unban thủ công
+                return;
             }
 
-            // Khôi phục user status nếu không còn restrictions
-            UpdateResult updateUserStatus = await _unitOfWork.GetCollection<User>()
-            .UpdateOneAsync(session,
-                u => u.Id == userId && !u.Restrictions.Any(),
-                Builders<User>.Update
-                    .Set(u => u.Status, UserStatus.Active)
-                    .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-            );
-            if (updateUserStatus.ModifiedCount == 0)
+            // Kiểm tra lại user sau khi xóa expired restrictions
+            User updatedUser = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == userId)
+                .FirstOrDefaultAsync();
+
+            if (updatedUser == null)
             {
-                throw new UnprocessableEntityCustomException("Failed to update user status to Active.");
+                throw new NotFoundCustomException("User not found after update.");
             }
 
-            // Khôi phục content của user khi hết hạn restriction
-            await RestoreUserContentAsync(session, userId);
+            // Khôi phục user status nếu không còn restrictions active
+            bool hasActiveRestrictions = updatedUser.Restrictions.Any(r =>
+                r.Type != RestrictionType.None &&
+                (r.Expired == null || r.Expired > HelperMethod.GetUtcPlus7TimeOffset()));
+
+            if (!hasActiveRestrictions)
+            {
+                UpdateResult updateUserStatus = await _unitOfWork.GetCollection<User>()
+                .UpdateOneAsync(session,
+                    u => u.Id == userId,
+                    Builders<User>.Update
+                        .Set(u => u.Status, UserStatus.Active)
+                        .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                );
+
+                if (updateUserStatus.ModifiedCount == 0)
+                {
+                    throw new UnprocessableEntityCustomException("Failed to update user status to Active.");
+                }
+
+                // Khôi phục content của user khi hết hạn restriction
+                await RestoreUserContentAsync(session, userId);
+            }
         });
     }
 
     /// <summary>
-    /// Khôi phục user khỏi permanent ban dựa trên reportId
+    /// Khôi phục user khỏi permanent ban hoặc suspended ban dựa trên reportId
     /// </summary>
     public async Task<bool> UnbanUserAsync(string reportId)
     {
         string currentUserId = GetCurrentUserId();
         string role = GetCurrentUserRole();
 
+        // Chỉ admin và moderator mới có thể unban
+        if (role != UserRole.Admin.ToString() && role != UserRole.Moderator.ToString())
+        {
+            throw new ForbiddenCustomException("You don't have permission to unban users");
+        }
+
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            // Tìm report và kiểm tra xem có phải là permanent ban không
+            // Tìm report và kiểm tra xem có phải là ban hoặc suspend không
             Report report = await _unitOfWork.GetCollection<Report>()
                 .Find(r => r.Id == reportId && r.IsDeleted == false)
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Report {reportId} not found");
 
-            if (report.ActionTaken != ReportAction.PermanentBan || report.Status != ReportStatus.Approved)
+            // Kiểm tra ActionTaken phải là PermanentBan hoặc Suspended và Status phải là Approved
+            if ((report.ActionTaken != ReportAction.PermanentBan && report.ActionTaken != ReportAction.Suspended)
+                || report.Status != ReportStatus.Approved)
             {
-                throw new BadRequestCustomException("This report is not a permanent ban or has not been approved");
+                throw new BadRequestCustomException("This report is not a permanent ban or suspended ban, or has not been approved");
             }
 
-            // Kiểm tra user hiện tại có bị banned không
-            User bannedUser = await _unitOfWork.GetCollection<User>()
+            // Kiểm tra user hiện tại có bị banned hoặc suspended không
+            User restrictedUser = await _unitOfWork.GetCollection<User>()
                 .Find(u => u.Id == report.ReportedUserId)
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Banned user not found");
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Restricted user not found");
 
-            if (bannedUser.Status != UserStatus.Banned)
+            if (restrictedUser.Status != UserStatus.Banned && restrictedUser.Status != UserStatus.Suspended)
             {
-                throw new BadRequestCustomException("User is not currently banned");
+                throw new BadRequestCustomException("User is not currently banned or suspended");
             }
 
             // Cập nhật trạng thái report thành Restored
@@ -744,6 +785,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 .Find(u => u.Id == currentUserId)
                 .Project(u => u.FullName)
                 .FirstOrDefaultAsync() ?? "System";
+
             UpdateResult reportUpdateResult = await _unitOfWork.GetCollection<Report>()
                 .UpdateOneAsync(session,
                     r => r.Id == reportId,
@@ -757,14 +799,33 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 throw new UnprocessableEntityCustomException("Failed to update report status");
             }
 
-            // Xóa restriction permanent ban khỏi user
+            // Xóa restrictions tương ứng khỏi user
+            UpdateDefinition<User> userUpdate;
+
+            if (report.ActionTaken == ReportAction.PermanentBan)
+            {
+                // Xóa restriction permanent ban (Expired == null)
+                userUpdate = Builders<User>.Update
+                    .PullFilter(u => u.Restrictions, r => r.Type == RestrictionType.Banned && r.Expired == null)
+                    .Set(u => u.Status, UserStatus.Active)
+                    .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+            }
+            else // Suspended
+            {
+                // Xóa restriction suspended có thời hạn
+                userUpdate = Builders<User>.Update
+                    .PullFilter(u => u.Restrictions, r => r.Type == RestrictionType.Suspended && r.Expired != null)
+                    .Set(u => u.Status, UserStatus.Active)
+                    .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                // Hủy background job đã được schedule để remove expired restriction
+                await CancelScheduledJobForUserAsync(report.Id);
+            }
+
             UpdateResult userUpdateResult = await _unitOfWork.GetCollection<User>()
                 .UpdateOneAsync(session,
                     u => u.Id == report.ReportedUserId,
-                    Builders<User>.Update
-                        .PullFilter(u => u.Restrictions, r => r.Type == RestrictionType.Banned && r.Expired == null)
-                        .Set(u => u.Status, UserStatus.Active)
-                        .Set(u => u.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                    userUpdate
                 );
 
             if (userUpdateResult.ModifiedCount == 0)
@@ -776,12 +837,13 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             await RestoreUserContentAsync(session, report.ReportedUserId);
 
             // Gửi email thông báo unban
+            string actionText = report.ActionTaken == ReportAction.PermanentBan ? "permanent ban" : "suspension";
             BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
                 EmailTemplateType.WarningReport, // TODO: Tạo template riêng cho unban
-                bannedUser.Email, 
-                bannedUser.FullName, 
-                bannedUser.Email, 
-                $"Your account has been restored from permanent ban. You can now use the platform normally."
+                restrictedUser.Email,
+                restrictedUser.FullName,
+                restrictedUser.Email,
+                $"Your account has been restored from {actionText}. You can now use the platform normally."
             ));
 
             return;
@@ -865,5 +927,58 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                     throw new BadRequestCustomException("Invalid content type for restoration");
             }
         });
+    }
+
+    /// <summary>
+    /// Schedule background job để remove expired restriction và lưu job ID vào user
+    /// </summary>
+    private async Task ScheduleRemoveExpiredRestrictionJobAsync(IClientSessionHandle session, string reportId, string userId, DateTimeOffset expiry)
+    {
+        // Schedule job
+        string jobId = BackgroundJob.Schedule<IBackgoundService>(
+            x => x.RemoveExpiredRestrictionAsync(userId),
+            expiry
+        );
+
+        // Lưu job ID vào user để có thể cancel sau này
+        // Tạo một field mới trong User để lưu pending job IDs nếu cần
+        // Hoặc có thể lưu vào một collection riêng để quản lý jobs
+        UpdateResult updateResult = await _unitOfWork.GetCollection<Report>()
+            .UpdateOneAsync(session,
+                r => r.Id == reportId,
+                Builders<Report>.Update
+                    .Set(r => r.BackgroundJobId, jobId)
+                    .Set(r => r.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            );
+        if (updateResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException("Failed to save scheduled job ID for user");
+        }
+
+        // TODO: Implement job tracking mechanism
+        // Có thể tạo một JobTracker collection để lưu mapping userId -> jobId
+    }
+
+    /// <summary>
+    /// Cancel background job đã schedule trước đó cho user
+    /// </summary>
+    private async Task CancelScheduledJobForUserAsync(string reportId)
+    {
+        // TODO: Implement job cancellation
+        // Cần query JobTracker collection để lấy jobIds theo userId
+        // Sau đó cancel các jobs đó
+        Report report = await _unitOfWork.GetCollection<Report>()
+            .FindOneAndUpdateAsync<Report, Report>(
+                x => x.Id == reportId,
+                Builders<Report>.Update
+                    .Set(x => x.BackgroundJobId, null)
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                new FindOneAndUpdateOptions<Report, Report>
+                {
+                    Projection = Builders<Report>.Projection.Include(r => r.BackgroundJobId),
+                }
+            ) ?? throw new NotFoundCustomException($"Not found report or job. Report: {reportId}");
+
+        BackgroundJob.Delete(report.BackgroundJobId);
     }
 }
