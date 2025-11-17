@@ -21,9 +21,8 @@ public sealed class ChatMutation(IChatService chatService)
         return await _chatService.AddConversationGeneralAsync(otherUserId);
     }
 
-    public async Task<bool> AddConversationFromRequestHubAsync(CreateConversationRequest request)
+    public async Task<string> AddConversationFromRequestHubAsync(CreateConversationRequest request)
     {
-        await _chatService.AddConversationFromRequestHubAsync(request);
-        return true;
+        return await _chatService.AddConversationFromRequestHubAsync(request);
     }
 }

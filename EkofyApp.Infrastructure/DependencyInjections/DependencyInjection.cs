@@ -503,17 +503,17 @@ public static class DependencyInjection
                     PathString path = context.HttpContext.Request.Path;
 
                     // Các segment được bảo mật
-                    IEnumerable<string?> securedSegments = new[]
+                    IEnumerable<string> securedSegments = new[]
                     {
-                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_CHAT_URL"),
-                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_NOTIFICATION_URL"),
+                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_CHAT_URL") ?? throw new UnconfiguredEnvironmentCustomException("Not set EKOFY_SIGNALR_CHAT_URL in the environment"),
+                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_NOTIFICATION_URL")?? throw new UnconfiguredEnvironmentCustomException("Not set EKOFY_SIGNALR_NOTIFICATION_URL in the environment"),
+                    }
+                    .Where(url => !string.IsNullOrWhiteSpace(url))
+                    .Select(url => new Uri(url!).AbsolutePath); // <-- Chỉ lấy phần path, ví dụ "/hub/chat"
 
-                    }.Where(segment => !string.IsNullOrWhiteSpace(segment)); // Lọc ra các segment không rỗng
-
-                    // Kiểm tra xem path có chứa segment cần xác thực không
-                    if (!string.IsNullOrWhiteSpace(accessToken) && securedSegments.Any(segment => path.StartsWithSegments($"/{segment}", StringComparison.Ordinal)))
+                    if (!string.IsNullOrWhiteSpace(accessToken) &&
+                        securedSegments.Any(segment => path.StartsWithSegments(segment, StringComparison.Ordinal)))
                     {
-                        //context.Token = accessToken["Bearer ".Length..].Trim(); // SubString()
                         context.Token = accessToken;
                     }
 
