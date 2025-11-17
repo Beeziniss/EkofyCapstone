@@ -6,6 +6,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using MongoDB.Driver;
+using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
 public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper) : IChatService
@@ -29,6 +30,26 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper) : IChatS
             .Find(x => x.UserIds.Contains(userId))
             .ToEnumerable()
             .AsQueryable();
+    }
+
+    public async Task AddConversationGeneralAsync(CreateConversationRequest request)
+    {
+        //check xem da co conversation cua 2 nguoi nay chua
+        bool isExistingConversation = await _unitOfWork.GetCollection<Conversation>()
+            .Find(c => request.UserIds.All(id => c.UserIds.Contains(id)))
+            .AnyAsync();
+        if (isExistingConversation)
+        {
+            return;
+        }
+
+        //chua co thi tao moi conversation
+        await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(new()
+        {
+            UserIds = request.UserIds,
+            RequestHubId = request.RequestHubId,
+            Status = ConversationStatus.None,
+        });
     }
 
     public async Task AddConversationFromRequestHubAsync(CreateConversationRequest request)

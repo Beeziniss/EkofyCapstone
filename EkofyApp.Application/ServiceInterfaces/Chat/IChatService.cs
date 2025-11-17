@@ -6,6 +6,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Chat;
 public interface IChatService
 {
     Task AddConversationFromRequestHubAsync(CreateConversationRequest request);
+    Task AddConversationGeneralAsync(CreateConversationRequest request);
     IQueryable<Conversation> GetConversations();
     IQueryable<Conversation> GetConversationsByUserId(string userId);
     IQueryable<Message> GetMessages();
