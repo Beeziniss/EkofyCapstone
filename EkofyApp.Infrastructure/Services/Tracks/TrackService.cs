@@ -1,14 +1,22 @@
 ﻿using AutoMapper;
+using EkofyApp.Application.Models.ApprovalHistories;
 using EkofyApp.Application.Models.AudioFeatures;
 using EkofyApp.Application.Models.Notifications;
 using EkofyApp.Application.Models.Recordings;
 using EkofyApp.Application.Models.Tracks;
 using EkofyApp.Application.Models.Uploads;
+using EkofyApp.Application.Models.Wavs;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
+using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
+using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ServiceInterfaces.Users;
+using EkofyApp.Application.ServiceInterfaces.Works;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
+using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
@@ -27,7 +35,7 @@ using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, IUserService userService, IHubContext<NotificationHub>  hubContext, ILogger<TrackService> logger) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, IUserService userService, IFfmpegService ffmpegService, IWorkService workService, IRecordingService recordingService, ICategoryService categoryService, IAudioAnalysisService audioAnalysisService, IAmazonS3Service amazonS3Service, IApprovalHistoryService approvalHistoryService, ITrackUploadNotifier trackUploadNotifier, IHubContext<NotificationHub> hubContext, ILogger<TrackService> logger) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
@@ -36,6 +44,14 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator = embeddingGenerator;
     private readonly IRecommendationService _recommendationService = recommendationService;
     private readonly IUserService _userService = userService;
+    private readonly IFfmpegService _ffmpegService = ffmpegService;
+    private readonly IWorkService _workService = workService;
+    private readonly IRecordingService _recordingService = recordingService;
+    private readonly ICategoryService _categoryService = categoryService;
+    private readonly IAudioAnalysisService _audioAnalysisService = audioAnalysisService;
+    private readonly IAmazonS3Service _amazonS3Service = amazonS3Service;
+    private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
+    private readonly ITrackUploadNotifier _trackUploadNotifier = trackUploadNotifier;
     private readonly IHubContext<NotificationHub> _hubContext = hubContext;
     private readonly ILogger<TrackService> _logger = logger;
 
@@ -93,6 +109,158 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         query = query.Where(t => t.NameUnsigned.Contains(unsignedSearchTerm));
 
         return query;
+    }
+
+    public async Task ApproveAutomaticallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        string outputHlsPath = string.Empty;
+        WavFileResponse wavFileResponse = default!;
+        try
+        {
+            // Duyệt tự động -> Lưu xuống database
+            string tempName = ObjectId.GenerateNewId().ToString();
+
+            //Console.WriteLine("===================================");
+            //Console.WriteLine($"Temp Name: {tempName}");
+            //Console.WriteLine("===================================");
+
+            // Convert sang WAV
+            await _trackUploadNotifier.SendProgressAsync(userId, 10, "Processing audio file");
+            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            //AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
+
+            // Convert file sang định dạng wav
+            //wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
+
+            //Console.WriteLine("===================================");
+            //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+            //Console.WriteLine($"File Exists? {File.Exists(wavFileResponse.OutputWavPath)}");
+            //Console.WriteLine("===================================");
+
+            // Tạo track temp
+            await _trackUploadNotifier.SendProgressAsync(userId, 20, "Processing track metadata");
+            //TrackTempRequest trackTempRequest = CreateTrackTemp(createTrackRequest);
+            await _trackUploadNotifier.SendProgressAsync(userId, 25, "Processing work metadata");
+            //WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
+            await _trackUploadNotifier.SendProgressAsync(userId, 30, "Processing recording metadata");
+            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            //RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
+
+            // Tạo hls từ file wav
+            await _trackUploadNotifier.SendProgressAsync(userId, 40, "Processing streaming audio file");
+            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            //AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
+            //outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+
+            //Console.WriteLine("===================================");
+            //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+            //Console.WriteLine("===================================");
+
+            //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
+            await _trackUploadNotifier.SendProgressAsync(userId, 50, "Analyzing audio file");
+            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            //AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+
+            // Xác định mood của track dựa trên đặc trưng âm thanh
+            await _trackUploadNotifier.SendProgressAsync(userId, 60, "Extracting mood from audio file");
+            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            //IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+            //IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+
+            await _trackUploadNotifier.SendProgressAsync(userId, 70, "Creating summary description from audio file");
+            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            //string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+            //float[] embeddingVector = await GenerateEmbeddingsAsync(alternativeDescription);
+
+            //TrackTempResponse trackTempResponse = new()
+            //{
+            //    Id = trackTempRequest.Id,
+            //    Name = trackTempRequest.Name,
+            //    Description = trackTempRequest.Description,
+            //    MainArtistIds = trackTempRequest.MainArtistIds,
+            //    FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
+            //    CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
+            //    Tags = trackTempRequest.Tags,
+            //    CoverImage = trackTempRequest.CoverImage,
+            //    PreviewVideo = trackTempRequest.PreviewVideo,
+            //    IsExplicit = trackTempRequest.IsExplicit,
+            //    Lyrics = trackTempRequest.Lyrics,
+            //    ReleaseInfo = trackTempRequest.ReleaseInfo,
+            //    LegalDocuments = trackTempRequest.LegalDocuments,
+            //    //AudioFingerprint = audioFingerprint,
+            //    AudioFeature = audioAnalysisResponse,
+            //    AlternativeDescription = alternativeDescription,
+            //    EmbeddingVector = embeddingVector,
+
+            //    CreatedBy = trackTempRequest.CreatedBy,
+            //};
+
+            await _trackUploadNotifier.SendProgressAsync(userId, 80, "Uploading...");
+            await Task.Delay(5000); // Giả lập delay cho người dùng thấy progress
+
+            //await CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+
+            // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
+            //await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
+
+            // Đẩy hls playlist lên S3
+            //await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+
+            // Lưu snapshot
+            // Track
+            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            //{
+            //    TargetOwnerId = trackTempRequest.CreatedBy,
+            //    TargetId = trackTempRequest.Id,
+            //    ApprovalType = ApprovalType.TrackUpload,
+            //    ActionByUserId = "68abf0fc5252e66631121e57",
+            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+            //    Action = HistoryActionType.Approved,
+            //    Notes = null,
+            //    Snapshot = trackTempRequest,
+            //});
+
+            //// Work
+            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            //{
+            //    TargetId = workTempRequest.Id,
+            //    ApprovalType = ApprovalType.WorkUpload,
+            //    ActionByUserId = "68abf0fc5252e66631121e57",
+            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+            //    Action = HistoryActionType.Approved,
+            //    Notes = null,
+            //    Snapshot = workTempRequest,
+            //});
+
+            //// Recording
+            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            //{
+            //    TargetId = recordingTempRequest.Id,
+            //    ApprovalType = ApprovalType.RecordingUpload,
+            //    ActionByUserId = "68abf0fc5252e66631121e57",
+            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+            //    Action = HistoryActionType.Approved,
+            //    Notes = null,
+            //    Snapshot = recordingTempRequest,
+            //});
+
+            await _trackUploadNotifier.SendProgressAsync(userId, 100, "Done");
+        }
+        finally
+        {
+            // Xóa folder, file tạm sau khi upload lên S3
+            //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+            if (Directory.Exists(outputHlsPath))
+            {
+                Directory.Delete(outputHlsPath, true);
+            }
+            if (File.Exists(wavFileResponse.OutputWavPath))
+            {
+                File.Delete(wavFileResponse.OutputWavPath);
+            }
+        }
     }
 
     public async Task ReleaseScheduledTrackAsync(string trackId)

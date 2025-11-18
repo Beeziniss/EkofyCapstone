@@ -1,4 +1,7 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Application.Models.Recordings;
+using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Works;
+using EkofyApp.Domain.Enums;
 using Hangfire.Server;
 
 namespace EkofyApp.Application.ServiceInterfaces.Jobs
@@ -11,5 +14,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task MonthlyRoyaltyReportJob();
         Task UpdateStreamCountJob();
         Task RemoveExpiredRestrictionAsync(string userId);
+        Task CheckProgressingUploadsJob(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
     }
 }

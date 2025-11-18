@@ -1,4 +1,7 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.Recordings;
+using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Works;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.Reports;
@@ -169,5 +172,14 @@ public class BackgoundService : IBackgoundService
         using var scope = _serviceScopeFactory.CreateScope();
         var reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
         await reportService.RemoveExpiredRestrictionAsync(userId);
+    }
+
+    [Queue("progressing_upload")]
+    [JobDisplayName("Check Progressing Uploads")]
+    public async Task CheckProgressingUploadsJob(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
+        await trackService.ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
     }
 }

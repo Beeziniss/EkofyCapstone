@@ -110,7 +110,12 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             // Duyệt tự động
             if(!isTesting)
             {
-                await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+                //await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+
+                // Đẩy xuống queue để tránh bị treo api
+                BackgroundJob.Enqueue<IBackgoundService>(
+                            x => x.CheckProgressingUploadsJob(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest)
+                        );
             }
             else
             {
@@ -126,136 +131,136 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
         return true;
     }
 
-    internal async Task ApproveAutomaticallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
-    {
-        string outputHlsPath = string.Empty;
-        WavFileResponse wavFileResponse = default!;
-        try
-        {
-            // Duyệt tự động -> Lưu xuống database
-            string tempName = ObjectId.GenerateNewId().ToString();
+    //internal async Task ApproveAutomaticallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    //{
+    //    string outputHlsPath = string.Empty;
+    //    WavFileResponse wavFileResponse = default!;
+    //    try
+    //    {
+    //        // Duyệt tự động -> Lưu xuống database
+    //        string tempName = ObjectId.GenerateNewId().ToString();
 
-            //Console.WriteLine("===================================");
-            //Console.WriteLine($"Temp Name: {tempName}");
-            //Console.WriteLine("===================================");
+    //        //Console.WriteLine("===================================");
+    //        //Console.WriteLine($"Temp Name: {tempName}");
+    //        //Console.WriteLine("===================================");
 
-            // Convert sang WAV
-            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
+    //        // Convert sang WAV
+    //        AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
 
-            // Convert file sang định dạng wav
-            wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
+    //        // Convert file sang định dạng wav
+    //        wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
 
-            //Console.WriteLine("===================================");
-            //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
-            //Console.WriteLine($"File Exists? {File.Exists(wavFileResponse.OutputWavPath)}");
-            //Console.WriteLine("===================================");
+    //        //Console.WriteLine("===================================");
+    //        //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+    //        //Console.WriteLine($"File Exists? {File.Exists(wavFileResponse.OutputWavPath)}");
+    //        //Console.WriteLine("===================================");
 
-            // Tạo track temp
-            TrackTempRequest trackTempRequest = _trackService.CreateTrackTemp(createTrackRequest);
-            WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
-            RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
+    //        // Tạo track temp
+    //        TrackTempRequest trackTempRequest = _trackService.CreateTrackTemp(createTrackRequest);
+    //        WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
+    //        RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
 
-            // Tạo hls từ file wav
-            AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
-            outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+    //        // Tạo hls từ file wav
+    //        AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
+    //        outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
 
-            //Console.WriteLine("===================================");
-            //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
-            //Console.WriteLine("===================================");
+    //        //Console.WriteLine("===================================");
+    //        //Console.WriteLine($"Wav Path: {wavFileResponse.OutputWavPath}");
+    //        //Console.WriteLine("===================================");
 
-            //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
-            AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+    //        //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
+    //        AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
-            // Xác định mood của track dựa trên đặc trưng âm thanh
-            IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
-            IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+    //        // Xác định mood của track dựa trên đặc trưng âm thanh
+    //        IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+    //        IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
 
-            string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
-            float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
+    //        string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+    //        float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
 
-            TrackTempResponse trackTempResponse = new()
-            {
-                Id = trackTempRequest.Id,
-                Name = trackTempRequest.Name,
-                Description = trackTempRequest.Description,
-                MainArtistIds = trackTempRequest.MainArtistIds,
-                FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
-                CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
-                Tags = trackTempRequest.Tags,
-                CoverImage = trackTempRequest.CoverImage,
-                PreviewVideo = trackTempRequest.PreviewVideo,
-                IsExplicit = trackTempRequest.IsExplicit,
-                Lyrics = trackTempRequest.Lyrics,
-                ReleaseInfo = trackTempRequest.ReleaseInfo,
-                LegalDocuments = trackTempRequest.LegalDocuments,
-                //AudioFingerprint = audioFingerprint,
-                AudioFeature = audioAnalysisResponse,
-                AlternativeDescription = alternativeDescription,
-                EmbeddingVector = embeddingVector,
+    //        TrackTempResponse trackTempResponse = new()
+    //        {
+    //            Id = trackTempRequest.Id,
+    //            Name = trackTempRequest.Name,
+    //            Description = trackTempRequest.Description,
+    //            MainArtistIds = trackTempRequest.MainArtistIds,
+    //            FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
+    //            CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
+    //            Tags = trackTempRequest.Tags,
+    //            CoverImage = trackTempRequest.CoverImage,
+    //            PreviewVideo = trackTempRequest.PreviewVideo,
+    //            IsExplicit = trackTempRequest.IsExplicit,
+    //            Lyrics = trackTempRequest.Lyrics,
+    //            ReleaseInfo = trackTempRequest.ReleaseInfo,
+    //            LegalDocuments = trackTempRequest.LegalDocuments,
+    //            //AudioFingerprint = audioFingerprint,
+    //            AudioFeature = audioAnalysisResponse,
+    //            AlternativeDescription = alternativeDescription,
+    //            EmbeddingVector = embeddingVector,
 
-                CreatedBy = trackTempRequest.CreatedBy,
-            };
+    //            CreatedBy = trackTempRequest.CreatedBy,
+    //        };
 
-            await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+    //        await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
 
-            // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
-            await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
+    //        // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
+    //        await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
 
-            // Đẩy hls playlist lên S3
-            await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+    //        // Đẩy hls playlist lên S3
+    //        await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
 
-            // Lưu snapshot
-            // Track
-            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            {
-                TargetOwnerId = trackTempRequest.CreatedBy,
-                TargetId = trackTempRequest.Id,
-                ApprovalType = ApprovalType.TrackUpload,
-                ActionByUserId = "68abf0fc5252e66631121e57",
-                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Approved,
-                Notes = null,
-                Snapshot = trackTempRequest,
-            });
+    //        // Lưu snapshot
+    //        // Track
+    //        await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+    //        {
+    //            TargetOwnerId = trackTempRequest.CreatedBy,
+    //            TargetId = trackTempRequest.Id,
+    //            ApprovalType = ApprovalType.TrackUpload,
+    //            ActionByUserId = "68abf0fc5252e66631121e57",
+    //            ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+    //            Action = HistoryActionType.Approved,
+    //            Notes = null,
+    //            Snapshot = trackTempRequest,
+    //        });
 
-            // Work
-            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            {
-                TargetId = workTempRequest.Id,
-                ApprovalType = ApprovalType.WorkUpload,
-                ActionByUserId = "68abf0fc5252e66631121e57",
-                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Approved,
-                Notes = null,
-                Snapshot = workTempRequest,
-            });
+    //        // Work
+    //        await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+    //        {
+    //            TargetId = workTempRequest.Id,
+    //            ApprovalType = ApprovalType.WorkUpload,
+    //            ActionByUserId = "68abf0fc5252e66631121e57",
+    //            ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+    //            Action = HistoryActionType.Approved,
+    //            Notes = null,
+    //            Snapshot = workTempRequest,
+    //        });
 
-            // Recording
-            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            {
-                TargetId = recordingTempRequest.Id,
-                ApprovalType = ApprovalType.RecordingUpload,
-                ActionByUserId = "68abf0fc5252e66631121e57",
-                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Approved,
-                Notes = null,
-                Snapshot = recordingTempRequest,
-            });
-        }
-        finally
-        {
-            // Xóa folder, file tạm sau khi upload lên S3
-            //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
-            if (Directory.Exists(outputHlsPath))
-            {
-                Directory.Delete(outputHlsPath, true);
-            }
-            if (File.Exists(wavFileResponse.OutputWavPath))
-            {
-                File.Delete(wavFileResponse.OutputWavPath);
-            }
-        }
-    }
+    //        // Recording
+    //        await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+    //        {
+    //            TargetId = recordingTempRequest.Id,
+    //            ApprovalType = ApprovalType.RecordingUpload,
+    //            ActionByUserId = "68abf0fc5252e66631121e57",
+    //            ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+    //            Action = HistoryActionType.Approved,
+    //            Notes = null,
+    //            Snapshot = recordingTempRequest,
+    //        });
+    //    }
+    //    finally
+    //    {
+    //        // Xóa folder, file tạm sau khi upload lên S3
+    //        //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+    //        if (Directory.Exists(outputHlsPath))
+    //        {
+    //            Directory.Delete(outputHlsPath, true);
+    //        }
+    //        if (File.Exists(wavFileResponse.OutputWavPath))
+    //        {
+    //            File.Delete(wavFileResponse.OutputWavPath);
+    //        }
+    //    }
+    //}
 
     internal async Task AssignApproveManuallyAsync(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {

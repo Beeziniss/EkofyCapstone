@@ -9,7 +9,7 @@ using MongoDB.Driver;
 using System.Collections.Concurrent;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
-public class ChatHub(IUnitOfWork unitOfWork) : Hub
+public sealed class ChatHub(IUnitOfWork unitOfWork) : Hub
 {
     private static readonly ConcurrentDictionary<string, HashSet<string>> OnlineUsers = []; // readerId -> senderConnectionId
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -50,11 +50,6 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                 if (connections.Count == 0)
                 {
                     OnlineUsers.TryRemove(userId, out _);
-                    Console.WriteLine($"{userId} completely disconnected.");
-                }
-                else
-                {
-                    Console.WriteLine($"{userId} disconnected from one tab: {Context.ConnectionId}");
                 }
             }
         }

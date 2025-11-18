@@ -408,6 +408,7 @@ public static class DependencyInjection
         services.AddScoped<ITopTrackService, TopTrackService>();
         services.AddScoped<IPlatformRevenueService, PlatformRevenueService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
+        services.AddScoped<ITrackUploadNotifier, TrackUploadNotifier>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
