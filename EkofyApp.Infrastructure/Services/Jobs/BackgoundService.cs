@@ -177,12 +177,22 @@ public class BackgoundService : IBackgoundService
 
     [Queue("progressing_upload")]
     [JobDisplayName("Check Progressing Uploads")]
-    public async Task CheckProgressingUploadsJob(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    public async Task CheckProgressingUploadsJob(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {
         using var scope = _serviceScopeFactory.CreateScope();
         var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
-        await trackService.ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+        await trackService.ApproveAutomaticallyAsync(userId, bytes, createTrackRequest, createWorkRequest, createRecordingRequest);
     }
+
+    [Queue("progressing_upload_manually")]
+    [JobDisplayName("Check Progressing Uploads Manually")]
+    public async Task<bool> CheckProgressingUploadsManuallyJob(string actionByUserId, string uploadId)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
+        return await trackService.ApproveTrackUploadRequestAsync(actionByUserId, uploadId);
+    }
+
 
     [Queue("process_track_popularity_metric")]
     [JobDisplayName("Process Track Popularity Metric")]

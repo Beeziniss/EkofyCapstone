@@ -14,11 +14,12 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task MonthlyRoyaltyReportJob();
         Task UpdateStreamCountJob();
         Task RemoveExpiredRestrictionAsync(string userId);
-        Task CheckProgressingUploadsJob(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
+        Task CheckProgressingUploadsJob(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
         Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType);
         Task ProcessTrackEngagementMetricJobAsync(string trackId, PopularityActionType actionType);
         Task ProcessTrackDiscoveryMetricJobAsync(string trackId, PopularityActionType actionType);
         Task ProcessArtistEngagementMetricJobAsync(string artistId, PopularityActionType actionType);
         Task ProcessArtistDiscoveryMetricJobAsync(string artistId, PopularityActionType actionType);
+        Task<bool> CheckProgressingUploadsManuallyJob(string actionByUserId, string uploadId);
     }
 }

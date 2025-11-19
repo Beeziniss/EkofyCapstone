@@ -48,6 +48,8 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
 
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest, bool isTesting = false)
     {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
         // Kiểm tra hạn chế upload track
         bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.UploadTrack);
         if (hasAnyRestriction)
@@ -108,13 +110,13 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             using var autoStream = new MemoryStream(fileBytes);
 
             // Duyệt tự động
-            if(!isTesting)
+            if (!isTesting)
             {
                 //await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
                 // Đẩy xuống queue để tránh bị treo api
                 BackgroundJob.Enqueue<IBackgoundService>(
-                            x => x.CheckProgressingUploadsJob(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest)
+                            x => x.CheckProgressingUploadsJob(userId, fileBytes, createTrackRequest, createWorkRequest, createRecordingRequest)
                         );
             }
             else
@@ -379,197 +381,13 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     // Kiểm tra tự động: Audio file có định dạng hợp lệ, vi phạm chính sách không (bao gồm cả vi phạm bản quyền)
     public async Task<bool> ApproveTrackUploadRequestAsync(string uploadId)
     {
-        try
-        {
-            // Lưu xuống database
-            if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
-            {
-                string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string actionByUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-                WavFileResponse wavFileResponse = default!;
+        BackgroundJob.Enqueue<IBackgoundService>(
+            x => x.CheckProgressingUploadsManuallyJob(actionByUserId, uploadId)
+        );
 
-                if (combinedRequest is null)
-                {
-                    throw new NotFoundCustomException("Upload request not found");
-                }
-
-                TrackTempRequest trackTempRequest = combinedRequest.Track;
-                WorkTempRequest workTempRequest = combinedRequest.Work;
-                RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
-
-                // Tài nguyên từ S3
-                await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
-                {
-                    byte[] originalBytes;
-                    using (MemoryStream originalStream = new())
-                    {
-                        await stream.CopyToAsync(originalStream);
-                        originalBytes = originalStream.ToArray();
-                    }
-
-                    using MemoryStream ffmpegStream = new(originalBytes);
-                    using MemoryStream emyStream = new(originalBytes);
-
-                    ffmpegStream.Position = 0;
-                    emyStream.Position = 0;
-
-                    string tempName = ObjectId.GenerateNewId().ToString();
-
-                    // Convert sang WAV
-                    AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
-
-                    // Convert file sang định dạng wav
-                    wavFileResponse = await _ffmpegService.ConvertToWavAsync(ffmpegStream, tempName, audioConvertPathOptionsWav);
-
-                    // Tạo hls từ file wav
-                    AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
-                    string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
-
-                    //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
-                    AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
-
-                    // Xác định mood của track dựa trên đặc trưng âm thanh
-                    IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
-                    IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
-
-                    string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
-                    float[] embeddingVector = await _trackService.GenerateEmbeddingsAsync(alternativeDescription);
-
-                    TrackTempResponse trackTempResponse = new()
-                    {
-                        Id = trackTempRequest.Id,
-                        Name = trackTempRequest.Name,
-                        Description = trackTempRequest.Description,
-                        MainArtistIds = trackTempRequest.MainArtistIds,
-                        FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
-                        CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
-                        Tags = trackTempRequest.Tags,
-                        CoverImage = trackTempRequest.CoverImage,
-                        PreviewVideo = trackTempRequest.PreviewVideo,
-                        IsExplicit = trackTempRequest.IsExplicit,
-                        Lyrics = trackTempRequest.Lyrics,
-                        ReleaseInfo = trackTempRequest.ReleaseInfo,
-
-                        //AudioFingerprint = audioFingerprint,
-                        AudioFeature = audioAnalysisResponse,
-                        AlternativeDescription = alternativeDescription,
-                        EmbeddingVector = embeddingVector,
-
-                        CreatedBy = trackTempRequest.CreatedBy,
-                    };
-
-                    await _trackService.CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
-
-                    // Đẩy hls playlist lên S3
-                    await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
-
-                    // Kiểm tra và lên lịch phát hành track nếu cần thiết
-                    if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
-                    {
-                        DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
-                        BackgroundJob.Schedule<IBackgoundService>(
-                            x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
-                            releaseTime
-                        );
-                    }
-
-                    // Upload fingerprint lên EmySound
-                    string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempRequest.CreatedBy);
-                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
-
-                    // Xóa folder, file tạm sau khi upload lên S3
-                    //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
-                    if (Directory.Exists(outputHlsPath))
-                    {
-                        Directory.Delete(outputHlsPath, true);
-                    }
-                    if (File.Exists(wavFileResponse.OutputWavPath))
-                    {
-                        File.Delete(wavFileResponse.OutputWavPath);
-                    }
-                });
-
-                // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
-                // Resolved: Đã xóa tag trên S3 và xóa request trên redis
-                await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
-                await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
-
-                // Lưu snapshot
-                // Track
-                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-                {
-                    TargetOwnerId = trackTempRequest.CreatedBy,
-                    TargetId = trackTempRequest.Id,
-                    ApprovalType = ApprovalType.TrackUpload,
-                    ActionByUserId = currentUserId,
-                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                    Action = HistoryActionType.Approved,
-                    Notes = null,
-                    Snapshot = trackTempRequest,
-                });
-
-                // Work
-                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-                {
-                    TargetId = workTempRequest.Id,
-                    ApprovalType = ApprovalType.WorkUpload,
-                    ActionByUserId = currentUserId,
-                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                    Action = HistoryActionType.Approved,
-                    Notes = null,
-                    Snapshot = workTempRequest,
-                });
-
-                // Recording
-                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-                {
-                    TargetId = recordingTempRequest.Id,
-                    ApprovalType = ApprovalType.RecordingUpload,
-                    ActionByUserId = currentUserId,
-                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                    Action = HistoryActionType.Approved,
-                    Notes = null,
-                    Snapshot = recordingTempRequest,
-                });
-
-                return true;
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-
-            return false;
-        }
-
-    }
-
-    private static bool ShouldScheduleTrackRelease(ReleaseInfo releaseInfo)
-    {
-        // Chỉ schedule job khi:
-        // 1. IsRelease = false -> track được private thì không cần làm gì hết
-        // Và không cần kiểm tra thêm 2 điều kiện còn lại
-        // 2. IsRelease = true -> track được public -> Release Status -> Official -> không được chọn Release Date -> không cần schedule
-        //                                                            -> Not Announced -> chọn Release Date để schedule -> cần schedule
-        // 2.2 Sau khi chọn Release Date để schedule -> đến ngày thì track sẽ được release và Release Status sẽ được đổi thành Official
-
-        //return releaseInfo.IsRelease &&
-        //       releaseInfo.ReleaseStatus != ReleaseStatus.Official &&
-        //       releaseInfo.ReleaseDate.HasValue;
-
-        if (!releaseInfo.IsRelease)
-        {
-            return false;
-        }
-
-        if (releaseInfo.ReleaseStatus == ReleaseStatus.Official)
-        {
-            return false;
-        }
-
-        return releaseInfo.ReleaseDate.HasValue;
+        return true;
     }
 
     public async Task<bool> AddToFavoriteTrackAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
