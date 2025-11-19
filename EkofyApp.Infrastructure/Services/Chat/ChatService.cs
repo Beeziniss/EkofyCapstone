@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using EkofyApp.Application.Models.Conversations;
+﻿using EkofyApp.Application.Models.Conversations;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Domain.Entities;
@@ -8,14 +7,12 @@ using EkofyApp.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using Stripe.Forwarding;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
 
-public sealed class ChatService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor) : IChatService
+public sealed class ChatService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IChatService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     public IQueryable<Message> GetMessages()

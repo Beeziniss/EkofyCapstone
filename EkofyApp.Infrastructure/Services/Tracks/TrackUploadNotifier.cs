@@ -9,8 +9,7 @@ public sealed class TrackUploadNotifier(IHubContext<TrackUploadHub> hubContext) 
 
     public Task SendProgressAsync(string userId, int percent, string stepDescription)
     {
-        return _hubContext.Clients.User(userId)
-        .SendAsync("ReceiveProgress", new { percent, stepDescription });
+        return _hubContext.Clients.User(userId).SendAsync("ReceiveProgress", new { percent, stepDescription });
     }
 
     public Task SendCompletedAsync(string userId)
@@ -20,7 +19,6 @@ public sealed class TrackUploadNotifier(IHubContext<TrackUploadHub> hubContext) 
 
     public Task SendFailedAsync(string userId, string errorMessage)
     {
-        return _hubContext.Clients.User(userId)
-        .SendAsync("ReceiveFailed", errorMessage);
+        return _hubContext.Clients.User(userId).SendAsync("ReceiveFailed", errorMessage);
     }
 }

@@ -107,6 +107,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -121,6 +122,7 @@ using System.Security.Claims;
 using System.Text;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
+
 public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
@@ -419,6 +421,9 @@ public static class DependencyInjection
 
         // Third Party Services
         services.AddScoped<IFfmpegService, FfmpegService>();
+
+        // SignalR Customize Behavior Services
+        services.AddSingleton<IUserIdProvider, CustomUserIdProviderSignalR>();
     }
 
     public static void AddCloudinary(this IServiceCollection services)
@@ -515,8 +520,11 @@ public static class DependencyInjection
                     .Where(url => !string.IsNullOrWhiteSpace(url))
                     .Select(url => new Uri(url!).AbsolutePath); // <-- Chỉ lấy phần path, ví dụ "/hub/chat"
 
-                    if (!string.IsNullOrWhiteSpace(accessToken) &&
-                        securedSegments.Any(segment => path.StartsWithSegments(segment, StringComparison.Ordinal)))
+                    //if (!string.IsNullOrWhiteSpace(accessToken) &&
+                    //    securedSegments.Any(segment => path.StartsWithSegments(segment, StringComparison.Ordinal)))
+                    //{
+                    //}
+                    if (!string.IsNullOrWhiteSpace(accessToken))
                     {
                         context.Token = accessToken;
                     }
@@ -575,7 +583,7 @@ public static class DependencyInjection
             {
                 policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_LOCAL_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
                     .WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
-                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
+                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
@@ -712,7 +720,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CouponDurationType), new EnumMemberSerializer<CouponDurationType>());
         BsonSerializer.RegisterSerializer(typeof(CouponStatus), new EnumMemberSerializer<CouponStatus>());
         BsonSerializer.RegisterSerializer(typeof(CouponPurposeType), new EnumMemberSerializer<CouponPurposeType>());
-        
+
         // BillingPortalConfiguration
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionUpdate), new EnumMemberSerializer<StripeSubscriptionUpdate>());
