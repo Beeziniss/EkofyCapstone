@@ -9,7 +9,7 @@ using MongoDB.Driver;
 using System.Collections.Concurrent;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
-public class ChatHub(IUnitOfWork unitOfWork) : Hub
+public sealed class ChatHub(IUnitOfWork unitOfWork) : Hub
 {
     private static readonly ConcurrentDictionary<string, HashSet<string>> OnlineUsers = []; // readerId -> senderConnectionId
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -50,11 +50,6 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                 if (connections.Count == 0)
                 {
                     OnlineUsers.TryRemove(userId, out _);
-                    Console.WriteLine($"{userId} completely disconnected.");
-                }
-                else
-                {
-                    Console.WriteLine($"{userId} disconnected from one tab: {Context.ConnectionId}");
                 }
             }
         }
@@ -106,17 +101,14 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
                 })
                 .Set(c => c.UpdatedAt, now);
 
-            Conversation conversationBeforeUpdate = await _unitOfWork.GetCollection<Conversation>()
-                .FindOneAndUpdateAsync(
+            UpdateResult updateResult = await _unitOfWork.GetCollection<Conversation>()
+                .UpdateOneAsync(
                     filter,
-                    update,
-                    new FindOneAndUpdateOptions<Conversation>
-                    {
-                        ReturnDocument = ReturnDocument.Before
-                    });
-
-            if (conversationBeforeUpdate == null)
+                    update
+                );
+            if (updateResult.ModifiedCount == 0)
             {
+                // Không thể update, nghĩa là conversation đã đóng
                 await Clients.Caller.SendAsync("ReceiveException", "This conversation is closed. You cannot send messages.");
                 return;
             }
@@ -140,10 +132,10 @@ public class ChatHub(IUnitOfWork unitOfWork) : Hub
             }
 
             // Optional: cũng có thể gửi về cho tất cả kết nối của sender nếu muốn sync
-            //if (OnlineUsers.TryGetValue(chatMessageRequest.SenderId, out HashSet<string>? senderConnections))
-            //{
-            //    await Clients.Clients(senderConnections.ToList()).SendAsync("MessageSent", message);
-            //}
+            if (OnlineUsers.TryGetValue(chatMessageRequest.SenderId, out HashSet<string>? senderConnections))
+            {
+                await Clients.Clients(senderConnections.ToList()).SendAsync("MessageSent", message);
+            }
 
             // Optional: return ack
             //await Clients.Caller.SendAsync("MessageSent", message);

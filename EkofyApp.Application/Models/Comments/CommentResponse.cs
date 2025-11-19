@@ -62,5 +62,5 @@ public sealed record ArtistInfo
     public string? AvatarImage { get; init; }
     public bool IsVerified { get; init; }
     public long FollowerCount { get; init; }
-    public long Popularity { get; init; }
+    public decimal Popularity { get; init; }
 }
