@@ -15,5 +15,10 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task UpdateStreamCountJob();
         Task RemoveExpiredRestrictionAsync(string userId);
         Task CheckProgressingUploadsJob(Stream stream, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
+        Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType);
+        Task ProcessTrackEngagementMetricJobAsync(string trackId, PopularityActionType actionType);
+        Task ProcessTrackDiscoveryMetricJobAsync(string trackId, PopularityActionType actionType);
+        Task ProcessArtistEngagementMetricJobAsync(string artistId, PopularityActionType actionType);
+        Task ProcessArtistDiscoveryMetricJobAsync(string artistId, PopularityActionType actionType);
     }
 }

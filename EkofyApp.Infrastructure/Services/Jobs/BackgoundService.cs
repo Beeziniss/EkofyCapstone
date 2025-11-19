@@ -4,6 +4,7 @@ using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
@@ -181,5 +182,50 @@ public class BackgoundService : IBackgoundService
         using var scope = _serviceScopeFactory.CreateScope();
         var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
         await trackService.ApproveAutomaticallyAsync(stream, createTrackRequest, createWorkRequest, createRecordingRequest);
+    }
+
+    [Queue("process_track_popularity_metric")]
+    [JobDisplayName("Process Track Popularity Metric")]
+    public async Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessTrackStreamingMetricAsync(trackId, actionType);
+    }
+
+    [Queue("process_track_popularity_metric")]
+    [JobDisplayName("Process Track Popularity Metric")]
+    public async Task ProcessTrackEngagementMetricJobAsync(string trackId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessTrackEngagementMetricAsync(trackId, actionType);
+    }
+
+    [Queue("process_track_popularity_metric")]
+    [JobDisplayName("Process Track Popularity Metric")]
+    public async Task ProcessTrackDiscoveryMetricJobAsync(string trackId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessTrackDiscoveryMetricAsync(trackId, actionType);
+    }
+
+    [Queue("process_artist_popularity_metric")]
+    [JobDisplayName("Process Artist Popularity Metric")]
+    public async Task ProcessArtistEngagementMetricJobAsync(string artistId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessArtistEngagementMetricAsync(artistId, actionType);
+    }
+
+    [Queue("process_artist_popularity_metric")]
+    [JobDisplayName("Process Artist Popularity Metric")]
+    public async Task ProcessArtistDiscoveryMetricJobAsync(string artistId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessArtistDiscoveryMetricAsync(artistId, actionType);
     }
 }

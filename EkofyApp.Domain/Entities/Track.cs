@@ -40,15 +40,12 @@ public sealed class Track : Auditable, IEntityCustom
     public string? Lyrics { get; set; } // Full lyrics of the track, if available
     public List<SyncedLine> SyncedLyrics { get; set; } = []; // List of synced lyrics lines with timestamps
 
-    // TODO: Cần xử lý field này vì nó chưa được sử dụng
-    public bool IsMonetized { get; set; } // Indicates if the track is monetized
+    public decimal Popularity { get; set; }
 
     public ReleaseInfo ReleaseInfo { get; set; } = null!; // Information about the track's release, including date and reason
     public Restriction Restriction { get; set; } = null!; // Information about any restrictions on the track
 
     public List<LegalDocument> LegalDocuments { get; set; } = [];
 
-    // TODO: Nên thêm thông tin về bản quyền, hợp đồng, v.v.
-    // TODO: Có nên thêm verified track bởi moderator nào không
     public float[] EmbeddingVector { get; set; } = null!; 
 }

@@ -24,6 +24,7 @@ using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
+using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Reports;
@@ -75,6 +76,7 @@ using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
 using EkofyApp.Infrastructure.Services.Notifications;
 using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
+using EkofyApp.Infrastructure.Services.PopularityMetrics;
 using EkofyApp.Infrastructure.Services.Recommendations;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Reports;
@@ -409,6 +411,7 @@ public static class DependencyInjection
         services.AddScoped<IPlatformRevenueService, PlatformRevenueService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
         services.AddScoped<ITrackUploadNotifier, TrackUploadNotifier>();
+        services.AddScoped<IPopularityMetricService, PopularityMetricService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -772,6 +775,9 @@ public static class DependencyInjection
 
         //Package Order
         BsonSerializer.RegisterSerializer(typeof(PackageOrderStatus), new EnumMemberSerializer<PackageOrderStatus>());
+
+        // Popularity
+        BsonSerializer.RegisterSerializer(typeof(PopularityActionType), new EnumMemberSerializer<PopularityActionType>());
 
     }
 
