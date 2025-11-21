@@ -21,5 +21,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task ProcessArtistEngagementMetricJobAsync(string artistId, PopularityActionType actionType);
         Task ProcessArtistDiscoveryMetricJobAsync(string artistId, PopularityActionType actionType);
         Task<bool> CheckProgressingUploadsManuallyJob(string actionByUserId, string uploadId);
+        Task DailyPlaylistGenerationJob();
     }
 }

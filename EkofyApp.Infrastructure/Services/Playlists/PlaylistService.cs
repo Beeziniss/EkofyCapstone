@@ -1,6 +1,7 @@
 ﻿using EkofyApp.Application.Models.Playlists;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
+using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
@@ -14,11 +15,12 @@ using MongoDB.Driver;
 using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Playlists;
-public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, ILogger<PlaylistService> logger) : IPlaylistService
+public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IRecommendationService recommendationService, ILogger<PlaylistService> logger) : IPlaylistService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
+    private readonly IRecommendationService _recommendationService = recommendationService;
     private readonly ILogger<PlaylistService> _logger = logger;
 
     public IQueryable<Playlist> GetPlaylists()
@@ -242,6 +244,125 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
         if (deleteResult.DeletedCount == 0)
         {
             throw new NotFoundCustomException("Playlist does not exist.");
+        }
+    }
+
+    public async Task UpsertDailyPlaylistAsync(string userId, IEnumerable<string> trackIds)
+    {
+        // Top tracks listened in last n days by user
+        IEnumerable<Track> tracks = await _unitOfWork.GetCollection<TopTrack>()
+            .Find(x => x.UserId == userId)
+            .SortByDescending(x => x.TracksInfo.Select(x => x.PlayedCount))
+            .Limit(5)
+            .Project<Track>(Builders<TopTrack>.Projection
+                .Include(x => x.Id))
+            .ToListAsync();
+
+        if (tracks.Any())
+        {
+            trackIds = tracks.Select(x => x.Id);
+        }
+
+        // Playlist daily mix
+        DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+
+        // Check if Daily Mix playlist already exists for this user
+        Playlist existingPlaylist = await _unitOfWork.GetCollection<Playlist>()
+            .Find(x => x.UserId == userId && x.Name == "Daily Mix")
+            .FirstOrDefaultAsync();
+
+        if (existingPlaylist != null)
+        {
+            // Update existing playlist with new tracks
+            UpdateDefinition<Playlist> updateDefinition = Builders<Playlist>.Update
+                .Set(x => x.TracksInfo, trackIds.Select(trackId => new PlaylistTracksInfo
+                {
+                    TrackId = trackId,
+                    AddedTime = now,
+                }).ToList())
+                .Set(x => x.UpdatedAt, now);
+
+            await _unitOfWork.GetCollection<Playlist>()
+                .UpdateOneAsync(x => x.Id == existingPlaylist.Id, updateDefinition);
+        }
+        else
+        {
+            // Create new playlist
+            Playlist playlist = new()
+            {
+                UserId = userId,
+                Name = "Daily Mix",
+                NameUnsigned = HelperMethod.ToUnsigned("Daily Mix"),
+                Description = "Daily playlist generated from Ekofy",
+                CoverImage = "https://res.cloudinary.com/dofnn7sbx/image/upload/v1763668719/playlist_icon_pnfdqo.png",
+                IsPublic = false,
+
+                TracksInfo = trackIds.Select(trackId => new PlaylistTracksInfo
+                {
+                    TrackId = trackId,
+                    AddedTime = now,
+                }).ToList()
+            };
+
+            await _unitOfWork.GetCollection<Playlist>().InsertOneAsync(playlist);
+        }
+    }
+
+    public async Task UpsertDailyPlaylistsFromRecommendationsAsync(Dictionary<string, IEnumerable<string>> recommendedTracks)
+    {
+        DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+
+        foreach (KeyValuePair<string, IEnumerable<string>> entry in recommendedTracks)
+        {
+            string userId = entry.Key;
+            IEnumerable<string> trackIds = entry.Value;
+
+            // Bỏ qua nếu không có track nào được đề xuất
+            if (trackIds == null || !trackIds.Any())
+            {
+                continue;
+            }
+
+            // Tìm playlist "Daily Mix" đã tồn tại
+            Playlist existingPlaylist = await _unitOfWork.GetCollection<Playlist>()
+                .Find(x => x.UserId == userId && x.Name == "Daily Mix")
+                .FirstOrDefaultAsync();
+
+            // Chuẩn bị danh sách TracksInfo mới
+            List<PlaylistTracksInfo> playlistTracks = trackIds.Select(trackId => new PlaylistTracksInfo
+            {
+                TrackId = trackId,
+                AddedTime = now,
+            }).ToList();
+
+            if (existingPlaylist != null)
+            {
+                // Playlist đã tồn tại → update tracks và thời gian
+                UpdateDefinition<Playlist> updateDefinition = Builders<Playlist>.Update
+                    .Set(x => x.TracksInfo, playlistTracks)
+                    .Set(x => x.UpdatedAt, now);
+
+                await _unitOfWork.GetCollection<Playlist>().UpdateOneAsync(
+                    x => x.Id == existingPlaylist.Id,
+                    updateDefinition
+                );
+            }
+            else
+            {
+                // Playlist chưa có → tạo mới
+                Playlist newPlaylist = new()
+                {
+                    UserId = userId,
+                    Name = "Daily Mix",
+                    NameUnsigned = HelperMethod.ToUnsigned("Daily Mix"),
+                    Description = "Daily playlist generated from Ekofy",
+                    CoverImage = "https://res.cloudinary.com/dofnn7sbx/image/upload/v1763668719/playlist_icon_pnfdqo.png",
+                    IsPublic = false,
+                    TracksInfo = playlistTracks,
+                };
+
+                await _unitOfWork.GetCollection<Playlist>().InsertOneAsync(newPlaylist);
+            }
         }
     }
 

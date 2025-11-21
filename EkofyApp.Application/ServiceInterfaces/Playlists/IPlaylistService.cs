@@ -15,4 +15,5 @@ public interface IPlaylistService
     Task RemoveFromPlaylistAsync(RemoveFromPlaylistRequest removeFromPlaylistRequest);
     IQueryable<Playlist> SearchPlaylists(string name);
     Task UpdatePlaylistAsync(UpdatePlaylistRequest updatePlaylistRequest);
+    Task UpsertDailyPlaylistsFromRecommendationsAsync(Dictionary<string, IEnumerable<string>> recommendedTracks);
 }
