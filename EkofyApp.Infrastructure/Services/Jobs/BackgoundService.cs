@@ -4,9 +4,13 @@ using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
+using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
+using EkofyApp.Application.ServiceInterfaces.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces.TopTracks;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
@@ -237,5 +241,28 @@ public class BackgoundService : IBackgoundService
         using var scope = _serviceScopeFactory.CreateScope();
         var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
         await popularityMetricService.ProcessArtistDiscoveryMetricAsync(artistId, actionType);
+    }
+
+    [Queue("daily_playlist")]
+    [JobDisplayName("Daily Playlist Job")]
+    public async Task DailyPlaylistGenerationJob()
+    {
+        using IServiceScope scope = _serviceScopeFactory.CreateScope();
+
+        // Effective Entitlement service
+        IEffectiveEntitlementService effectiveEntitlementService = scope.ServiceProvider.GetRequiredService<IEffectiveEntitlementService>();
+        IEnumerable<string> userIds = await effectiveEntitlementService.GetUserIdsWithPeriodTimeRecommendationsAsync();
+
+        // Top Tracks service
+        ITopTrackService topTracksService = scope.ServiceProvider.GetRequiredService<ITopTrackService>();
+        IEnumerable<TopTrack> topTracks = await topTracksService.GetTopTrackBysUserIds(userIds);
+
+        // Recommendation service
+        IRecommendationService recommendationService = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+        Dictionary<string, IEnumerable<string>> recommendedTracks = await recommendationService.RecommendTracksByTopTracksAsync(topTracks);
+
+        // Playlist service
+        IPlaylistService playlistService = scope.ServiceProvider.GetRequiredService<IPlaylistService>();
+        await playlistService.UpsertDailyPlaylistsFromRecommendationsAsync(recommendedTracks);
     }
 }

@@ -15,7 +15,7 @@ namespace EkofyApp.Api.GraphQL.Query.TopTracks
         [UseProjection]
         public IQueryable<TopTrackResponse> GetTopTracks()
         {
-            return _topTrackService.GetTopTracksByUserId();
+            return _topTrackService.GetOwnTopTracks();
         }
     }
 }
