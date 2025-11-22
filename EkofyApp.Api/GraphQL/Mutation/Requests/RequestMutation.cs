@@ -2,6 +2,7 @@
 using EkofyApp.Application.ServiceInterfaces.Requests;
 using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Exceptions;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Requests
 {
@@ -18,7 +19,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Requests
             bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(isDirectRequest ? RestrictionAction.SendRequest : RestrictionAction.CreatePublicRequest);
             if (hasAnyRestriction)
             {
-                throw new UnauthorizedAccessException($"You are restricted from {action}.");
+                throw new UnauthorizedCustomException($"You are restricted from {action}.");
             }
             return await _requestService.SendRequest(request, isDirectRequest);
         }

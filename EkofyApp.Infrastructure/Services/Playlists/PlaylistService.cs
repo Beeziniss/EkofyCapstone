@@ -44,7 +44,7 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-        List<string> favoritePlaylistIds = _unitOfWork.GetCollection<UserEngagement>()
+        IEnumerable<string> favoritePlaylistIds = _unitOfWork.GetCollection<UserEngagement>()
             .Find(x => x.ActorId == userId && x.TargetType == UserEngagementTargetType.Playlist && x.Action == UserEngagementAction.Like)
             .Project(x => x.TargetId)
             .ToList();

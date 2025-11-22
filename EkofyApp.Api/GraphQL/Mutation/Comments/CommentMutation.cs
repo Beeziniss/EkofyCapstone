@@ -2,6 +2,7 @@
 using EkofyApp.Application.ServiceInterfaces.TrackComments;
 using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Exceptions;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Comments;
 
@@ -17,7 +18,7 @@ public sealed class CommentMutation(ICommentService trackCommentService, IUserSe
         bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.Comment);
         if (hasAnyRestriction)
         {
-            throw new UnauthorizedAccessException("You are restricted from commenting.");
+            throw new UnauthorizedCustomException("You are restricted from commenting.");
         }
 
         await _commentService.CreateCommentAsync(request);

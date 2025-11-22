@@ -3,6 +3,7 @@ using EkofyApp.Application.Models.Reports;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.Users;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Reports;
@@ -20,7 +21,7 @@ public sealed class ReportMutation(IReportService reportService, IUserService us
         bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.Report);
         if (hasAnyRestriction)
         {
-            throw new UnauthorizedAccessException("You are restricted from reporting.");
+            throw new UnauthorizedCustomException("You are restricted from reporting.");
         }
 
         await _reportService.CreateReportAsync(request);
