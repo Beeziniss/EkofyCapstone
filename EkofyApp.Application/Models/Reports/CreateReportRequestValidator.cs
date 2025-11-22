@@ -1,7 +1,6 @@
-using EkofyApp.Application.Models.Reports;
 using FluentValidation;
 
-namespace EkofyApp.Application.Validators.Reports;
+namespace EkofyApp.Application.Models.Reports;
 
 public sealed class CreateReportRequestValidator : AbstractValidator<CreateReportRequest>
 {

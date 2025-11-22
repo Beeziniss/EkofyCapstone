@@ -30,7 +30,7 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
         {
             string newArtistPackageId = ObjectId.GenerateNewId().ToString();
 
-            ArtistPackage newArtistPackage = new ArtistPackage
+            ArtistPackage newArtistPackage = new ()
             {
                 Id = newArtistPackageId,
                 ArtistId = createRequest.ArtistId,
@@ -40,28 +40,31 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
                 Description = createRequest.Description,
                 ServiceDetails = createRequest.ServiceDetails,
                 MaxRevision = createRequest.MaxRevision,
-                Status = ArtistPackageStatus.Pending,
+                Status = ArtistPackageStatus.Enabled,
             };
 
             // Save to Redis for moderation
-            var pendingPackage = new PendingArtistPackageResponse
-            {
-                Id = newArtistPackage.Id,
-                ArtistId = newArtistPackage.ArtistId,
-                PackageName = newArtistPackage.PackageName,
-                Amount = newArtistPackage.Amount,
-                Currency = newArtistPackage.Currency,
-                EstimateDeliveryDays = newArtistPackage.EstimateDeliveryDays,
-                Description = newArtistPackage.Description,
-                ServiceDetails = newArtistPackage.ServiceDetails,
-                Status = newArtistPackage.Status,
-                RequestedAt = newArtistPackage.CreatedAt
-            };
+            //var pendingPackage = new PendingArtistPackageResponse
+            //{
+            //    Id = newArtistPackage.Id,
+            //    ArtistId = newArtistPackage.ArtistId,
+            //    PackageName = newArtistPackage.PackageName,
+            //    Amount = newArtistPackage.Amount,
+            //    Currency = newArtistPackage.Currency,
+            //    EstimateDeliveryDays = newArtistPackage.EstimateDeliveryDays,
+            //    Description = newArtistPackage.Description,
+            //    ServiceDetails = newArtistPackage.ServiceDetails,
+            //    Status = newArtistPackage.Status,
+            //    RequestedAt = newArtistPackage.CreatedAt
+            //};
 
-            string redisKey = $"artistpackage:{newArtistPackageId}:pending";
-            TimeSpan expiry = TimeSpan.FromDays(3); // Cache for 7 days
+            //string redisKey = $"artistpackage:{newArtistPackageId}:pending";
+            //TimeSpan expiry = TimeSpan.FromDays(3); // Cache for 7 days
 
-            await _redisCacheService.SetGenericAsync(redisKey, pendingPackage, expiry);
+            //await _redisCacheService.SetGenericAsync(redisKey, pendingPackage, expiry);
+
+            // insert directly to database for now
+            await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(newArtistPackage);
         }
 
         public async Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
@@ -145,102 +148,103 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
             }
         }
 
-        public async Task ApproveArtistPackageAsync(string id)
-        {
-            // Get package info from Redis first
-            string redisKey = $"artistpackage:{id}:pending";
-            ICacheResult<PendingArtistPackageResponse> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistPackageResponse>(redisKey);
+        //public async Task ApproveArtistPackageAsync(string id)
+        //{
+        //    // Get package info from Redis first
+        //    string redisKey = $"artistpackage:{id}:pending";
+        //    ICacheResult<PendingArtistPackageResponse> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistPackageResponse>(redisKey);
 
-            if (!cacheResult.Success || cacheResult.Value == null)
-            {
-                throw new NotFoundCustomException("Pending artist package not found in cache or has expired.");
-            }
+        //    if (!cacheResult.Success || cacheResult.Value == null)
+        //    {
+        //        throw new NotFoundCustomException("Pending artist package not found in cache or has expired.");
+        //    }
 
-            var pendingPackage = cacheResult.Value;
+        //    var pendingPackage = cacheResult.Value;
 
-            if (pendingPackage.Status != ArtistPackageStatus.Pending)
-            {
-                throw new ForbiddenCustomException("Only pending packages can be approved.");
-            }
+        //    if (pendingPackage.Status != ArtistPackageStatus.Pending)
+        //    {
+        //        throw new ForbiddenCustomException("Only pending packages can be approved.");
+        //    }
 
-            // Create approved package from pending data and insert into database
-            var approvedPackage = new ArtistPackage
-            {
-                Id = pendingPackage.Id,
-                ArtistId = pendingPackage.ArtistId,
-                PackageName = pendingPackage.PackageName,
-                Amount = pendingPackage.Amount,
-                Currency = pendingPackage.Currency,
-                EstimateDeliveryDays = pendingPackage.EstimateDeliveryDays,
-                Description = pendingPackage.Description,
-                ServiceDetails = pendingPackage.ServiceDetails,
-                Status = ArtistPackageStatus.Enabled,
-                IsDelete = false
-            };
+        //    // Create approved package from pending data and insert into database
+        //    var approvedPackage = new ArtistPackage
+        //    {
+        //        Id = pendingPackage.Id,
+        //        ArtistId = pendingPackage.ArtistId,
+        //        PackageName = pendingPackage.PackageName,
+        //        Amount = pendingPackage.Amount,
+        //        Currency = pendingPackage.Currency,
+        //        EstimateDeliveryDays = pendingPackage.EstimateDeliveryDays,
+        //        Description = pendingPackage.Description,
+        //        ServiceDetails = pendingPackage.ServiceDetails,
+        //        Status = ArtistPackageStatus.Enabled,
+        //        IsDelete = false
+        //    };
 
-            // Insert new approved package
-            await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(approvedPackage);
+        //    // Insert new approved package
+        //    await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(approvedPackage);
 
-            // Remove from Redis cache after approval
-            await _redisCacheService.RemoveAsync(redisKey);
-        }
+        //    // Remove from Redis cache after approval
+        //    await _redisCacheService.RemoveAsync(redisKey);
+        //}
 
-        public async Task RejectArtistPackageAsync(string id)
-        {
-            // Get package info from Redis first
-            string redisKey = $"artistpackage:{id}:pending";
-            ICacheResult<PendingArtistPackageResponse> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistPackageResponse>(redisKey);
+        //public async Task RejectArtistPackageAsync(string id)
+        //{
+        //    // Get package info from Redis first
+        //    string redisKey = $"artistpackage:{id}:pending";
+        //    ICacheResult<PendingArtistPackageResponse> cacheResult = await _redisCacheService.TryGetGenericAsync<PendingArtistPackageResponse>(redisKey);
 
-            if (!cacheResult.Success || cacheResult.Value == null)
-            {
-                throw new NotFoundCustomException("Pending artist package not found in cache or has expired.");
-            }
+        //    if (!cacheResult.Success || cacheResult.Value == null)
+        //    {
+        //        throw new NotFoundCustomException("Pending artist package not found in cache or has expired.");
+        //    }
 
-            var pendingPackage = cacheResult.Value;
+        //    var pendingPackage = cacheResult.Value;
 
-            if (pendingPackage.Status != ArtistPackageStatus.Pending)
-            {
-                throw new ForbiddenCustomException("Only pending packages can be rejected.");
-            }
+        //    if (pendingPackage.Status != ArtistPackageStatus.Pending)
+        //    {
+        //        throw new ForbiddenCustomException("Only pending packages can be rejected.");
+        //    }
 
-            // Remove from Redis cache after rejection
-            await _redisCacheService.RemoveAsync(redisKey);
-        }
+        //    // Remove from Redis cache after rejection
+        //    await _redisCacheService.RemoveAsync(redisKey);
+        //}
 
-        public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
-        {
-            ICacheResult<PaginatedData<PendingArtistPackageResponse>> result = await _redisCacheService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
 
-            PaginatedData<PendingArtistPackageResponse> paginatedData;
+        //public async Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20)
+        //{
+        //    ICacheResult<PaginatedData<PendingArtistPackageResponse>> result = await _redisCacheService.GetPendingArtistPackagesAsync(pageNumber, pageSize);
 
-            if (!result.Success || result.Value == null)
-            {
-                return paginatedData = new()
-                {
-                    Items = Enumerable.Empty<PendingArtistPackageResponse>(),
-                    TotalCount = 0
-                };
-            }
+        //    PaginatedData<PendingArtistPackageResponse> paginatedData;
 
-            paginatedData = new()
-            {
-                Items = result.Value.Items.Select(pending => new PendingArtistPackageResponse
-                {
-                    Id = pending.Id,
-                    ArtistId = pending.ArtistId,
-                    PackageName = pending.PackageName,
-                    Amount = pending.Amount,
-                    Currency = pending.Currency,
-                    EstimateDeliveryDays = pending.EstimateDeliveryDays,
-                    Description = pending.Description,
-                    ServiceDetails = pending.ServiceDetails,
-                    Status = pending.Status,
-                    RequestedAt = pending.RequestedAt,
-                }),
-                TotalCount = result.Value.TotalCount
-            };
+        //    if (!result.Success || result.Value == null)
+        //    {
+        //        return paginatedData = new()
+        //        {
+        //            Items = Enumerable.Empty<PendingArtistPackageResponse>(),
+        //            TotalCount = 0
+        //        };
+        //    }
 
-            return paginatedData;
-        }
+        //    paginatedData = new()
+        //    {
+        //        Items = result.Value.Items.Select(pending => new PendingArtistPackageResponse
+        //        {
+        //            Id = pending.Id,
+        //            ArtistId = pending.ArtistId,
+        //            PackageName = pending.PackageName,
+        //            Amount = pending.Amount,
+        //            Currency = pending.Currency,
+        //            EstimateDeliveryDays = pending.EstimateDeliveryDays,
+        //            Description = pending.Description,
+        //            ServiceDetails = pending.ServiceDetails,
+        //            Status = pending.Status,
+        //            RequestedAt = pending.RequestedAt,
+        //        }),
+        //        TotalCount = result.Value.TotalCount
+        //    };
+
+        //    return paginatedData;
+        //}
     }
 }

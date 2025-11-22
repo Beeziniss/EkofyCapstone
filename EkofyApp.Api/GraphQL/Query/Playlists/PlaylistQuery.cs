@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
 using HotChocolate.Data;
 
@@ -22,7 +23,17 @@ public sealed class PlaylistQuery(IPlaylistService playlistService)
         return _playlistService.GetPlaylists();
     }
 
-    [AllowAnonymous]
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Playlist>]
+    public IQueryable<Playlist> GetOwnPlaylists()
+    {
+        return _playlistService.GetOwnPlaylists();
+    }
+
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]

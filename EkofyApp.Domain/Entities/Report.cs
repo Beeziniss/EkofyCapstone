@@ -44,4 +44,6 @@ public sealed class Report : TimeStamped
     public long TotalReportsCount { get; set; } = 1;
 
     public bool IsDeleted { get; set; } = false;
+
+    public string? BackgroundJobId { get; set; }
 }

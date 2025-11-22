@@ -1,6 +1,6 @@
 using EkofyApp.Domain.Enums;
 
-namespace EkofyApp.Application.Models.TrackComments;
+namespace EkofyApp.Application.Models.Comments;
 
 public sealed record ThreadedCommentsRequest
 {

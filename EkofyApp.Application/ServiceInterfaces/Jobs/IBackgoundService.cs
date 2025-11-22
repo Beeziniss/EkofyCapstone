@@ -1,4 +1,7 @@
-﻿using EkofyApp.Domain.Enums;
+﻿using EkofyApp.Application.Models.Recordings;
+using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Works;
+using EkofyApp.Domain.Enums;
 using Hangfire.Server;
 
 namespace EkofyApp.Application.ServiceInterfaces.Jobs
@@ -11,5 +14,13 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task MonthlyRoyaltyReportJob();
         Task UpdateStreamCountJob();
         Task RemoveExpiredRestrictionAsync(string userId);
+        Task CheckProgressingUploadsJob(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
+        Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType);
+        Task ProcessTrackEngagementMetricJobAsync(string trackId, PopularityActionType actionType);
+        Task ProcessTrackDiscoveryMetricJobAsync(string trackId, PopularityActionType actionType);
+        Task ProcessArtistEngagementMetricJobAsync(string artistId, PopularityActionType actionType);
+        Task ProcessArtistDiscoveryMetricJobAsync(string artistId, PopularityActionType actionType);
+        Task<bool> CheckProgressingUploadsManuallyJob(string actionByUserId, string uploadId);
+        Task DailyPlaylistGenerationJob();
     }
 }

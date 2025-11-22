@@ -7,6 +7,7 @@ using EkofyApp.Application.DatabaseContext;
 using EkofyApp.Application.Mappers;
 using EkofyApp.Application.Models;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Albums;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ServiceInterfaces.Artists;
@@ -20,8 +21,10 @@ using EkofyApp.Application.ServiceInterfaces.Invoices;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Listeners;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
+using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Reports;
@@ -56,6 +59,7 @@ using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
 using EkofyApp.Infrastructure.Services;
+using EkofyApp.Infrastructure.Services.Albums;
 using EkofyApp.Infrastructure.Services.ApprovalHistories;
 using EkofyApp.Infrastructure.Services.ArtistPackages;
 using EkofyApp.Infrastructure.Services.Artists;
@@ -69,8 +73,10 @@ using EkofyApp.Infrastructure.Services.Entitlements;
 using EkofyApp.Infrastructure.Services.Jobs;
 using EkofyApp.Infrastructure.Services.Listeners;
 using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
+using EkofyApp.Infrastructure.Services.Notifications;
 using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
+using EkofyApp.Infrastructure.Services.PopularityMetrics;
 using EkofyApp.Infrastructure.Services.Recommendations;
 using EkofyApp.Infrastructure.Services.Recordings;
 using EkofyApp.Infrastructure.Services.Reports;
@@ -101,6 +107,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -115,6 +122,7 @@ using System.Security.Claims;
 using System.Text;
 
 namespace EkofyApp.Infrastructure.DependencyInjections;
+
 public static class DependencyInjection
 {
     public static void AddDependencyInjection(this IServiceCollection services)
@@ -370,6 +378,7 @@ public static class DependencyInjection
         services.AddScoped<ITrackService, TrackService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
+        services.AddScoped<IAlbumService, AlbumService>();
         services.AddScoped<IArtistService, ArtistService>();
         services.AddScoped<IListenerService, ListenerService>();
         services.AddScoped<IAudioAnalysisService, AudioFeatureService>();
@@ -396,12 +405,15 @@ public static class DependencyInjection
         services.AddScoped<IMonthlyStreamCountService, MonthlyStreamCountService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ICommentService, CommentService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IApprovalHistoryService, ApprovalHistoryService>();
         services.AddScoped<IEscrowCommissionPolicyService, EscrowCommissionPolicyService>();
         services.AddScoped<ITopTrackService, TopTrackService>();
         services.AddScoped<IPlatformRevenueService, PlatformRevenueService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
+        services.AddScoped<ITrackUploadNotifier, TrackUploadNotifier>();
+        services.AddScoped<IPopularityMetricService, PopularityMetricService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
@@ -409,6 +421,9 @@ public static class DependencyInjection
 
         // Third Party Services
         services.AddScoped<IFfmpegService, FfmpegService>();
+
+        // SignalR Customize Behavior Services
+        services.AddSingleton<IUserIdProvider, CustomUserIdProviderSignalR>();
     }
 
     public static void AddCloudinary(this IServiceCollection services)
@@ -497,17 +512,20 @@ public static class DependencyInjection
                     PathString path = context.HttpContext.Request.Path;
 
                     // Các segment được bảo mật
-                    IEnumerable<string?> securedSegments = new[]
+                    IEnumerable<string> securedSegments = new[]
                     {
-                        Environment.GetEnvironmentVariable("SPOTIFYPOOL_HUB_COUNT_STREAM_URL"),
-                        Environment.GetEnvironmentVariable("SPOTIFYPOOL_HUB_PLAYLIST_URL"),
+                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_CHAT_URL") ?? throw new UnconfiguredEnvironmentCustomException("Not set EKOFY_SIGNALR_CHAT_URL in the environment"),
+                        Environment.GetEnvironmentVariable("EKOFY_SIGNALR_NOTIFICATION_URL")?? throw new UnconfiguredEnvironmentCustomException("Not set EKOFY_SIGNALR_NOTIFICATION_URL in the environment"),
+                    }
+                    .Where(url => !string.IsNullOrWhiteSpace(url))
+                    .Select(url => new Uri(url!).AbsolutePath); // <-- Chỉ lấy phần path, ví dụ "/hub/chat"
 
-                    }.Where(segment => !string.IsNullOrWhiteSpace(segment)); // Lọc ra các segment không rỗng
-
-                    // Kiểm tra xem path có chứa segment cần xác thực không
-                    if (!string.IsNullOrWhiteSpace(accessToken) && securedSegments.Any(segment => path.StartsWithSegments($"/{segment}", StringComparison.Ordinal)))
+                    //if (!string.IsNullOrWhiteSpace(accessToken) &&
+                    //    securedSegments.Any(segment => path.StartsWithSegments(segment, StringComparison.Ordinal)))
+                    //{
+                    //}
+                    if (!string.IsNullOrWhiteSpace(accessToken))
                     {
-                        //context.Token = accessToken["Bearer ".Length..].Trim(); // SubString()
                         context.Token = accessToken;
                     }
 
@@ -565,7 +583,7 @@ public static class DependencyInjection
             {
                 policy.WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_LOCAL_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
                     .WithOrigins(Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("FRONTEND_URL is not set in the environment"))
-                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL")?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
+                      .WithOrigins(Environment.GetEnvironmentVariable("BACKEND_URL") ?? throw new UnconfiguredEnvironmentCustomException("BACKEND_URL is not set in the environment"))
                       .AllowCredentials()
                       .AllowAnyMethod()
                       .AllowAnyHeader();
@@ -702,7 +720,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(CouponDurationType), new EnumMemberSerializer<CouponDurationType>());
         BsonSerializer.RegisterSerializer(typeof(CouponStatus), new EnumMemberSerializer<CouponStatus>());
         BsonSerializer.RegisterSerializer(typeof(CouponPurposeType), new EnumMemberSerializer<CouponPurposeType>());
-        
+
         // BillingPortalConfiguration
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionCancelMode), new EnumMemberSerializer<StripeSubscriptionCancelMode>());
         BsonSerializer.RegisterSerializer(typeof(StripeSubscriptionUpdate), new EnumMemberSerializer<StripeSubscriptionUpdate>());
@@ -755,12 +773,19 @@ public static class DependencyInjection
         // Chat
         BsonSerializer.RegisterSerializer(typeof(ConversationStatus), new EnumMemberSerializer<ConversationStatus>());
 
+        // Notification
+        BsonSerializer.RegisterSerializer(typeof(NotificationActionType), new EnumMemberSerializer<NotificationActionType>());
+        BsonSerializer.RegisterSerializer(typeof(NotificationRelatedType), new EnumMemberSerializer<NotificationRelatedType>());
+
         // Refund
         BsonSerializer.RegisterSerializer(typeof(RefundReasonType), new EnumMemberSerializer<RefundReasonType>());
         BsonSerializer.RegisterSerializer(typeof(RefundTransactionStatus), new EnumMemberSerializer<RefundTransactionStatus>());
 
         //Package Order
         BsonSerializer.RegisterSerializer(typeof(PackageOrderStatus), new EnumMemberSerializer<PackageOrderStatus>());
+
+        // Popularity
+        BsonSerializer.RegisterSerializer(typeof(PopularityActionType), new EnumMemberSerializer<PopularityActionType>());
 
     }
 

@@ -1,8 +1,11 @@
 ﻿using System.Runtime.Serialization;
 
 namespace EkofyApp.Domain.Enums;
+
 public enum ConversationStatus
 {
+    [EnumMember(Value = "None")]
+    None,           // Mặc định, chưa gửi request]
     [EnumMember(Value = "Pending")]
     Pending,        // Request gửi đi, đang chờ Artist/ người tạo request phản hồi
     [EnumMember(Value = "Cancelled")]

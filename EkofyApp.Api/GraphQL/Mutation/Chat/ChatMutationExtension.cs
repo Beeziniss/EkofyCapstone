@@ -8,5 +8,11 @@ public sealed class ChatMutationExtension : ObjectTypeExtension<ChatMutation>
     {
         descriptor.Field(x => x.UpdateConversationStatusAsync(default!, default!))
             .Authorize(HelperRoleBase.ListenerArtistModeratorRolesArray);
+
+        descriptor.Field(x => x.AddConversationGeneralAsync(default!))
+            .Authorize(HelperRoleBase.ListenerArtistRolesArray);
+
+        descriptor.Field(x => x.AddConversationFromRequestHubAsync(default!))
+            .Authorize(HelperRoleBase.ListenerArtistRolesArray);
     }
 }

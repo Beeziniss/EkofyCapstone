@@ -10,8 +10,10 @@ public interface IPlaylistService
     Task CreatePlaylistAsync(CreatePlaylistRequest createPlaylistRequest);
     Task DeletePlaylistAsync(string playlistId);
     IQueryable<Playlist> GetFavoritePlaylists();
+    IQueryable<Playlist> GetOwnPlaylists();
     IQueryable<Playlist> GetPlaylists();
     Task RemoveFromPlaylistAsync(RemoveFromPlaylistRequest removeFromPlaylistRequest);
     IQueryable<Playlist> SearchPlaylists(string name);
     Task UpdatePlaylistAsync(UpdatePlaylistRequest updatePlaylistRequest);
+    Task UpsertDailyPlaylistsFromRecommendationsAsync(Dictionary<string, IEnumerable<string>> recommendedTracks);
 }

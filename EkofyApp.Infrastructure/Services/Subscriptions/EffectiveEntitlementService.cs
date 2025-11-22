@@ -13,6 +13,23 @@ public sealed class EffectiveEntitlementService(IUnitOfWork unitOfWork) : IEffec
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
+    // Lấy user ids có gói Premium hoặc Pro
+    public async Task<IEnumerable<string>> GetUserIdsWithPeriodTimeRecommendationsAsync()
+    {
+        FilterDefinition<EffectiveEntitlement> filter = Builders<EffectiveEntitlement>.Filter.ElemMatch(
+            x => x.Entitlements,
+            Builders<AppliedEntitlement>.Filter.And(
+                Builders<AppliedEntitlement>.Filter.Eq(e => e.Code, "period_time_recommendations"),
+                Builders<AppliedEntitlement>.Filter.Eq(e => e.Value, "day")
+            )
+        );
+
+        return await _unitOfWork.GetCollection<EffectiveEntitlement>()
+            .Find(filter)
+            .Project(x => x.UserId)
+            .ToListAsync();
+    }
+
     public async Task BuildFreeTierAsync(IClientSessionHandle? session, string userId, UserRole userRole, List<AppliedEntitlement>? additionalEntitlements = null, DateTimeOffset? validUntil = null)
     {
         // Hiện tại gói Free là duy nhất, không cần xet version

@@ -1,8 +1,16 @@
-﻿using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.Models.Recordings;
+using EkofyApp.Application.Models.Tracks;
+using EkofyApp.Application.Models.Works;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.Playlists;
+using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
+using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Reports;
 using EkofyApp.Application.ServiceInterfaces.RoyaltyReports;
+using EkofyApp.Application.ServiceInterfaces.Subscriptions;
+using EkofyApp.Application.ServiceInterfaces.TopTracks;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
@@ -169,5 +177,92 @@ public class BackgoundService : IBackgoundService
         using var scope = _serviceScopeFactory.CreateScope();
         var reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
         await reportService.RemoveExpiredRestrictionAsync(userId);
+    }
+
+    [Queue("progressing_upload")]
+    [JobDisplayName("Check Progressing Uploads")]
+    public async Task CheckProgressingUploadsJob(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
+        await trackService.ApproveAutomaticallyAsync(userId, bytes, createTrackRequest, createWorkRequest, createRecordingRequest);
+    }
+
+    [Queue("progressing_upload_manually")]
+    [JobDisplayName("Check Progressing Uploads Manually")]
+    public async Task<bool> CheckProgressingUploadsManuallyJob(string actionByUserId, string uploadId)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
+        return await trackService.ApproveTrackUploadRequestAsync(actionByUserId, uploadId);
+    }
+
+
+    [Queue("process_track_popularity_metric")]
+    [JobDisplayName("Process Track Popularity Metric")]
+    public async Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessTrackStreamingMetricAsync(trackId, actionType);
+    }
+
+    [Queue("process_track_popularity_metric")]
+    [JobDisplayName("Process Track Popularity Metric")]
+    public async Task ProcessTrackEngagementMetricJobAsync(string trackId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessTrackEngagementMetricAsync(trackId, actionType);
+    }
+
+    [Queue("process_track_popularity_metric")]
+    [JobDisplayName("Process Track Popularity Metric")]
+    public async Task ProcessTrackDiscoveryMetricJobAsync(string trackId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessTrackDiscoveryMetricAsync(trackId, actionType);
+    }
+
+    [Queue("process_artist_popularity_metric")]
+    [JobDisplayName("Process Artist Popularity Metric")]
+    public async Task ProcessArtistEngagementMetricJobAsync(string artistId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessArtistEngagementMetricAsync(artistId, actionType);
+    }
+
+    [Queue("process_artist_popularity_metric")]
+    [JobDisplayName("Process Artist Popularity Metric")]
+    public async Task ProcessArtistDiscoveryMetricJobAsync(string artistId, PopularityActionType actionType)
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var popularityMetricService = scope.ServiceProvider.GetRequiredService<IPopularityMetricService>();
+        await popularityMetricService.ProcessArtistDiscoveryMetricAsync(artistId, actionType);
+    }
+
+    [Queue("daily_playlist")]
+    [JobDisplayName("Daily Playlist Job")]
+    public async Task DailyPlaylistGenerationJob()
+    {
+        using IServiceScope scope = _serviceScopeFactory.CreateScope();
+
+        // Effective Entitlement service
+        IEffectiveEntitlementService effectiveEntitlementService = scope.ServiceProvider.GetRequiredService<IEffectiveEntitlementService>();
+        IEnumerable<string> userIds = await effectiveEntitlementService.GetUserIdsWithPeriodTimeRecommendationsAsync();
+
+        // Top Tracks service
+        ITopTrackService topTracksService = scope.ServiceProvider.GetRequiredService<ITopTrackService>();
+        IEnumerable<TopTrack> topTracks = await topTracksService.GetTopTrackBysUserIds(userIds);
+
+        // Recommendation service
+        IRecommendationService recommendationService = scope.ServiceProvider.GetRequiredService<IRecommendationService>();
+        Dictionary<string, IEnumerable<string>> recommendedTracks = await recommendationService.RecommendTracksByTopTracksAsync(topTracks);
+
+        // Playlist service
+        IPlaylistService playlistService = scope.ServiceProvider.GetRequiredService<IPlaylistService>();
+        await playlistService.UpsertDailyPlaylistsFromRecommendationsAsync(recommendedTracks);
     }
 }

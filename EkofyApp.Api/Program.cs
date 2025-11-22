@@ -1,10 +1,11 @@
 ﻿using EkofyApp.Api.Filters;
 using EkofyApp.Api.GraphQL;
-using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.BackgroundJobs;
 using EkofyApp.Infrastructure.DependencyInjections;
 using EkofyApp.Infrastructure.Services.Chat;
+using EkofyApp.Infrastructure.Services.Notifications;
+using EkofyApp.Infrastructure.Services.Tracks;
 using Hangfire;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -137,7 +138,9 @@ public sealed class Program
         app.UseWebSockets();
         app.MapGraphQL("/graphql");
 
-        app.MapHub<ChatHub>("/chat");
+        app.MapHub<ChatHub>("/hub/chat");
+        app.MapHub<NotificationHub>("/hub/notification");
+        app.MapHub<TrackUploadHub>("/hub/track-upload");
 
         app.MapHealthChecks("/health");
 

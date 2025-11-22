@@ -6,6 +6,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using MongoDB.Driver;
+using System.Threading.Tasks;
 
 namespace EkofyApp.Infrastructure.Services.Recommendations;
 public sealed class RecommendationService(IUnitOfWork unitOfWork) : IRecommendationService
@@ -26,6 +27,144 @@ public sealed class RecommendationService(IUnitOfWork unitOfWork) : IRecommendat
         );
 
         return _unitOfWork.GetCollection<Track>().Find(filter).ToEnumerable().AsQueryable();
+    }
+
+    public IEnumerable<string> GetCamelotRecommendedTrackIds(AudioFeature audioFeature)
+    {
+        IEnumerable<(string Key, string Mode)> compatible = CamelotHelper.GetCompatibleKeys(audioFeature.Key, audioFeature.Mode);
+        // output:
+        // [ ("A", "minor"), ("G", "minor"), ("B", "minor"), ("A", "major") ]
+
+        FilterDefinition<Track> filter = Builders<Track>.Filter.Or(
+            compatible.Select(km => Builders<Track>.Filter.And(
+                Builders<Track>.Filter.Eq(x => x.AudioFeature.Key, km.Key),
+                Builders<Track>.Filter.Eq(x => x.AudioFeature.Mode, km.Mode)
+            ))
+        );
+
+        return _unitOfWork.GetCollection<Track>().Find(filter).Project(x => x.Id).ToEnumerable();
+    }
+
+    public IEnumerable<string> GetCamelotRecommendedTrackIds(IEnumerable<AudioFeature> audioFeatures)
+    {
+        HashSet<(string Key, string Mode)> allCompatible = [];
+
+        foreach (AudioFeature feature in audioFeatures)
+        {
+            IEnumerable<(string Key, string Mode)> compatible = CamelotHelper.GetCompatibleKeys(feature.Key, feature.Mode);
+            foreach ((string Key, string Mode) item in compatible)
+            {
+                allCompatible.Add(item); // tránh trùng
+            }
+        }
+
+        FilterDefinition<Track> filter = Builders<Track>.Filter.Or(
+            allCompatible.Select(km =>
+                Builders<Track>.Filter.And(
+                    Builders<Track>.Filter.Eq(x => x.AudioFeature.Key, km.Key),
+                    Builders<Track>.Filter.Eq(x => x.AudioFeature.Mode, km.Mode)
+                )
+            )
+        );
+
+        return _unitOfWork.GetCollection<Track>()
+                          .Find(filter)
+                          .Project(x => x.Id)
+                          .ToEnumerable();
+    }
+
+    public IEnumerable<string> GetCamelotRecommendedTrackIds(string trackId)
+    {
+        // Bước 1: Lấy track theo trackId
+        Track track = _unitOfWork.GetCollection<Track>()
+                                 .Find(Builders<Track>.Filter.Eq(t => t.Id, trackId))
+                                 .FirstOrDefault();
+
+        if (track == null || track.AudioFeature == null)
+            return Enumerable.Empty<string>(); // Trả về rỗng nếu không tìm thấy hoặc thiếu AudioFeature
+
+        // Bước 2: Lấy các key + mode tương thích
+        IEnumerable<(string Key, string Mode)> compatibleKeys =
+            CamelotHelper.GetCompatibleKeys(track.AudioFeature.Key, track.AudioFeature.Mode);
+
+        // Bước 3: Tạo filter để tìm các track tương thích
+        FilterDefinition<Track> compatibleFilter = Builders<Track>.Filter.Or(
+            compatibleKeys.Select(km =>
+                Builders<Track>.Filter.And(
+                    Builders<Track>.Filter.Eq(x => x.AudioFeature.Key, km.Key),
+                    Builders<Track>.Filter.Eq(x => x.AudioFeature.Mode, km.Mode)
+                )
+            )
+        );
+
+        // (Tuỳ chọn) Loại bỏ track gốc khỏi kết quả
+        FilterDefinition<Track> excludeOriginal = Builders<Track>.Filter.Ne(x => x.Id, trackId);
+        FilterDefinition<Track> finalFilter = Builders<Track>.Filter.And(compatibleFilter, excludeOriginal);
+
+        // Bước 4: Trả về danh sách ID
+        return _unitOfWork.GetCollection<Track>()
+                          .Find(finalFilter)
+                          .Project(x => x.Id)
+                          .ToEnumerable();
+    }
+
+    public async Task<IEnumerable<string>> GetCamelotRecommendedTrackIdsAsync(IEnumerable<string> trackIds)
+    {
+        // Bước 1: Lấy danh sách AudioFeature từ trackIds
+        FilterDefinition<Track> inputTracksFilter = Builders<Track>.Filter.In(t => t.Id, trackIds);
+        List<AudioFeature> audioFeatures = _unitOfWork.GetCollection<Track>()
+                                                      .Find(inputTracksFilter)
+                                                      .Project(t => t.AudioFeature)
+                                                      .ToList();
+
+        // Bước 2: Lấy các key + mode tương thích
+        HashSet<(string Key, string Mode)> allCompatible = [];
+
+        foreach (AudioFeature feature in audioFeatures)
+        {
+            IEnumerable<(string Key, string Mode)> compatible = CamelotHelper.GetCompatibleKeys(feature.Key, feature.Mode);
+            foreach ((string Key, string Mode) item in compatible)
+            {
+                allCompatible.Add(item); // tránh trùng
+            }
+        }
+
+        // Bước 3: Tìm các track có key + mode tương thích
+        FilterDefinition<Track> compatibleFilter = Builders<Track>.Filter.Or(
+            allCompatible.Select(km =>
+                Builders<Track>.Filter.And(
+                    Builders<Track>.Filter.Eq(x => x.AudioFeature.Key, km.Key),
+                    Builders<Track>.Filter.Eq(x => x.AudioFeature.Mode, km.Mode)
+                )
+            )
+        );
+
+        return await _unitOfWork.GetCollection<Track>()
+                          .Find(compatibleFilter)
+                          .Project(x => x.Id)
+                          .ToListAsync();
+    }
+
+    public async Task<Dictionary<string, IEnumerable<string>>> RecommendTracksByTopTracksAsync(IEnumerable<TopTrack> topTracks)
+    {
+        Dictionary<string, IEnumerable<string>> result = [];
+
+        foreach (TopTrack topTrack in topTracks)
+        {
+            IEnumerable<string> trackIds = topTrack.TracksInfo.Select(ti => ti.TrackId).ToList();
+
+            if (!trackIds.Any())
+            {
+                result[topTrack.UserId] = [];
+                continue;
+            }
+
+            IEnumerable<string> recommendedTrackIds = await GetCamelotRecommendedTrackIdsAsync(trackIds);
+
+            result[topTrack.UserId] = recommendedTrackIds;
+        }
+
+        return result;
     }
 
     public IQueryable<Track> GetEuclideanRecommendedTracks(AudioFeature audioFeature, AudioFeatureWeight weights, int maxResults = 50)
