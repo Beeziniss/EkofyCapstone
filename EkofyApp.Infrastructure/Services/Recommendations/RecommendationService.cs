@@ -167,7 +167,6 @@ public sealed class RecommendationService(IUnitOfWork unitOfWork) : IRecommendat
         return result;
     }
 
-
     public IQueryable<Track> GetEuclideanRecommendedTracks(AudioFeature audioFeature, AudioFeatureWeight weights, int maxResults = 50)
     {
         IEnumerable<string> trackIds = GetEuclideanRecommendedTrackIds(audioFeature, weights, maxResults);

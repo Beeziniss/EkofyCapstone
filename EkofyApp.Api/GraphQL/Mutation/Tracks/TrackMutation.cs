@@ -54,7 +54,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
         bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.UploadTrack);
         if (hasAnyRestriction)
         {
-            throw new UnauthorizedAccessException("You are restricted from uploading track.");
+            throw new UnauthorizedCustomException("You are restricted from uploading track.");
         }
 
         //using Stream stream = file.OpenReadStream();
