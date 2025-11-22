@@ -148,7 +148,7 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                         .Project(l => new
                         {
                             Name = l.DisplayName,
-                            l.AvatarImage
+                            Avatar = l.AvatarImage
                         })
                         .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {chatMessageRequest.SenderId}");
                 }
@@ -159,7 +159,7 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                         .Project(a => new
                         {
                             Name = a.StageName,
-                            a.AvatarImage
+                            Avatar = a.AvatarImage
                         })
                         .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {chatMessageRequest.SenderId}");
                 }
@@ -168,7 +168,16 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                 await _notificationHubContext.Clients.User(chatMessageRequest.ReceiverId).SendAsync("ReceiveNotification", new NotificationResponse
                 {
                     Content = $"You have a new message from {user.Name}.",
-                    Avatar = user.Avatar
+                    Avatar = user.Avatar,
+                });
+
+                await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+                {
+                    ActorId = chatMessageRequest.SenderId,
+                    TargetId = chatMessageRequest.ReceiverId,
+                    Content = $"You have a new message from {user.Name}.",
+                    Action = NotificationActionType.Message,
+                    Url = chatMessageRequest.Url,
                 });
             }
 
