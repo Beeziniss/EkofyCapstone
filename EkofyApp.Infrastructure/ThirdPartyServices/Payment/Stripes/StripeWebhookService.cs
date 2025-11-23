@@ -13,6 +13,7 @@ using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Stripe;
@@ -635,6 +636,24 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             .Project(x => x.UserId)
                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any user with artist {artistPackage.ArtistId}");
 
+                        // Tạo conversation nếu chưa có
+                        bool isDirectRequest = false;
+                        if (checkoutSession.Metadata["conversation_id"] == "empty")
+                        {
+                            Conversation newConversation = new()
+                            {
+                                RequestId = checkoutSession.Metadata["request_id"],
+                                UserIds = [transaction.UserId, userArtistId],
+                                Status = ConversationStatus.InProgress,
+                            };
+
+                            await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(session, newConversation);
+
+                            // Gán conversation_id vào metadata của checkout session
+                            checkoutSession.Metadata["conversation_id"] = newConversation.Id;
+                            isDirectRequest = true;
+                        }
+
                         // TODO: Tạo package order
                         // Resolved: Đã tạo package order
                         decimal platformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]);
@@ -671,31 +690,43 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             OneOffType = OneOffType.Payment,
                         };
 
-                        // Cập nhật trạng thái của các conversations
-                        // Đóng các conversations không được chấp nhận
-                        UpdateResult updateConversationCancelled = await _unitOfWork.GetCollection<Conversation>()
-                                .UpdateManyAsync(session,
-                                    x => x.Id != checkoutSession.Metadata["conversation_id"] && x.RequestHubId == checkoutSession.Metadata["request_hub_id"] && x.Status == ConversationStatus.Pending,
-                                    Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.Cancelled));
-                        if (updateConversationCancelled.ModifiedCount == 0)
+                        if (!isDirectRequest)
                         {
-                            throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
-                        }
+                            // Cập nhật trạng thái của các conversations
+                            // Đóng các conversations không được chấp nhận
+                            UpdateResult updateConversationCancelled = await _unitOfWork.GetCollection<Conversation>()
+                                    .UpdateManyAsync(session,
+                                        x => x.Id != checkoutSession.Metadata["conversation_id"] && x.RequestId == checkoutSession.Metadata["request_id"] && x.Status == ConversationStatus.Pending,
+                                        Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.Cancelled));
+                            if (updateConversationCancelled.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
+                            }
 
-                        // Cập nhật trạng thái của conversation được chấp nhận thành In Progress
-                        UpdateResult updateConversationInprogress = await _unitOfWork.GetCollection<Conversation>()
-                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["conversation_id"] && x.RequestHubId == checkoutSession.Metadata["request_hub_id"] && x.Status == ConversationStatus.Pending, Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.InProgress));
-                        if (updateConversationInprogress.ModifiedCount == 0)
-                        {
-                            throw new UnprocessableEntityCustomException("Cannot update conversation status to in progress");
+                            // Cập nhật trạng thái của conversation được chấp nhận thành In Progress
+                            UpdateResult updateConversationInprogress = await _unitOfWork.GetCollection<Conversation>()
+                                    .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["conversation_id"] && x.RequestId == checkoutSession.Metadata["request_id"] && x.Status == ConversationStatus.Pending, Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.ConfirmedPayment));
+                            if (updateConversationInprogress.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update conversation status to in progress");
+                            }
                         }
 
                         // Cập nhật trạng thái của Requests Hub
-                        UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
-                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
-                        if (updateRequestHub.ModifiedCount == 0)
+                        RequestType requestType = await _unitOfWork.GetCollection<Request>()
+                            .Find(session, x => x.Id == checkoutSession.Metadata["request_id"])
+                            .Project(x => x.Type)
+                            .FirstOrDefaultAsync();
+
+                        if (requestType == RequestType.PublicRequest)
                         {
-                            throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
+                            // Cập nhật trạng thái request hub thành Closed
+                            UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
+                            .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Type == RequestType.PublicRequest, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
+                            if (updateRequestHub.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
+                            }
                         }
 
                         // Cập nhật service revenue cho Artist

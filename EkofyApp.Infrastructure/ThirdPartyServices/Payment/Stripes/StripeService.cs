@@ -319,8 +319,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             {
                 { "is_subscription", "false" },
                 { "package_id", artistPackage.Id },
-                { "request_hub_id", createPaymentCheckoutSessionRequest.RequestHubId },
-                { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId },
+                { "request_id", createPaymentCheckoutSessionRequest.RequestId },
+                { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId ?? "empty" },
                 { "deadline", HelperMethod.NormalizeToStringUtcPlus7(createPaymentCheckoutSessionRequest.Deadline) },
                 { "platform_fee_percentage", platformFeePercentage },
             },
@@ -432,7 +432,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
             decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
 
-            // Tạo Invoice cho refund
+            // Tạo Invoice cho refund của listener
             await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
             {
                 UserId = paymentTransaction.UserId,
@@ -464,23 +464,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 To = user.FullName,
             });
 
-            // Cập nhật refund amount cho Artist
-            UpdateResult artistUpdateResult = await _unitOfWork.GetCollection<Artist>()
-                .UpdateOneAsync(session, x => x.UserId == paymentTransaction.UserId, Builders<Artist>.Update
-                    .Inc(x => x.RefundAmount, amount)
-                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
-                    new UpdateOptions { IsUpsert = true });
-            if (artistUpdateResult.ModifiedCount == 0)
-            {
-                _logger.LogError("Failed to update RefundAmount in ArtistRevenue for user {UserId} after refunding payment intent {PaymentIntentId}", paymentTransaction.UserId, paymentIntentId);
-            }
-
             // Cập nhật Total refund amount cho Platform
             UpdateResult updateResult = await _unitOfWork.GetCollection<PlatformRevenue>()
                 .UpdateOneAsync(session, _ => true, Builders<PlatformRevenue>.Update
                     .Inc(x => x.RefundAmount, amount)
-                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
-                    new UpdateOptions { IsUpsert = true });
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
             if (updateResult.ModifiedCount == 0)
             {
                 _logger.LogError("Failed to update RefundAmount in PlatformRevenue after refunding payment intent {PaymentIntentId}", paymentIntentId);
@@ -759,6 +747,18 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             if (updateResult.ModifiedCount == 0)
             {
                 _logger.LogError("Update platform revenue total payout amount failed.");
+            }
+
+            // Cập nhật service earnings cho Artist
+            UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
+                .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                .Inc(x => x.ServiceEarnings, artistAmount);
+
+            UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
+                .UpdateOneAsync(session, x => x.UserId == packageOrder.ProviderId, updateArtistRevenue);
+            if (updateArtistRevenueResult.ModifiedCount == 0)
+            {
+                _logger.LogError("Cannot update artist earnings after escrow completed.");
             }
         });
     }

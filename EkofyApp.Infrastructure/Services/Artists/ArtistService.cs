@@ -452,25 +452,24 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
         decimal totalServiceRevenue = serviceRevenues.Sum();
 
-        // Tính tổng refund amount cho artist
-        IEnumerable<decimal> refundAmounts = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
-            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Refund && x.SubscriptionSnapshot == null && x.UserId == userId)
-            .Project(x => x.Amount)
+        IEnumerable<decimal> serviceEarnings = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
+            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && x.UserId == userId)
+            .Project(x => (x.OneOffSnapshot!.ArtistFeePercentage / 100m) * x.OneOffSnapshot.PackageAmount)
             .ToListAsync();
 
-        decimal totalRefundAmount = refundAmounts.Sum();
+        decimal totalServiceEarnings = serviceEarnings.Sum();
 
         ArtistRevenueResponse artistRevenue = new()
         {
             RoyaltyEarnings = totalRoyaltyEarnings,
             ServiceRevenue = totalServiceRevenue,
-            RefundAmount = totalRefundAmount,
+            ServiceEarnings = totalServiceEarnings,
         };
 
         UpdateResult updateResult = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(x => x.UserId == userId, Builders<Artist>.Update
                 .Inc(x => x.RoyaltyEarnings, totalRoyaltyEarnings)
                 .Inc(x => x.ServiceRevenue, totalServiceRevenue)
-                .Inc(x => x.RefundAmount, totalRefundAmount)
+                .Inc(x => x.ServiceEarnings, totalServiceEarnings)
                 .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
         if (updateResult.ModifiedCount == 0)
         {

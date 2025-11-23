@@ -5,7 +5,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Artist : TimeStamped, IEntityCustom
+public sealed class Artist : TimeStamped
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -42,6 +42,7 @@ public sealed class Artist : TimeStamped, IEntityCustom
     // Revenue
     public decimal RoyaltyEarnings { get; set; } = default;
     public decimal ServiceRevenue { get; set; } = default; // Tiền chưa trừ hoa hồng
+    public decimal ServiceEarnings { get; set; }  = default; // Tiền đã trừ hoa hồng
     public decimal GrossRevenue => RoyaltyEarnings + ServiceRevenue;
-    public decimal RefundAmount { get; set; } = default;
+    public decimal NetRevenue => RoyaltyEarnings + ServiceEarnings;
 }
