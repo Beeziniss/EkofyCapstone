@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Conversation : TimeStamped, IEntityCustom
+public sealed class Conversation : TimeStamped
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -14,7 +14,7 @@ public sealed class Conversation : TimeStamped, IEntityCustom
     public List<string> UserIds { get; set; } = []; // Exactly 2 users
 
     [BsonRepresentation(BsonType.ObjectId)]
-    public string? RequestHubId { get; set; }
+    public string? RequestId { get; set; }
 
     public ConversationStatus Status { get; set; } = ConversationStatus.Pending;
 

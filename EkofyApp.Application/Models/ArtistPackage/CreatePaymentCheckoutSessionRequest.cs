@@ -4,7 +4,7 @@ namespace EkofyApp.Application.Models.ArtistPackage;
 public sealed record class CreatePaymentCheckoutSessionRequest
 {
     public string PackageId { get; init; } = null!;
-    public string RequestHubId { get; init; } = null!;
+    public string RequestId { get; init; } = null!;
 
     public string SuccessUrl { get; init; } = null!;
     public string CancelUrl { get; init; } = null!;
@@ -13,7 +13,7 @@ public sealed record class CreatePaymentCheckoutSessionRequest
     public bool IsReceiptEmail { get; init; } = false;
 
     // Package Order
-    public string ConversationId { get; init; } = null!;
+    public string? ConversationId { get; init; }
     public List<string> RequirementFiles { get; set; } = [];
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public DateTimeOffset Deadline { get; set; }

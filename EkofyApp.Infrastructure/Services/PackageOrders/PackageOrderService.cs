@@ -12,6 +12,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Serilog;
 
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
@@ -130,7 +131,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             var update = Builders<PackageOrder>.Update
                 .Set(po => po.Status, PackageOrderStatus.Dispersed)
                 .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
-            
+
             //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
             BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(packageOrderId, null));
 
@@ -142,7 +143,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         }
 
         //INFO: dành cho người tạo request khi thay đổi trạng thái của đơn đã dặt
-        public async Task<bool> SwitchStatusByRequestor(ChangeOrderStatusRequest request)
+        public async Task<bool> SwitchStatusByRequestorAsync(ChangeOrderStatusRequest request)
         {
             var orderPackage = await _unitOfWork.GetCollection<PackageOrder>()
                                           .Find(po => po.Id == request.Id &&
@@ -150,7 +151,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                                       po.Status == PackageOrderStatus.Paid))
                                           .Project<PackageOrder>(Builders<PackageOrder>.Projection
                                             .Include(po => po.Status)
-                                            .Include(po => po.PaymentTransactionId))
+                                            .Include(po => po.PaymentTransactionId)
+                                            .Include(po => po.ProviderId))
                                           .FirstOrDefaultAsync()
                                ?? throw new BadRequestCustomException("You can not do any action for this request due to in progress or complete!");
 
@@ -169,6 +171,28 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
                 //REFUND HERE -- vì ở đây refund 100% nên ko cần chia nhỏ tiền ra
                 await _stripeService.RefundAsync(transaction.StripePaymentId, transaction.Amount, RefundReasonType.requested_by_customer);
+
+                // Cập nhật service revenue cho Artist
+                UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Inc(x => x.ServiceRevenue, -transaction.Amount);
+                UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
+                    .UpdateOneAsync(x => x.UserId == orderPackage.ProviderId, updateArtistRevenue);
+                if (updateArtistRevenueResult.ModifiedCount == 0)
+                {
+                    Log.Error("Cannot update artist revenue after checkout session completed.");
+                }
+
+                // Cập nhật service revenue cho Platform
+                UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Inc(x => x.RefundAmount, transaction.Amount);
+                UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                    .UpdateOneAsync(_ => true, updatePlatformRevenue);
+                if (updatePlatformRevenueResult.ModifiedCount == 0)
+                {
+                    Log.Error("Cannot update platform revenue after checkout session completed.");
+                }
 
                 var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
@@ -195,7 +219,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         }
 
         // FOR MOD
-        public async Task<bool> RefundPartially(PackageOrderRefundRequest request)
+        public async Task<bool> RefundPartiallyAndEscrowAsync(PackageOrderRefundRequest request)
         {
             // 1 là cho refund và thực hiện refund
             var orderPackage = await _unitOfWork.GetCollection<PackageOrder>()
@@ -217,11 +241,36 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                       .FirstOrDefaultAsync()
                         ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
 
-            await _stripeService.RefundAsync(transaction.StripePaymentId!, (transaction.Amount * request.RequestorPercentageAmount / 100m), RefundReasonType.requested_by_customer);
+            await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount * request.RequestorPercentageAmount / 100m, RefundReasonType.requested_by_customer);
+
+
 
             //Giải ngân do công việc đã đóng và đã refund *******************************************************************
-            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, (transaction.Amount * request.ArtistPercentageAmount / 100m)));
-            
+            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, transaction.Amount * request.ArtistPercentageAmount / 100m));
+
+            // Cập nhật service revenue cho Platform
+            UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                        .Inc(x => x.RefundAmount, (transaction.Amount * request.RequestorPercentageAmount / 100m))
+                        .Inc(x => x.ServicePayoutAmount, transaction.Amount * request.ArtistPercentageAmount / 100m);
+            UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                .UpdateOneAsync(_ => true, updatePlatformRevenue);
+            if (updatePlatformRevenueResult.ModifiedCount == 0)
+            {
+                Log.Error("Cannot update platform revenue after checkout session completed.");
+            }
+
+            // Cập nhật service cho Artist
+            UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                        .Inc(x => x.ServiceEarnings, transaction.Amount * request.ArtistPercentageAmount / 100m);
+            UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
+                .UpdateOneAsync(x => x.UserId == orderPackage.ProviderId, updateArtistRevenue);
+            if (updateArtistRevenueResult.ModifiedCount == 0)
+            {
+                Log.Error("Cannot update artist revenue after checkout session completed.");
+            }
+
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund));
 
             return result.ModifiedCount > 0;
@@ -355,7 +404,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             var update = Builders<PackageOrder>.Update
                 .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
                 .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                .Set(po => po.Status, PackageOrderStatus.Dispersed);            
+                .Set(po => po.Status, PackageOrderStatus.Dispersed);
             // TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
             await _stripeService.EscrowReleaseAsync(packageOrderId);
 
