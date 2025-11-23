@@ -611,12 +611,13 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                         Action = NotificationActionType.Comment,
                         RelatedId = trackId,
                         RelatedType = NotificationRelatedType.Track,
+                        Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/track/{track.Id}"
                     });
 
                 await _hubContext.Clients.User(track.CreatedBy!).SendAsync("ReceiveNotification", new NotificationResponse
                 {
                     Content = content,
-                    Avatar = commenterInfo.Listener?.AvatarImage ?? commenterInfo.Artist?.AvatarImage ?? string.Empty
+                    Avatar = commenterInfo.Listener?.AvatarImage ?? commenterInfo.Artist?.AvatarImage ?? string.Empty,
                 });
             }
         }
@@ -651,6 +652,15 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                 
                 string content = HelperMethod.BuildContentNotification(NotificationActionType.Comment, NotificationRelatedType.Comment, null, replierName);
                 
+                string url = parentComment.CommentType switch
+                {
+                    CommentType.Track => $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/track/{parentComment.TargetId}",
+                    CommentType.Playlist => $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/playlist/{parentComment.TargetId}",
+                    CommentType.Album => $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/album/{parentComment.TargetId}",
+                    CommentType.Request => $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/request-hub/{parentComment.TargetId}",
+                    _ => throw new BadRequestCustomException("Invalid comment type for notification")
+                };
+
                 await _unitOfWork.GetCollection<Notification>()
                     .InsertOneAsync(new Notification
                     {
@@ -659,6 +669,15 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                         Content = content,
                         Action = NotificationActionType.Reply,
                         RelatedId = parentComment.TargetId,
+                        RelatedType = parentComment.CommentType switch
+                        {
+                            CommentType.Track => NotificationRelatedType.Track,
+                            CommentType.Playlist => NotificationRelatedType.Playlist,
+                            CommentType.Album => NotificationRelatedType.Album,
+                            CommentType.Request => NotificationRelatedType.Request,
+                            _ => NotificationRelatedType.Comment
+                        },
+                        Url = url,
                     });
 
                 await _hubContext.Clients.User(parentComment.CommenterId).SendAsync("ReceiveNotification", new NotificationResponse
@@ -705,6 +724,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                         Action = NotificationActionType.Comment,
                         RelatedId = requestId,
                         RelatedType = NotificationRelatedType.Request,
+                        Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/request-hub/{request.Id}"
                     });
 
                 await _hubContext.Clients.User(request.RequestUserId).SendAsync("ReceiveNotification", new NotificationResponse

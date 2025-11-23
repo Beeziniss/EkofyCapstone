@@ -43,6 +43,10 @@ public class AuthenticationController(IAuthenticationService authenticationServi
     [AllowAnonymous, HttpPost("login/listener")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginRequest)
     {
+        Console.WriteLine("=============================");
+        Console.WriteLine(HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault());
+        Console.WriteLine(HttpContext.Connection.RemoteIpAddress?.ToString());
+        Console.WriteLine("=============================");
         var validationResult = new LoginRequestValidator().Validate(loginRequest);
         if (!validationResult.IsValid)
         {
