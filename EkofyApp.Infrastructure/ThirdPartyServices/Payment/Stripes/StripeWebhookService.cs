@@ -735,7 +735,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
 
                         UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
-                            .UpdateOneAsync(session, x => x.UserId == userArtistId, updateArtistRevenue, new UpdateOptions { IsUpsert = true });
+                            .UpdateOneAsync(session, x => x.UserId == userArtistId, updateArtistRevenue);
                         if (updateArtistRevenueResult.ModifiedCount == 0)
                         {
                             _logger.LogError("Cannot update artist revenue after checkout session completed.");

@@ -34,13 +34,13 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
 
         public async Task<bool> SwitchStatusByRequestorAsync(ChangeOrderStatusRequest request)
         {
-            await _packageOrderService.SwitchStatusByRequestor(request);
+            await _packageOrderService.SwitchStatusByRequestorAsync(request);
             return true;
         }
 
         public async Task<bool> RefundPartiallyAsync(PackageOrderRefundRequest request)
         {
-            await _packageOrderService.RefundPartially(request);
+            await _packageOrderService.RefundPartiallyAndEscrowAsync(request);
             return true;
         }
 
