@@ -8,6 +8,7 @@ using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 
 namespace EkofyApp.Api.REST;
 [Route("api/authentication")]
@@ -17,6 +18,16 @@ public class AuthenticationController(IAuthenticationService authenticationServi
 {
     private readonly IAuthenticationService _authenticationService = authenticationService;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
+
+    [AllowAnonymous, HttpGet("test-ip-address")]
+    public IActionResult TestIpAddress()
+    {
+        var ipXFowardAddress = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+        var ipRemoteAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        Log.Error("Test IP X-Foward: {IP}", HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? HttpContext.Connection.RemoteIpAddress?.ToString());
+        Log.Error("Test IP Remote: {IP}", HttpContext.Connection.RemoteIpAddress?.ToString());
+        return Ok(new { XFoward = ipXFowardAddress, Remote = ipRemoteAddress , Message = "Test IP Address Successfully" });
+    }
 
     #region Listeners
     [AllowAnonymous, HttpPost("register/listener")]
@@ -43,10 +54,6 @@ public class AuthenticationController(IAuthenticationService authenticationServi
     [AllowAnonymous, HttpPost("login/listener")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginRequest)
     {
-        Console.WriteLine("=============================");
-        Console.WriteLine(HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault());
-        Console.WriteLine(HttpContext.Connection.RemoteIpAddress?.ToString());
-        Console.WriteLine("=============================");
         var validationResult = new LoginRequestValidator().Validate(loginRequest);
         if (!validationResult.IsValid)
         {
