@@ -23,6 +23,8 @@ public sealed class Notification
 
     public string Content { get; set; } = null!;
 
+    public string? Url { get; set; }
+
     public bool IsRead { get; set; } = false;
     public DateTimeOffset? ReadAt { get; set; }
 
