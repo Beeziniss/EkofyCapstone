@@ -10,6 +10,7 @@ using EkofyApp.Infrastructure.Services.Notifications;
 using Microsoft.AspNetCore.SignalR;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Serilog;
 using System.Collections.Concurrent;
 using System.Security.Claims;
 
@@ -33,11 +34,19 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
             return;
         }
 
+        bool wasOffline = false;
         HashSet<string> connections = OnlineUsers.GetOrAdd(userId, _ => []);
 
         lock (connections)
         {
+            wasOffline = connections.Count == 0; // User was offline if no connections existed
             connections.Add(Context.ConnectionId);
+        }
+
+        // Nếu user vừa mới online (từ offline -> online), thông báo cho tất cả contacts
+        if (wasOffline)
+        {
+            await NotifyContactsAboutOnlineStatus(userId, true);
         }
 
         await base.OnConnectedAsync();
@@ -50,6 +59,8 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
 
         if (!string.IsNullOrEmpty(userId) && OnlineUsers.TryGetValue(userId, out HashSet<string>? connections))
         {
+            bool goingOffline = false;
+
             lock (connections)
             {
                 connections.Remove(Context.ConnectionId);
@@ -57,11 +68,112 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                 if (connections.Count == 0)
                 {
                     OnlineUsers.TryRemove(userId, out _);
+                    goingOffline = true; // User is going offline (no more connections)
                 }
+            }
+
+            // Nếu user vừa offline (từ online -> offline), thông báo cho tất cả contacts
+            if (goingOffline)
+            {
+                await NotifyContactsAboutOnlineStatus(userId, false);
             }
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    // THÔNG BÁO TRẠNG THÁI ONLINE/OFFLINE CHO TẤT CẢ CONTACTS
+    private async Task NotifyContactsAboutOnlineStatus(string userId, bool isOnline)
+    {
+        try
+        {
+            // Lấy tất cả conversations mà user tham gia
+            IEnumerable<Conversation> userConversations = await _unitOfWork.GetCollection<Conversation>()
+                .Find(c => c.UserIds.Contains(userId))
+                .ToListAsync();
+
+            // Thu thập tất cả contactIds (những người khác trong conversations)
+            HashSet<string> contactIds = [];
+            foreach (Conversation conversation in userConversations)
+            {
+                foreach (string contactId in conversation.UserIds)
+                {
+                    if (contactId != userId)
+                    {
+                        contactIds.Add(contactId);
+                    }
+                }
+            }
+
+            // Lấy thông tin user để gửi kèm notification
+            NotificationUserInfo? userInfo = await GetUserInfo(userId);
+            if (userInfo == null)
+            {
+                return;
+            }
+
+            // Gửi thông báo online/offline status cho tất cả contacts đang online
+            foreach (string contactId in contactIds)
+            {
+                if (OnlineUsers.TryGetValue(contactId, out HashSet<string>? contactConnections))
+                {
+                    await Clients.Clients(contactConnections.ToList()).SendAsync("ContactStatusChanged", new
+                    {
+                        UserId = userId,
+                        UserInfo = userInfo,
+                        IsOnline = isOnline,
+                        Timestamp = HelperMethod.GetUtcPlus7TimeOffset()
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't throw - this is background notification
+            // Logger can be added here if needed
+            Log.Logger.Error($"Error notifying contacts about user {userId} status change: {ex.Message}");
+        }
+    }
+
+    // HELPER METHOD ĐỂ LẤY THÔNG TIN USER
+    private async Task<NotificationUserInfo?> GetUserInfo(string userId)
+    {
+        try
+        {
+            UserRole userRole = await _unitOfWork.GetCollection<User>()
+                .Find(u => u.Id == userId)
+                .Project(u => u.Role)
+                .FirstOrDefaultAsync();
+
+            if (userRole == UserRole.Listener)
+            {
+                return await _unitOfWork.GetCollection<Listener>()
+                    .Find(l => l.UserId == userId)
+                    .Project(l => new NotificationUserInfo
+                    {
+                        Name = l.DisplayName,
+                        Avatar = l.AvatarImage ?? "https://res.cloudinary.com/dofnn7sbx/image/upload/v1730097883/60d5dc467b950c5ccc8ced95_spotify-for-artists_on4me9.jpg"
+                    })
+                    .FirstOrDefaultAsync();
+            }
+            else if (userRole == UserRole.Artist)
+            {
+                return await _unitOfWork.GetCollection<Artist>()
+                    .Find(a => a.UserId == userId)
+                    .Project(a => new NotificationUserInfo
+                    {
+                        Name = a.StageName,
+                        Avatar = a.AvatarImage ?? "https://res.cloudinary.com/dofnn7sbx/image/upload/v1730097883/60d5dc467b950c5ccc8ced95_spotify-for-artists_on4me9.jpg"
+                    })
+                    .FirstOrDefaultAsync();
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     // SEND MESSAGE
@@ -267,5 +379,164 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
             messageId,
             deletedBy = userId
         });
+    }
+
+    // GET ALL ONLINE RECEIVERS ACROSS ALL CONVERSATIONS OF SENDER
+    public async Task<IEnumerable<NotificationUserInfo>> GetOnlineReceiversForSender()
+    {
+        try
+        {
+            // Lấy senderId từ Context.User
+            string? senderId = Context.User?.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(senderId))
+            {
+                await Clients.Caller.SendAsync("ReceiveException", "Your session has expired. Please login again.");
+                return [];
+            }
+
+            // Optimized: Only project UserIds to reduce data transfer
+            IEnumerable<IEnumerable<string>> receiverIds = await _unitOfWork.GetCollection<Conversation>()
+                .Find(c => c.UserIds.Contains(senderId))
+                .Project(c => c.UserIds)
+                .ToListAsync();
+
+            if (!receiverIds.Any())
+            {
+                return []; // Sender chưa có conversation nào
+            }
+
+            // Optimized: Use LINQ to flatten and filter in one operation
+            HashSet<string> allReceiverIds = receiverIds
+                .SelectMany(userIds => userIds)
+                .Where(userId => userId != senderId)
+                .Distinct()
+                .ToHashSet(); // Use HashSet for O(1) lookups
+
+            if (allReceiverIds.Count == 0)
+            {
+                return [];
+            }
+
+            // Optimized: Filter online users first before database queries
+            IEnumerable<string> onlineReceiverIds = allReceiverIds
+                .Where(OnlineUsers.ContainsKey)
+                .ToList();
+
+            if (!onlineReceiverIds.Any())
+            {
+                return [];
+            }
+
+            // Optimized: Batch database calls instead of individual queries
+            List<NotificationUserInfo> onlineReceiversInfo = [];
+
+            // Get all user roles in one query
+            var userRoles = await _unitOfWork.GetCollection<User>()
+                .Find(u => onlineReceiverIds.Contains(u.Id))
+                .Project(u => new { u.Id, u.Role })
+                .ToListAsync();
+
+            Dictionary<string, UserRole> userRolesDict = userRoles.ToDictionary(u => u.Id, u => u.Role);
+
+            // Separate users by role for batch queries
+            IEnumerable<string> listenerIds = onlineReceiverIds.Where(id =>
+                userRolesDict.TryGetValue(id, out var role) && role == UserRole.Listener).ToList();
+            IEnumerable<string> artistIds = onlineReceiverIds.Where(id =>
+                userRolesDict.TryGetValue(id, out var role) && role == UserRole.Artist).ToList();
+
+            // Batch query for listeners
+            if (listenerIds.Any())
+            {
+                IEnumerable<NotificationUserInfo> listenerInfos = await _unitOfWork.GetCollection<Listener>()
+                    .Find(l => listenerIds.Contains(l.UserId))
+                    .Project(l => new NotificationUserInfo
+                    {
+                        Name = l.DisplayName,
+                        Avatar = l.AvatarImage ?? "https://res.cloudinary.com/dofnn7sbx/image/upload/v1730097883/60d5dc467b950c5ccc8ced95_spotify-for-artists_on4me9.jpg"
+                    })
+                    .ToListAsync();
+
+                onlineReceiversInfo.AddRange(listenerInfos);
+            }
+
+            // Batch query for artists
+            if (artistIds.Any())
+            {
+                IEnumerable<NotificationUserInfo> artistInfos = await _unitOfWork.GetCollection<Artist>()
+                    .Find(a => artistIds.Contains(a.UserId))
+                    .Project(a => new NotificationUserInfo
+                    {
+                        Name = a.StageName,
+                        Avatar = a.AvatarImage ?? "https://res.cloudinary.com/dofnn7sbx/image/upload/v1730097883/60d5dc467b950c5ccc8ced95_spotify-for-artists_on4me9.jpg"
+                    })
+                    .ToListAsync();
+
+                onlineReceiversInfo.AddRange(artistInfos);
+            }
+
+            return onlineReceiversInfo;
+        }
+        catch (Exception ex)
+        {
+            // Gửi lỗi về client
+            await Clients.Caller.SendAsync("ReceiveException", $"Error getting online receivers: {ex.Message}");
+            return [];
+        }
+    }
+
+    // GET ONLINE RECEIVER IN SPECIFIC CONVERSATION
+    public async Task<NotificationUserInfo?> GetOnlineUserInConversation(string conversationId)
+    {
+        try
+        {
+            // Lấy senderId từ Context.User
+            string? senderId = Context.User?.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(senderId))
+            {
+                await Clients.Caller.SendAsync("ReceiveException", "Your session has expired. Please login again.");
+                return null;
+            }
+
+            // Lấy thông tin conversation
+            Conversation conversation = await _unitOfWork.GetCollection<Conversation>()
+                .Find(c => c.Id == conversationId)
+                .FirstOrDefaultAsync();
+
+            if (conversation == null)
+            {
+                await Clients.Caller.SendAsync("ReceiveException", "Conversation not found.");
+                return null;
+            }
+
+            // Kiểm tra sender có trong conversation này không
+            if (!conversation.UserIds.Contains(senderId))
+            {
+                await Clients.Caller.SendAsync("ReceiveException", "You are not a participant in this conversation.");
+                return null;
+            }
+
+            // Lấy receiverId (user còn lại trong conversation)
+            string? receiverId = conversation.UserIds.FirstOrDefault(userId => userId != senderId);
+
+            if (string.IsNullOrEmpty(receiverId))
+            {
+                return null;
+            }
+
+            // Kiểm tra receiver có online không
+            if (!OnlineUsers.ContainsKey(receiverId))
+            {
+                return null; // Receiver không online
+            }
+
+            // Lấy thông tin receiver
+            return await GetUserInfo(receiverId);
+        }
+        catch (Exception ex)
+        {
+            // Gửi lỗi về client
+            await Clients.Caller.SendAsync("ReceiveException", $"Error getting online receiver: {ex.Message}");
+            return null;
+        }
     }
 }
