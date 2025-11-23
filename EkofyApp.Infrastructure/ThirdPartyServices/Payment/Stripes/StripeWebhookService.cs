@@ -18,6 +18,7 @@ using MongoDB.Driver.Linq;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
+
 public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeService> logger, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, StripeSetting stripeSetting) : IStripeWebhookService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -176,6 +177,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
+
+                                // Gửi email thông báo hủy gói currentSubscription do không thanh toán được
+                                User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
+                                    .Project<User>(Builders<User>.Projection
+                                        .Include(x => x.Id)
+                                        .Include(x => x.Email)
+                                        .Include(x => x.FullName))
+                                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {userId}");
+
+                                string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset());
+
+                                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                             }
 
                             break;
@@ -680,7 +693,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         // Cập nhật trạng thái của Requests Hub
                         UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
                                 .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
-                        if(updateRequestHub.ModifiedCount == 0)
+                        if (updateRequestHub.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
                         }

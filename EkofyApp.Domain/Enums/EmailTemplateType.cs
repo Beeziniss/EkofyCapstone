@@ -13,5 +13,6 @@ public enum EmailTemplateType
     TemporarySuspension,
     PermanentBan,
     SubscriptionCancelled,
-    SubscriptionResumed
+    SubscriptionResumed,
+    SubscriptionExpired
 }
