@@ -31,6 +31,12 @@ namespace EkofyApp.Api.GraphQL.Mutation.Requests
 
         public async Task<bool> CreatePublicRequestAsync(RequestCreatingRequest request)
         {
+            bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.CreatePublicRequest);
+            if (hasAnyRestriction)
+            {
+                throw new UnauthorizedCustomException($"You are restricted from creating public request.");
+            }
+
             return await _requestService.CreatePublicRequestAsync(request);
         }
 
