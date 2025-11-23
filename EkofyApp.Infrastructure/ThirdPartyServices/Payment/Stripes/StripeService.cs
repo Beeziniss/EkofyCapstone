@@ -687,11 +687,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             }
 
             // Phân chia tiền giữa Platform và Artist
-            string platformFeePercentageStr = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
-                .Find(x => x.Status == PolicyStatus.Active)
-                .Project(x => x.PlatformFeePercentage.ToString())
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
-            decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
+            decimal platformFeePercentage = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
+                .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && x.PaymentTransactionId == packageOrder.PaymentTransactionId)
+                .Project(x => x.OneOffSnapshot!.PlatformFeePercentage)
+                .FirstOrDefaultAsync();
 
             // Tiền của Platform và Artist
             decimal platformFeeAmount = amountPackageOrder * (platformFeePercentage / 100m);
