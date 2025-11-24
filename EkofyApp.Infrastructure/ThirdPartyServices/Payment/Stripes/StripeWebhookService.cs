@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Serilog;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
@@ -713,21 +714,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             }
                         }
 
-                        // Cập nhật trạng thái của Requests Hub
+                        // Cập nhật trạng thái của Requests
                         RequestType requestType = await _unitOfWork.GetCollection<Request>()
                             .Find(session, x => x.Id == checkoutSession.Metadata["request_id"])
                             .Project(x => x.Type)
                             .FirstOrDefaultAsync();
 
-                        if (requestType == RequestType.PublicRequest)
+                        // Cập nhật trạng thái request thành Closed
+                        UpdateResult updateRequest = await _unitOfWork.GetCollection<Request>()
+                        .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Status == RequestStatus.Confirmed, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
+                        if (updateRequest.ModifiedCount == 0)
                         {
-                            // Cập nhật trạng thái request hub thành Closed
-                            UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
-                            .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Type == RequestType.PublicRequest, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
-                            if (updateRequestHub.ModifiedCount == 0)
-                            {
-                                throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
-                            }
+                            throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
                         }
 
                         // Cập nhật service revenue cho Artist
@@ -786,10 +784,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         .Set(t => t.Status, TransactionStatus.Expired)
                         .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-                    UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, Builders<PaymentTransaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
+                    UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, x => x.StripeCheckoutSessionId == checkoutSession.Id && x.PaymentStatus == PaymentTransactionStatus.Pending && x.Status == TransactionStatus.Open, update);
                     if (updateResult.ModifiedCount == 0)
                     {
-                        throw new UnprocessableEntityCustomException($"Cannot update payment transaction {checkoutSession.Id} to expired.");
+                        Log.Error($"Cannot update payment transaction {checkoutSession.Id} to expired.");
+                    }
+
+                    // Cập nhật trạng thái request thành Canceled
+                    UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
+                    .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Status == RequestStatus.Confirmed, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Canceled));
+                    if (updateRequestHub.ModifiedCount == 0)
+                    {
+                        Log.Error("Cannot update request status to canceled");
                     }
                 }
             }
