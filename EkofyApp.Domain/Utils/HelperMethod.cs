@@ -53,6 +53,9 @@ public sealed class HelperMethod
             (NotificationActionType.OrderCompleted, NotificationRelatedType.Order)
                 => $"Your order #{relatedName ?? "N/A"} has been completed.",
 
+            (NotificationActionType.OrderDeadline, NotificationRelatedType.Order)
+                => $"Your order with user {actorName} must be finish in 24 hours.",
+
             (NotificationActionType.OrderCreated, NotificationRelatedType.Order)
                 => $"{actorName} created a new order for you.",
 
