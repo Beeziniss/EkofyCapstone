@@ -17,6 +17,7 @@ using Stripe;
 using Stripe.Checkout;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
+
 public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService, IHttpContextAccessor httpContextAccessor, ILogger<StripeService> logger) : IStripeService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -636,15 +637,24 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         UserSubscription userSubscription = await _unitOfWork.GetCollection<UserSubscription>()
-            .Find(x => x.UserId == userId && x.IsActive == true)
+            .Find(x => x.UserId == userId && x.CancelAtEndOfPeriod == true && x.IsActive == true)
             .Project<UserSubscription>(Builders<UserSubscription>.Projection
                 .Include(x => x.StripeSubscriptionId)
                 .Include(x => x.PeriodEnd))
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found your current subscription.");
-
         if (userSubscription.PeriodEnd < HelperMethod.GetUtcPlus7TimeOffset().AddDays(3))
         {
             throw new ConflictCustomException("You can only resume your subscription at least 3 days before it ends.");
+        }
+
+        UpdateResult updateResult = await _unitOfWork.GetCollection<UserSubscription>()
+            .UpdateOneAsync(x => x.UserId == userId && x.IsActive == true, Builders<UserSubscription>.Update
+                .Set(x => x.CancelAtEndOfPeriod, false)
+                .Set(x => x.CanceledAt, null)
+                .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+        if (updateResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException($"Cannot update user subscription when resume subscription for user {userId}");
         }
 
         SubscriptionService subscriptionService = new();
