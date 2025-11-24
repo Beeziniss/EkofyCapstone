@@ -7,7 +7,7 @@ namespace EkofyApp.Application.Models.Requests
         public string Title { get; init; } = null!;
         public string Summary { get; init; } = null!;
         public string DetailDescription { get; init; } = null!;
-        public DateTime Deadline { get; init; }
+        public int Duration { get; init; }
         public RequestBudget Budget { get; init; } = null!;
     }
 }

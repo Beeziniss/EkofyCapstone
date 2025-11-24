@@ -20,11 +20,11 @@ public sealed class PackageOrder : TimeStamped
     public string PaymentTransactionId { get; set; } = null!;
     [BsonRepresentation(BsonType.ObjectId)]
     public string ConversationId { get; set; } = null!;
-
+    public string Requirements { get; set; } = null!;
     public PackageOrderStatus Status { get; set; }
     public int RevisionCount { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
-    public DateTimeOffset Deadline { get; set; }
+    public int Duration { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public bool IsEscrowReleased { get; set; } = false;
     public decimal PlatformFeePercentage { get; set; }

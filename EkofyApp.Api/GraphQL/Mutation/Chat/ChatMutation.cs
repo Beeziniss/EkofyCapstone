@@ -23,6 +23,6 @@ public sealed class ChatMutation(IChatService chatService)
 
     public async Task<string> AddConversationFromRequestHubAsync(CreateConversationRequest request)
     {
-        return await _chatService.AddConversationFromRequestHubAsync(request);
+        return await _chatService.AddConversationFromRequestAsync(request);
     }
 }

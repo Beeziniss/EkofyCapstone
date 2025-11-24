@@ -43,7 +43,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, update);
 
             //job chạy khi bắt đầu in progress
-            BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), packageOrder.Deadline);
+            //BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), packageOrder.Duration);
 
             return result.ModifiedCount > 0;
         }
@@ -393,22 +393,22 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         private async Task ApproveDeliveryAutomatically(string packageOrderId)
         {
             //tự động duyệt các delivery đã quá hạn 3 ngày mà client không phản hồi
-            var filter = Builders<PackageOrder>.Filter.And(
-                Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-                Builders<PackageOrder>.Filter.Gt(po => po.Deadline, HelperMethod.GetUtcPlus7TimeOffset()),
-                Builders<PackageOrder>.Filter.ElemMatch(po => po.Deliveries,
-                         d => d.RequestedAt != null &&
-                         d.RequestedAt <= HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3) &&
-                         d.ClientFeedback == null)
-            );
-            var update = Builders<PackageOrder>.Update
-                .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
-                .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                .Set(po => po.Status, PackageOrderStatus.Dispersed);
-            // TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
-            await _stripeService.EscrowReleaseAsync(packageOrderId);
+            //var filter = Builders<PackageOrder>.Filter.And(
+            //    Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+            //    Builders<PackageOrder>.Filter.Gt(po => po.Duration, HelperMethod.GetUtcPlus7TimeOffset()),
+            //    Builders<PackageOrder>.Filter.ElemMatch(po => po.Deliveries,
+            //             d => d.RequestedAt != null &&
+            //             d.RequestedAt <= HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3) &&
+            //             d.ClientFeedback == null)
+            //);
+            //var update = Builders<PackageOrder>.Update
+            //    .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
+            //    .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+            //    .Set(po => po.Status, PackageOrderStatus.Dispersed);
+            //// TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
+            //await _stripeService.EscrowReleaseAsync(packageOrderId);
 
-            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+            //await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
 
             // có lỗi thì thông báo HERE!
         }
@@ -416,13 +416,13 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         //NẾU NHƯ SAU DEADLINE MÀ VẪN CHƯA HOÀN THÀNH CÔNG VIỆC THÌ TỰ ĐỘNG ĐƯA VAOF DANH SÁCH CHO MOD XỬ LÝ
         public async Task SolveOverdueAutomatically()
         {
-            var filter = Builders<PackageOrder>.Filter.And(
-                Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-                Builders<PackageOrder>.Filter.Lt(po => po.Deadline, HelperMethod.GetUtcPlus7TimeOffset())
-                );
+            //var filter = Builders<PackageOrder>.Filter.And(
+            //    Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+            //    Builders<PackageOrder>.Filter.Lt(po => po.Duration, HelperMethod.GetUtcPlus7TimeOffset())
+            //    );
 
-            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
-            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+            //var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
+            //await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
         }
         #endregion
     }

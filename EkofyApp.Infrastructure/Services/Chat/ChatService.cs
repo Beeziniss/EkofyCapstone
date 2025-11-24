@@ -61,7 +61,7 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         return newConversationId;
     }
 
-    public async Task<string> AddConversationFromRequestHubAsync(CreateConversationRequest request)
+    public async Task<string> AddConversationFromRequestAsync(CreateConversationRequest request)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
@@ -70,7 +70,7 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         //check xem da co conversation cua 2 nguoi nay chua
         string conversationId = await _unitOfWork.GetCollection<Conversation>()
             .Find(c => userIds.All(id => c.UserIds.Contains(id)) && c.Status != ConversationStatus.None &&
-                       request.RequestHubId == c.RequestId)
+                       request.RequestId == c.RequestId)
             .Project(x => x.Id)
             .FirstOrDefaultAsync();
         if (!string.IsNullOrEmpty(conversationId))
@@ -82,7 +82,7 @@ public sealed class ChatService(IUnitOfWork unitOfWork, IHttpContextAccessor htt
         Conversation conversation = new()
         {
             UserIds = userIds,
-            RequestId = request.RequestHubId,
+            RequestId = request.RequestId,
             Status = ConversationStatus.Pending
         };
         await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(conversation);

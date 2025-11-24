@@ -322,8 +322,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 { "package_id", artistPackage.Id },
                 { "request_id", createPaymentCheckoutSessionRequest.RequestId },
                 { "conversation_id", createPaymentCheckoutSessionRequest.ConversationId ?? "empty" },
-                { "deadline", HelperMethod.NormalizeToStringUtcPlus7(createPaymentCheckoutSessionRequest.Deadline) },
+                { "duration", createPaymentCheckoutSessionRequest.Duration.ToString() },
                 { "platform_fee_percentage", platformFeePercentage },
+                { "requirements", createPaymentCheckoutSessionRequest.Requirements},
             },
             //InvoiceCreation = new SessionInvoiceCreationOptions
             //{
@@ -410,7 +411,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .Find(x => x.PaymentTransactionId == paymentTransaction.Id)
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(x => x.Id)
-                    .Include(x => x.Deadline))
+                    .Include(x => x.Duration))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found artist package for refund.");
 
             // Lấy package
@@ -452,7 +453,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                     ServiceDetails = artistPackage.ServiceDetails,
                     ArtistPackageStatus = artistPackage.Status,
 
-                    Deadline = packageOrder.Deadline,
+                    Duration = packageOrder.Duration,
                     PlatformFeePercentage = platformFeePercentage,
                     ArtistFeePercentage = 100m - platformFeePercentage,
 

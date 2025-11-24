@@ -8,6 +8,8 @@ public enum ConversationStatus
     None,           // Mặc định, chưa gửi request]
     [EnumMember(Value = "Pending")]
     Pending,        // Request gửi đi, đang chờ Artist/ người tạo request phản hồi
+    [EnumMember(Value = "Confirmed")]
+    Confirmed,     // Request đã được chấp nhận, chờ thanh toán
     [EnumMember(Value = "ConfirmedPayment")]
     ConfirmedPayment,
     [EnumMember(Value = "Cancelled")]

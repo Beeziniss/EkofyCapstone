@@ -664,10 +664,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             ProviderId = userArtistId,
                             ArtistPackageId = checkoutSession.Metadata["package_id"],
                             PaymentTransactionId = transaction.Id,
+                            Requirements = checkoutSession.Metadata["requirements"],
                             ConversationId = checkoutSession.Metadata["conversation_id"],
                             Status = PackageOrderStatus.Paid,
                             RevisionCount = 0,
-                            Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
+                            Duration = Convert.ToInt32(checkoutSession.Metadata["duration"]),
                             PlatformFeePercentage = platformFeePercentage,
                         });
 
@@ -686,7 +687,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             // Package Order
                             PlatformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]),
                             ArtistFeePercentage = 100m - Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]),
-                            Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
+                            Duration = Convert.ToInt32(checkoutSession.Metadata["duration"]),
 
                             OneOffType = OneOffType.Payment,
                         };
