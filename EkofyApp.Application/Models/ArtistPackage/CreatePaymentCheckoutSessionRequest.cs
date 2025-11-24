@@ -11,9 +11,11 @@ public sealed record class CreatePaymentCheckoutSessionRequest
 
     public bool IsSavePaymentMethod { get; init; } = false;
     public bool IsReceiptEmail { get; init; } = false;
+    //Request
+    public string Requirements { get; init; } = null!;
 
     // Package Order
     public string? ConversationId { get; init; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
-    public DateTimeOffset Deadline { get; set; }
+    public int Duration { get; set; }
 }

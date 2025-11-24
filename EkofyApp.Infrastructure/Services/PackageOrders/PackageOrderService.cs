@@ -43,7 +43,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, update);
 
             //job chạy khi bắt đầu in progress
-            BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), packageOrder.Deadline);
+            BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), packageOrder.Duration);
 
             return result.ModifiedCount > 0;
         }
@@ -395,7 +395,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             //tự động duyệt các delivery đã quá hạn 3 ngày mà client không phản hồi
             var filter = Builders<PackageOrder>.Filter.And(
                 Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-                Builders<PackageOrder>.Filter.Gt(po => po.Deadline, HelperMethod.GetUtcPlus7TimeOffset()),
+                Builders<PackageOrder>.Filter.Gt(po => po.Duration, HelperMethod.GetUtcPlus7TimeOffset()),
                 Builders<PackageOrder>.Filter.ElemMatch(po => po.Deliveries,
                          d => d.RequestedAt != null &&
                          d.RequestedAt <= HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3) &&
@@ -418,7 +418,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         {
             var filter = Builders<PackageOrder>.Filter.And(
                 Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-                Builders<PackageOrder>.Filter.Lt(po => po.Deadline, HelperMethod.GetUtcPlus7TimeOffset())
+                Builders<PackageOrder>.Filter.Lt(po => po.Duration, HelperMethod.GetUtcPlus7TimeOffset())
                 );
 
             var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);

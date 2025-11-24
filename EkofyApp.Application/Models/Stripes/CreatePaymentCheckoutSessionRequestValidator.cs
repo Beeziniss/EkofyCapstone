@@ -21,7 +21,7 @@ public sealed class CreatePaymentCheckoutSessionRequestValidator : AbstractValid
             .NotEmpty().WithMessage("Cancel URL is required.")
             .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).WithMessage("Cancel URL must be a valid absolute URL.");
 
-        RuleFor(x => x.Deadline)
-            .GreaterThan(x => HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Deadline must be a future date.");
+        RuleFor(x => x.Duration)
+            .GreaterThan(x => HelperMethod.GetUtcPlus7TimeOffset()).WithMessage("Duration must be a future date.");
     }
 }

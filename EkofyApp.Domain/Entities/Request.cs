@@ -27,7 +27,7 @@ namespace EkofyApp.Domain.Entities
         public DateTimeOffset? UpdatedAt { get; set; } // public request
         public RequestType Type { get; set; }
         public CurrencyType Currency { get; set; } = CurrencyType.vnd;
-        public DateTimeOffset Deadline { get; set; }
+        public int Duration { get; set; }
         public RequestStatus Status { get; set; }
         public DateTimeOffset? RequestCreatedTime { get; set; } // cuar request chung
         public string? Notes { get; set; }

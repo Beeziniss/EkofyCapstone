@@ -39,7 +39,7 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
                 EstimateDeliveryDays = createRequest.EstimateDeliveryDays,
                 Description = createRequest.Description,
                 ServiceDetails = createRequest.ServiceDetails,
-                MaxRevision = createRequest.MaxRevision,
+                MaxRevision = createRequest.MaxRevision == 0 ? 1 : createRequest.MaxRevision,
                 Status = ArtistPackageStatus.Enabled,
             };
 
