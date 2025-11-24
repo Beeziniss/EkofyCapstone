@@ -1,12 +1,11 @@
-﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.EmbeddedDocuments;
+﻿using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities
 {
-    public sealed class Request : IEntityCustom
+    public sealed class Request
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
