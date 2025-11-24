@@ -7,6 +7,7 @@ public enum PopularityActionType
     CompleteStreaming,
     RepeatStreaming,
 
+    // Track
     Favorite,
     Unfavorite,
     Share,
@@ -14,10 +15,12 @@ public enum PopularityActionType
     RemoveFromPlaylist,
     Comment,
 
+    // Searching
     Search,
     SearchResultClick,
     ClickFromRecommendation,
 
+    // Artist
     Follow,
     Unfollow
 }
