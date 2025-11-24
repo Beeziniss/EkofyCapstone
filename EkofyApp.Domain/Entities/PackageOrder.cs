@@ -25,12 +25,14 @@ public sealed class PackageOrder : TimeStamped
     public int RevisionCount { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public int Duration { get; set; }
+    public TimeSpan FreezedTime { get; set; } = TimeSpan.Zero;
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? DisputedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public bool IsEscrowReleased { get; set; } = false;
     public decimal PlatformFeePercentage { get; set; }
     public decimal ArtistFeePercentage => 100m - PlatformFeePercentage;
-
     public Review? Review { get; set; }
-
-    public string? BackgroundJobId { get; set; }
+    public string? ApprovedAutoJobId { get; set; }
+    public string? OverdueJobId { get; set; }
 }
