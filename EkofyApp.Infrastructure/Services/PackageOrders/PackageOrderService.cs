@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.PackageOrders;
+﻿using EkofyApp.Application.Models.Notifications;
+using EkofyApp.Application.Models.PackageOrders;
 using EkofyApp.Application.Models.Reviews;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.PackageOrders;
@@ -8,8 +9,10 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Infrastructure.Services.Notifications;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
@@ -17,11 +20,12 @@ using Serilog;
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
     [Queue("request")]
-    public sealed class PackageOrderService(IUnitOfWork unitOfWork, IStripeService stripeService, IHttpContextAccessor httpContextAccessor) : IPackageOrderService
+    public sealed class PackageOrderService(IUnitOfWork unitOfWork, IStripeService stripeService, IHttpContextAccessor httpContextAccessor, IHubContext<NotificationHub> hubContext) : IPackageOrderService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IStripeService _stripeService = stripeService;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IHubContext<NotificationHub> _hubContext = hubContext;
 
         public IQueryable<PackageOrder> GetPackageOrders()
         {
@@ -438,6 +442,52 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
             await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+        }
+
+        //JOB THÔNG BÁO CHO ARTIST KHI SẮP HẾT HẠN
+        public async Task NotifyArtistBeforeDeadlineAsync()
+        {
+            var now = HelperMethod.GetUtcPlus7TimeOffset();
+
+            var filter = Builders<PackageOrder>.Filter.And(
+                Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null
+                                                && (po.StartedAt.Value.AddDays(po.Duration - 1) + po.FreezedTime) <= now
+                                                && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > HelperMethod.GetUtcPlus7TimeOffset())
+                );
+            var packageOrders = await _unitOfWork.GetCollection<PackageOrder>().Find(filter).ToListAsync();
+
+            var clientIds = packageOrders.Select(o => o.ClientId).Distinct().ToList();
+
+            var clients = await _unitOfWork.GetCollection<User>()
+                .Find(u => clientIds.Contains(u.Id))
+                .ToListAsync();
+
+            var clientDict = clients.ToDictionary(c => c.Id, c => c.FullName);
+
+            foreach (var packageOrder in packageOrders)
+            {
+                string clientName = clientDict.TryGetValue(packageOrder.ClientId, out var name) ? name : "Unknown";
+                string content = HelperMethod.BuildContentNotification(NotificationActionType.OrderDeadline, NotificationRelatedType.Order, packageOrder.Id, clientName);
+
+                await _unitOfWork.GetCollection<Notification>()
+                    .InsertOneAsync(new Notification
+                    {
+                        ActorId = packageOrder.ClientId,
+                        TargetId = packageOrder.ProviderId,
+                        Content = content,
+                        Action = NotificationActionType.OrderDeadline,
+                        RelatedId = packageOrder.Id,
+                        RelatedType = NotificationRelatedType.Track,
+                        Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/order/{packageOrder.Id}"
+                    });
+
+                await _hubContext.Clients.User(packageOrder.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                    Avatar = string.Empty,
+                });
+            }
         }
         #endregion
     }
