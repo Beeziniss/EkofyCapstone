@@ -13,11 +13,13 @@ using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
+
 public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeService> logger, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, StripeSetting stripeSetting) : IStripeWebhookService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -176,6 +178,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
+
+                                // Gửi email thông báo hủy gói currentSubscription do không thanh toán được
+                                User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
+                                    .Project<User>(Builders<User>.Projection
+                                        .Include(x => x.Id)
+                                        .Include(x => x.Email)
+                                        .Include(x => x.FullName))
+                                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {userId}");
+
+                                string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset());
+
+                                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                             }
 
                             break;
@@ -622,6 +636,24 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             .Project(x => x.UserId)
                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any user with artist {artistPackage.ArtistId}");
 
+                        // Tạo conversation nếu chưa có
+                        bool isDirectRequest = false;
+                        if (checkoutSession.Metadata["conversation_id"] == "empty")
+                        {
+                            Conversation newConversation = new()
+                            {
+                                RequestId = checkoutSession.Metadata["request_id"],
+                                UserIds = [transaction.UserId, userArtistId],
+                                Status = ConversationStatus.InProgress,
+                            };
+
+                            await _unitOfWork.GetCollection<Conversation>().InsertOneAsync(session, newConversation);
+
+                            // Gán conversation_id vào metadata của checkout session
+                            checkoutSession.Metadata["conversation_id"] = newConversation.Id;
+                            isDirectRequest = true;
+                        }
+
                         // TODO: Tạo package order
                         // Resolved: Đã tạo package order
                         decimal platformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]);
@@ -658,31 +690,43 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             OneOffType = OneOffType.Payment,
                         };
 
-                        // Cập nhật trạng thái của các conversations
-                        // Đóng các conversations không được chấp nhận
-                        UpdateResult updateConversationCancelled = await _unitOfWork.GetCollection<Conversation>()
-                                .UpdateManyAsync(session,
-                                    x => x.Id != checkoutSession.Metadata["conversation_id"] && x.RequestHubId == checkoutSession.Metadata["request_hub_id"] && x.Status == ConversationStatus.Pending,
-                                    Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.Cancelled));
-                        if (updateConversationCancelled.ModifiedCount == 0)
+                        if (!isDirectRequest)
                         {
-                            throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
-                        }
+                            // Cập nhật trạng thái của các conversations
+                            // Đóng các conversations không được chấp nhận
+                            UpdateResult updateConversationCancelled = await _unitOfWork.GetCollection<Conversation>()
+                                    .UpdateManyAsync(session,
+                                        x => x.Id != checkoutSession.Metadata["conversation_id"] && x.RequestId == checkoutSession.Metadata["request_id"] && x.Status == ConversationStatus.Pending,
+                                        Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.Cancelled));
+                            if (updateConversationCancelled.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
+                            }
 
-                        // Cập nhật trạng thái của conversation được chấp nhận thành In Progress
-                        UpdateResult updateConversationInprogress = await _unitOfWork.GetCollection<Conversation>()
-                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["conversation_id"] && x.RequestHubId == checkoutSession.Metadata["request_hub_id"] && x.Status == ConversationStatus.Pending, Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.InProgress));
-                        if (updateConversationInprogress.ModifiedCount == 0)
-                        {
-                            throw new UnprocessableEntityCustomException("Cannot update conversation status to in progress");
+                            // Cập nhật trạng thái của conversation được chấp nhận thành In Progress
+                            UpdateResult updateConversationInprogress = await _unitOfWork.GetCollection<Conversation>()
+                                    .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["conversation_id"] && x.RequestId == checkoutSession.Metadata["request_id"] && x.Status == ConversationStatus.Pending, Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.ConfirmedPayment));
+                            if (updateConversationInprogress.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update conversation status to in progress");
+                            }
                         }
 
                         // Cập nhật trạng thái của Requests Hub
-                        UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
-                                .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_hub_id"] && x.Status == RequestStatus.Open, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
-                        if(updateRequestHub.ModifiedCount == 0)
+                        RequestType requestType = await _unitOfWork.GetCollection<Request>()
+                            .Find(session, x => x.Id == checkoutSession.Metadata["request_id"])
+                            .Project(x => x.Type)
+                            .FirstOrDefaultAsync();
+
+                        if (requestType == RequestType.PublicRequest)
                         {
-                            throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
+                            // Cập nhật trạng thái request hub thành Closed
+                            UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
+                            .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Type == RequestType.PublicRequest, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
+                            if (updateRequestHub.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
+                            }
                         }
 
                         // Cập nhật service revenue cho Artist
@@ -691,7 +735,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             .Inc(x => x.ServiceRevenue, oneOffSnapshot != null ? transaction.Amount : 0m);
 
                         UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
-                            .UpdateOneAsync(session, x => x.UserId == userArtistId, updateArtistRevenue, new UpdateOptions { IsUpsert = true });
+                            .UpdateOneAsync(session, x => x.UserId == userArtistId, updateArtistRevenue);
                         if (updateArtistRevenueResult.ModifiedCount == 0)
                         {
                             _logger.LogError("Cannot update artist revenue after checkout session completed.");

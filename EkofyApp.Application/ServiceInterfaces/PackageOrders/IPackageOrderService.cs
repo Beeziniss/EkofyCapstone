@@ -13,10 +13,10 @@ namespace EkofyApp.Application.ServiceInterfaces.PackageOrders
         Task DeleteReviewHardAsync(string packageOrderId);
         Task<ReviewResponse> GetAverageRatingBaseOnPackageAsync(string packageId);
         IQueryable<PackageOrder> GetPackageOrders();
-        Task<bool> RefundPartially(PackageOrderRefundRequest request);
+        Task<bool> RefundPartiallyAndEscrowAsync(PackageOrderRefundRequest request);
         Task<bool> SendRedoRequest(RedoRequest request);
         Task<bool> SubmitDeliverytAsync(SubmitDeliveryRequest request);
-        Task<bool> SwitchStatusByRequestor(ChangeOrderStatusRequest request);
+        Task<bool> SwitchStatusByRequestorAsync(ChangeOrderStatusRequest request);
         Task UpdateReviewAsync(UpdateReviewRequest updateReviewRequest);
     }
 }

@@ -1,4 +1,5 @@
 ﻿namespace EkofyApp.Domain.Utils;
+
 public sealed class HelperEmailTemplate
 {
     public static string SubjectVerifyOtp() => "Ekofy - Verify OTP Code";
@@ -12,6 +13,7 @@ public sealed class HelperEmailTemplate
     public static string SubjectPermanentBan() => "Ekofy - Permanent Ban";
     public static string SubjectSubscriptionCancelled() => "Ekofy - Subscription Cancellation Notice";
     public static string SubjectSubscriptionResumed() => "Ekofy - Subscription Resumed";
+    public static string SubjectSubscriptionExpired() => "Ekofy - Subscription Expired Notice";
 
     public static string RegisterNotification(string[] paramaters)
     {
@@ -701,6 +703,59 @@ public sealed class HelperEmailTemplate
       </p>
       <p style=""font-size: 0.9em"">
         All the best,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>
+";
+    }
+
+    /// <summary>
+	/// Subscription expired email template.
+    /// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Period End At (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string SubscriptionExpired(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string periodEndAt = parameters[2];
+
+        return @$"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Subscription Cancellation Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- SUBSCRIPTION EXPIRED -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p> We would like to inform you that your Premium subscription associated with the email <strong>{email}</strong> has officially expired on <strong>{periodEndAt}</strong>.
+      </p>
+      <p> As a result, your account has now been switched back to the free plan, and Premium features are no longer available.</p>
+      <p> If you wish to continue enjoying all Premium benefits, you can renew your subscription at any time.</p>
+      <p>
+        We're grateful to have had you as a Premium member and hope to serve you again in the future.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Thank you for being part of <strong>Ekofy</strong>.<br><br>
+        Best regards,<br>
         <strong>The Ekofy Team</strong>
       </p>
     </div>

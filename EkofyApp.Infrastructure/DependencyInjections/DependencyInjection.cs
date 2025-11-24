@@ -22,6 +22,7 @@ using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Listeners;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
 using EkofyApp.Application.ServiceInterfaces.Notifications;
+using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
@@ -74,6 +75,7 @@ using EkofyApp.Infrastructure.Services.Jobs;
 using EkofyApp.Infrastructure.Services.Listeners;
 using EkofyApp.Infrastructure.Services.MonthlyStreamCounts;
 using EkofyApp.Infrastructure.Services.Notifications;
+using EkofyApp.Infrastructure.Services.PackageOrders;
 using EkofyApp.Infrastructure.Services.Playlists;
 using EkofyApp.Infrastructure.Services.Policies;
 using EkofyApp.Infrastructure.Services.PopularityMetrics;
@@ -414,6 +416,7 @@ public static class DependencyInjection
         services.AddScoped<IRecommendationService, RecommendationService>();
         services.AddScoped<ITrackUploadNotifier, TrackUploadNotifier>();
         services.AddScoped<IPopularityMetricService, PopularityMetricService>();
+        services.AddScoped<IPackageOrderService, PackageOrderService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services

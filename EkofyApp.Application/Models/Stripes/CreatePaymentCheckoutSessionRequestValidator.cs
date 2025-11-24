@@ -10,7 +10,7 @@ public sealed class CreatePaymentCheckoutSessionRequestValidator : AbstractValid
         RuleFor(x => x.PackageId)
             .NotEmpty().WithMessage("Package ID is required.");
 
-        RuleFor(x => x.RequestHubId)
+        RuleFor(x => x.RequestId)
             .NotEmpty().WithMessage("Requests Hub ID is required.");
 
         RuleFor(x => x.SuccessUrl)

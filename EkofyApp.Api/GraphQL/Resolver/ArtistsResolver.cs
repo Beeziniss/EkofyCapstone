@@ -28,15 +28,15 @@ public sealed class ArtistsResolver
         return unitOfWork.GetCollection<Category>().AsQueryable().Where(x => artist.CategoryIds.Contains(x.Id));
     }
 
-    public async Task<decimal> GetNetEarningsAsync([Parent] Artist artistRevenue, [Service] IUnitOfWork unitOfWork, [Service] IRedisCacheService redisCacheService)
-    {
-        // Lấy platform fee percentage từ Redis
-        string platformFeePercentageStr = await redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await unitOfWork.GetCollection<EscrowCommissionPolicy>()
-            .Find(x => x.Status == PolicyStatus.Active)
-            .Project(x => x.PlatformFeePercentage.ToString())
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
-        decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
+    //public async Task<decimal> GetNetEarningsAsync([Parent] Artist artistRevenue, [Service] IUnitOfWork unitOfWork, [Service] IRedisCacheService redisCacheService)
+    //{
+    //    // Lấy platform fee percentage từ Redis
+    //    string platformFeePercentageStr = await redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await unitOfWork.GetCollection<EscrowCommissionPolicy>()
+    //        .Find(x => x.Status == PolicyStatus.Active)
+    //        .Project(x => x.PlatformFeePercentage.ToString())
+    //        .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
+    //    decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
 
-        return artistRevenue.RoyaltyEarnings + (artistRevenue.ServiceRevenue * (1 - platformFeePercentage)) - artistRevenue.RefundAmount;
-    }
+    //    return artistRevenue.RoyaltyEarnings + (artistRevenue.ServiceRevenue * (1 - platformFeePercentage)) - artistRevenue.RefundAmount;
+    //}
 }
