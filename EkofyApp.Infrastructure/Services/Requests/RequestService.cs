@@ -34,9 +34,11 @@ namespace EkofyApp.Infrastructure.Services.Requests
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             var artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
-                                            .Find(r => r.Id == request.PackageId).Limit(1)
+                                            .Find(r => r.Id == request.PackageId)
+                                            .Limit(1)
                                             .Project<ArtistPackage>(Builders<ArtistPackage>.Projection
-                                                .Include(ap => ap.ArtistId))
+                                                .Include(ap => ap.ArtistId)
+                                                .Include(ap => ap.EstimateDeliveryDays))
                                             .FirstOrDefaultAsync()
                                 ?? throw new BadRequestCustomException("Package not found!"); ;
 
