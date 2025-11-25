@@ -14,4 +14,22 @@ public class CategoryMutation(ICategoryService categoryService)
         await _categoryService.CreateCategoryAsync(categoryRequest);
         return true;
     }
+
+    public async Task<bool> UpdateCategoryAsync(UpdateCategoryRequest updateCategoryRequest)
+    {
+        await _categoryService.UpdateCategoryAsync(updateCategoryRequest);
+        return true;
+    }
+
+    public async Task<bool> SoftDeleteCategoryAsync(string categoryId)
+    {
+        await _categoryService.SoftDeleteCategoryAsync(categoryId);
+        return true;
+    }
+
+    public async Task<bool> HardDeleteCategoryAsync(DeleteCategoryRequest deleteCategoryRequest)
+    {
+        await _categoryService.HardDeleteCategoryAsync(deleteCategoryRequest);
+        return true;
+    }
 }

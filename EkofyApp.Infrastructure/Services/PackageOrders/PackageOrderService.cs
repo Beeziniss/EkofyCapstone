@@ -36,7 +36,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         {
             //lấy ra xem order này có được phép cập nhật không
             var packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
-                                    .Find(po => po.Id == packageOrderId && po.Status != PackageOrderStatus.Paid)
+                                    .Find(po => po.Id == packageOrderId && po.Status == PackageOrderStatus.Paid)
                                     .FirstOrDefaultAsync()
                               ?? throw new NotFoundCustomException("This package order is not found!");
 
