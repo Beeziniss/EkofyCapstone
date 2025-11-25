@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.PackageOrders;
+﻿using EkofyApp.Application.Models.Notifications;
+using EkofyApp.Application.Models.PackageOrders;
 using EkofyApp.Application.Models.Reviews;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.PackageOrders;
@@ -8,8 +9,10 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Infrastructure.Services.Notifications;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
@@ -17,11 +20,12 @@ using Serilog;
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
     [Queue("request")]
-    public sealed class PackageOrderService(IUnitOfWork unitOfWork, IStripeService stripeService, IHttpContextAccessor httpContextAccessor) : IPackageOrderService
+    public sealed class PackageOrderService(IUnitOfWork unitOfWork, IStripeService stripeService, IHttpContextAccessor httpContextAccessor, IHubContext<NotificationHub> hubContext) : IPackageOrderService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IStripeService _stripeService = stripeService;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IHubContext<NotificationHub> _hubContext = hubContext;
 
         public IQueryable<PackageOrder> GetPackageOrders()
         {
@@ -36,14 +40,16 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                     .FirstOrDefaultAsync()
                               ?? throw new NotFoundCustomException("This package order is not found!");
 
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
 
             //cập nhật trạng thái lại
-            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress);
+            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress)
+                                                      .Set(po => po.StartedAt, now);
 
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, update);
 
             //job chạy khi bắt đầu in progress
-            //BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), packageOrder.Duration);
+            BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), now.AddDays(packageOrder.Duration));
 
             return result.ModifiedCount > 0;
         }
@@ -72,9 +78,9 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 throw new BadRequestCustomException("You have used all your revisions!");
             }
 
-            if (!string.IsNullOrEmpty(packageOrder.BackgroundJobId))
+            if (!string.IsNullOrEmpty(packageOrder.ApprovedAutoJobId))
             {
-                BackgroundJob.Delete(packageOrder.BackgroundJobId);
+                BackgroundJob.Delete(packageOrder.ApprovedAutoJobId);
             }
 
             // Create new delivery
@@ -93,7 +99,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             // cho 1 job chạy khi submit thành công
             string jobId = BackgroundJob.Schedule<PackageOrderService>(service => service.ApproveDeliveryAutomatically(request.PackageOrderId), HelperMethod.GetUtcPlus7TimeOffset().AddDays(3));
 
-            update = update.Set(po => po.BackgroundJobId, jobId);
+            update = update.Set(po => po.ApprovedAutoJobId, jobId);
 
             var result = await _unitOfWork.GetCollection<PackageOrder>()
                         .UpdateOneAsync(po => po.Id == request.PackageOrderId, update);
@@ -129,7 +135,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         {
             // find and update package order. If not found, return false
             var update = Builders<PackageOrder>.Update
-                .Set(po => po.Status, PackageOrderStatus.Dispersed)
+                .Set(po => po.Status, PackageOrderStatus.Completed)
                 .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
             //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
@@ -203,7 +209,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             //nếu đã làm việc thì sẽ chuyển qua cho mod xử lý
             if (orderPackage.Status == PackageOrderStatus.InProgress && request.Status == PackageOrderStatus.Disputed)
             {
-                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed)
+                                                          .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
             }
@@ -211,7 +218,19 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             // trường hợp refund nhưng hủy trước khi mod duyệt
             if (orderPackage.Status == PackageOrderStatus.Disputed && request.Status == PackageOrderStatus.InProgress)
             {
-                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress);
+                var now = HelperMethod.GetUtcPlus7TimeOffset();
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress)
+                                                          .Set(po => po.FreezedTime, (now.Subtract(orderPackage.DisputedAt!.Value)));
+                //set laị job
+                if (!string.IsNullOrEmpty(orderPackage.OverdueJobId))
+                {
+                    BackgroundJob.Delete(orderPackage.OverdueJobId);
+                }
+
+                var jobId = BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(), now.AddDays(orderPackage.Duration) + orderPackage.FreezedTime);
+
+                update = update.Set(update => update.OverdueJobId, jobId);
+
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
             }
@@ -393,22 +412,22 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         private async Task ApproveDeliveryAutomatically(string packageOrderId)
         {
             //tự động duyệt các delivery đã quá hạn 3 ngày mà client không phản hồi
-            //var filter = Builders<PackageOrder>.Filter.And(
-            //    Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-            //    Builders<PackageOrder>.Filter.Gt(po => po.Duration, HelperMethod.GetUtcPlus7TimeOffset()),
-            //    Builders<PackageOrder>.Filter.ElemMatch(po => po.Deliveries,
-            //             d => d.RequestedAt != null &&
-            //             d.RequestedAt <= HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3) &&
-            //             d.ClientFeedback == null)
-            //);
-            //var update = Builders<PackageOrder>.Update
-            //    .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
-            //    .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
-            //    .Set(po => po.Status, PackageOrderStatus.Dispersed);
-            //// TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
-            //await _stripeService.EscrowReleaseAsync(packageOrderId);
+            var filter = Builders<PackageOrder>.Filter.And(
+                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > HelperMethod.GetUtcPlus7TimeOffset()),
+                Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+                Builders<PackageOrder>.Filter.ElemMatch(po => po.Deliveries,
+                         d => d.RequestedAt != null &&
+                         d.RequestedAt <= HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3) &&
+                         d.ClientFeedback == null)
+            );
+            var update = Builders<PackageOrder>.Update
+                .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
+                .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                .Set(po => po.Status, PackageOrderStatus.Completed);
+            // TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
+            await _stripeService.EscrowReleaseAsync(packageOrderId);
 
-            //await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
 
             // có lỗi thì thông báo HERE!
         }
@@ -416,13 +435,59 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         //NẾU NHƯ SAU DEADLINE MÀ VẪN CHƯA HOÀN THÀNH CÔNG VIỆC THÌ TỰ ĐỘNG ĐƯA VAOF DANH SÁCH CHO MOD XỬ LÝ
         public async Task SolveOverdueAutomatically()
         {
-            //var filter = Builders<PackageOrder>.Filter.And(
-            //    Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-            //    Builders<PackageOrder>.Filter.Lt(po => po.Duration, HelperMethod.GetUtcPlus7TimeOffset())
-            //    );
+            var filter = Builders<PackageOrder>.Filter.And(
+                Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > HelperMethod.GetUtcPlus7TimeOffset())
+                );
 
-            //var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
-            //await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+            var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed);
+            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
+        }
+
+        //JOB THÔNG BÁO CHO ARTIST KHI SẮP HẾT HẠN
+        public async Task NotifyArtistBeforeDeadlineAsync()
+        {
+            var now = HelperMethod.GetUtcPlus7TimeOffset();
+
+            var filter = Builders<PackageOrder>.Filter.And(
+                Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null
+                                                && (po.StartedAt.Value.AddDays(po.Duration - 1) + po.FreezedTime) <= now
+                                                && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > HelperMethod.GetUtcPlus7TimeOffset())
+                );
+            var packageOrders = await _unitOfWork.GetCollection<PackageOrder>().Find(filter).ToListAsync();
+
+            var clientIds = packageOrders.Select(o => o.ClientId).Distinct().ToList();
+
+            var clients = await _unitOfWork.GetCollection<User>()
+                .Find(u => clientIds.Contains(u.Id))
+                .ToListAsync();
+
+            var clientDict = clients.ToDictionary(c => c.Id, c => c.FullName);
+
+            foreach (var packageOrder in packageOrders)
+            {
+                string clientName = clientDict.TryGetValue(packageOrder.ClientId, out var name) ? name : "Unknown";
+                string content = HelperMethod.BuildContentNotification(NotificationActionType.OrderDeadline, NotificationRelatedType.Order, packageOrder.Id, clientName);
+
+                await _unitOfWork.GetCollection<Notification>()
+                    .InsertOneAsync(new Notification
+                    {
+                        ActorId = packageOrder.ClientId,
+                        TargetId = packageOrder.ProviderId,
+                        Content = content,
+                        Action = NotificationActionType.OrderDeadline,
+                        RelatedId = packageOrder.Id,
+                        RelatedType = NotificationRelatedType.Track,
+                        Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/order/{packageOrder.Id}"
+                    });
+
+                await _hubContext.Clients.User(packageOrder.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                    Avatar = string.Empty,
+                });
+            }
         }
         #endregion
     }

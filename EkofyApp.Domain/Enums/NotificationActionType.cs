@@ -15,6 +15,7 @@ public enum NotificationActionType
     RequestRejected,
     OrderCreated,
     OrderCompleted,
+    OrderDeadline,
     Release,
     Other
 }
