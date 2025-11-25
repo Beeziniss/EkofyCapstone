@@ -11,6 +11,11 @@ public sealed class NotificationService(IUnitOfWork unitOfWork, IHubContext<Noti
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHubContext<NotificationHub> _hubContext = hubContext;
 
+    public IQueryable<Notification> GetNotifications()
+    {
+        return _unitOfWork.GetCollection<Notification>().AsQueryable();
+    }
+
     public IQueryable<Notification> GetNotificationsForUser(string userId)
     {
         return _unitOfWork.GetCollection<Notification>().AsQueryable().Where(n => n.TargetId == userId);
