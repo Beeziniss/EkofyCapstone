@@ -1,6 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Domain.Entities;
-using EkofyApp.Domain.Utils;
 using HotChocolate.Data;
 
 namespace EkofyApp.Api.GraphQL.Query.Subscriptions;

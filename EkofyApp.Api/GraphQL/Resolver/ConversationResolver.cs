@@ -31,6 +31,7 @@ public sealed class ConversationResolver
                 .Find(x => intersectList.Contains(x.UserId))
                 .Project(x => new ConversationResponse()
                 {
+                    ListenerId = x.Id,
                     Nickname = x.DisplayName,
                     Avatar = x.AvatarImage ?? string.Empty
                 })
@@ -41,6 +42,7 @@ public sealed class ConversationResolver
             .Find(x => intersectList.Contains(x.UserId))
             .Project(x => new ConversationResponse()
             {
+                ArtistId = x.Id,
                 Nickname = x.StageName,
                 Avatar = x.AvatarImage ?? string.Empty
             })
@@ -65,6 +67,7 @@ public sealed class ConversationResolver
                 .Find(x => otherUserIds.Contains(x.UserId))
                 .Project(x => new ConversationResponse()
                 {
+                    ListenerId = x.Id,
                     Nickname = x.DisplayName,
                     Avatar = x.AvatarImage ?? string.Empty
                 })
@@ -75,8 +78,10 @@ public sealed class ConversationResolver
             .Find(x => otherUserIds.Contains(x.UserId))
             .Project(x => new ConversationResponse()
             {
+                ArtistId = x.Id,
                 Nickname = x.StageName,
-                Avatar = x.AvatarImage ?? string.Empty
+                Avatar = x.AvatarImage ?? string.Empty,
+
             })
             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
     }
