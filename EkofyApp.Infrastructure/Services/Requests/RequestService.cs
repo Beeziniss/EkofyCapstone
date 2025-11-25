@@ -101,33 +101,33 @@ namespace EkofyApp.Infrastructure.Services.Requests
             }
 
             //Sau khi artist xác nhận thì mới đóng conversation của bên khác
-            if (request.Status == RequestStatus.Confirmed && requestDocument.Type == RequestType.PublicRequest)
-            {
-                var conversations = _unitOfWork.GetCollection<Conversation>();
+            //if (request.Status == RequestStatus.Confirmed && requestDocument.Type == RequestType.PublicRequest)
+            //{
+            //    var conversations = _unitOfWork.GetCollection<Conversation>();
 
-                // Update cho user artist xác nhận
-                var updateUserConversation = conversations.UpdateOneAsync(c => c.RequestId == request.RequestId && c.UserIds.Contains(userId), Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Confirmed));
+            //    // Update cho user artist xác nhận
+            //    var updateUserConversation = conversations.UpdateOneAsync(c => c.RequestId == request.RequestId && c.UserIds.Contains(userId), Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Confirmed));
 
-                // Update cho các user còn lại
-                var updateOtherUsersConversation = conversations.UpdateManyAsync(c => c.RequestId == request.RequestId && !c.UserIds.Contains(userId), Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Cancelled));
+            //    // Update cho các user còn lại
+            //    var updateOtherUsersConversation = conversations.UpdateManyAsync(c => c.RequestId == request.RequestId && !c.UserIds.Contains(userId), Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Cancelled));
 
-                await Task.WhenAll(updateUserConversation, updateOtherUsersConversation);
+            //    await Task.WhenAll(updateUserConversation, updateOtherUsersConversation);
 
-                if (updateUserConversation.Result.ModifiedCount <= 0)
-                {
-                    throw new BadRequestCustomException(
-                        "Cannot update conversation after confirming request!"
-                    );
-                }
-            }
-            if (request.Status == RequestStatus.Confirmed && requestDocument.Type == RequestType.DirectRequest)
-            {
-                await _chatService.AddConversationFromRequestAsync(new()
-                {
-                    OtherUserId = requestDocument.RequestUserId,
-                    RequestId = request.RequestId
-                });
-            }
+            //    if (updateUserConversation.Result.ModifiedCount <= 0)
+            //    {
+            //        throw new BadRequestCustomException(
+            //            "Cannot update conversation after confirming request!"
+            //        );
+            //    }
+            //}
+            //if (request.Status == RequestStatus.Confirmed && requestDocument.Type == RequestType.DirectRequest)
+            //{
+            //    await _chatService.AddConversationFromRequestAsync(new()
+            //    {
+            //        OtherUserId = requestDocument.RequestUserId,
+            //        RequestId = request.RequestId
+            //    });
+            //}
 
             var update = Builders<Request>.Update.Set(r => r.Status, request.Status)
                                                  .Set(r => r.Notes,  "The request is " + request.Status.ToString().ToLower() + " by the artist");
