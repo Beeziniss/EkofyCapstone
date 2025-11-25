@@ -54,7 +54,7 @@ public sealed class ReportMutation(IReportService reportService, IUserService us
     /// <summary>
     /// Xóa báo cáo (soft delete)
     /// </summary>
-    [AuthorizeRoles(HelperRoleBase.AdminRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     public async Task<bool> DeleteReportAsync(string reportId)
     {
         return await _reportService.DeleteReportAsync(reportId);
