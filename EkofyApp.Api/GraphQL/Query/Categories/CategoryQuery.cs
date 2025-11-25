@@ -1,6 +1,5 @@
 ﻿using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Domain.Entities;
-using EkofyApp.Domain.Utils;
 using HotChocolate.Authorization;
 using HotChocolate.Data;
 

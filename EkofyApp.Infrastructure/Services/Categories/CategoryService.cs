@@ -5,6 +5,7 @@ using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Domain.Exceptions;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Categories;
@@ -31,6 +32,97 @@ public class CategoryService(IUnitOfWork unitOfWork) : ICategoryService
         };
 
         await _unitOfWork.GetCollection<Category>().InsertOneAsync(category);
+    }
+
+    public async Task UpdateCategoryAsync(UpdateCategoryRequest updateCategoryRequest)
+    {
+        // Find the category to update
+        Category? existingCategory = await _unitOfWork.GetCollection<Category>()
+            .Find(c => c.Id == updateCategoryRequest.CategoryId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Category with ID {updateCategoryRequest.CategoryId} not found");
+
+        // Build update definition
+        List<UpdateDefinition<Category>> updates = [];
+        UpdateDefinitionBuilder<Category> builder = Builders<Category>.Update;
+
+        if (!string.IsNullOrEmpty(updateCategoryRequest.Name))
+        {
+            updates.Add(builder.Set(x => x.Name, updateCategoryRequest.Name));
+            updates.Add(builder.Set(x => x.Slug, updateCategoryRequest.Name.ToLowerInvariant().Replace(" ", "-")));
+        }
+
+        if (!string.IsNullOrEmpty(updateCategoryRequest.Description))
+        {
+            updates.Add(builder.Set(x => x.Description, updateCategoryRequest.Description));
+        }
+
+        if (updateCategoryRequest.Type.HasValue)
+        {
+            updates.Add(builder.Set(x => x.Type, updateCategoryRequest.Type.Value));
+        }
+
+        if (updateCategoryRequest.Aliases != null)
+        {
+            updates.Add(builder.Set(x => x.Aliases, updateCategoryRequest.Aliases));
+        }
+
+        if (updateCategoryRequest.Popularity.HasValue)
+        {
+            updates.Add(builder.Set(x => x.Popularity, updateCategoryRequest.Popularity.Value));
+        }
+
+        if (updateCategoryRequest.IsVisible.HasValue)
+        {
+            updates.Add(builder.Set(x => x.IsVisible, updateCategoryRequest.IsVisible.Value));
+        }
+
+        // Always update the UpdatedAt timestamp
+        updates.Add(builder.Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+
+        if (updates.Count == 1) // Only UpdatedAt was added
+        {
+            throw new BadRequestCustomException("No valid fields provided to update.");
+        }
+
+        UpdateDefinition<Category> updateDefinition = builder.Combine(updates);
+
+        await _unitOfWork.GetCollection<Category>().UpdateOneAsync(
+            c => c.Id == updateCategoryRequest.CategoryId, 
+            updateDefinition);
+    }
+
+    public async Task SoftDeleteCategoryAsync(string categoryId)
+    {
+        // Check if category exists
+        Category? existingCategory = await _unitOfWork.GetCollection<Category>()
+            .Find(c => c.Id == categoryId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Category with ID {categoryId} not found");
+
+        // Soft delete by setting IsVisible to false and updating UpdatedAt
+        UpdateDefinition<Category> updateDefinition = Builders<Category>.Update
+            .Set(c => c.IsVisible, false)
+            .Set(c => c.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        await _unitOfWork.GetCollection<Category>().UpdateOneAsync(
+            c => c.Id == categoryId, 
+            updateDefinition);
+    }
+
+    public async Task HardDeleteCategoryAsync(DeleteCategoryRequest deleteCategoryRequest)
+    {
+        // Check if category exists
+        Category? existingCategory = await _unitOfWork.GetCollection<Category>()
+            .Find(c => c.Id == deleteCategoryRequest.CategoryId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Category with ID {deleteCategoryRequest.CategoryId} not found");
+
+        // Hard delete - permanently remove from database
+        DeleteResult result = await _unitOfWork.GetCollection<Category>()
+            .DeleteOneAsync(c => c.Id == deleteCategoryRequest.CategoryId);
+
+        if (result.DeletedCount == 0)
+        {
+            throw new BadRequestCustomException("Failed to delete category");
+        }
     }
 
     public async Task<IEnumerable<string>> GetMoodsFromAudioFeaturesAsync(IEnumerable<MoodType> moodTypes)
