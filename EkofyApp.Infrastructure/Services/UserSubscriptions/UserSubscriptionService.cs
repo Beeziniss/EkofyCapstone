@@ -63,16 +63,17 @@ public sealed class UserSubscriptionService(IUnitOfWork unitOfWork, IHttpContext
         });
     }
 
-    public async Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, string userId, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool status)
+    public async Task UpdateStatusUserSubscriptionAsync(IClientSessionHandle? session, string userId, bool cancelAtEndOfPeriod, DateTimeOffset? canceledAt, bool isActive, bool isRenew)
     {
         // TODO: Làm sao để biết là document nào mới đúng là đang cần tìm
         // Vì có thể có nhiều UserSubscription với cùng UserId và SubscriptionId
         // Nên cần có thêm một trường nào đó để phân biệt
         // Resolved: Lấy cái đang có trạng thái là Active
-        await _unitOfWork.GetCollection<UserSubscription>().UpdateOneAsync(session, x => x.IsActive == status && x.UserId == userId, Builders<UserSubscription>.Update
+        await _unitOfWork.GetCollection<UserSubscription>().UpdateOneAsync(session, x => x.IsActive == true && x.UserId == userId, Builders<UserSubscription>.Update
             .Set(x => x.CancelAtEndOfPeriod, cancelAtEndOfPeriod)
             .Set(x => x.CanceledAt, canceledAt)
-            .Set(x => x.IsActive, status)
+            .Set(x => x.IsActive, isActive)
+            .Set(x => x.AutoRenew, isRenew)
             .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
     }
 
