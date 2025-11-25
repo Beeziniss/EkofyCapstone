@@ -2,8 +2,8 @@
 
 public sealed record class ConversationResponse
 {
-    public string? ListenerId { get; set; }
-    public string? ArtistId { get; set; }
-    public string Nickname { get; set; } = null!;
-    public string Avatar { get; set; } = null!;
+    public string? ListenerId { get; init; }
+    public string? ArtistId { get; init; }
+    public string Nickname { get; init; } = null!;
+    public string Avatar { get; init; } = null!;
 }

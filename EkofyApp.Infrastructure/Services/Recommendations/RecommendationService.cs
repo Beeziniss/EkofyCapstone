@@ -6,7 +6,6 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using MongoDB.Driver;
-using System.Threading.Tasks;
 
 namespace EkofyApp.Infrastructure.Services.Recommendations;
 public sealed class RecommendationService(IUnitOfWork unitOfWork) : IRecommendationService
