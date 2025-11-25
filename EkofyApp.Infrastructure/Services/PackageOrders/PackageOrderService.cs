@@ -54,7 +54,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             return result.ModifiedCount > 0;
         }
 
-        public async Task<bool> SubmitDeliverytAsync(SubmitDeliveryRequest request)
+        public async Task<bool> SubmitDeliveryAsync(SubmitDeliveryRequest request)
         {
             PackageOrder packageOrder = _unitOfWork.GetCollection<PackageOrder>()
                 .Find(po => po.Id == request.PackageOrderId && po.Status == PackageOrderStatus.InProgress)

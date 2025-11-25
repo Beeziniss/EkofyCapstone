@@ -15,7 +15,7 @@ namespace EkofyApp.Application.ServiceInterfaces.PackageOrders
         IQueryable<PackageOrder> GetPackageOrders();
         Task<bool> RefundPartiallyAndEscrowAsync(PackageOrderRefundRequest request);
         Task<bool> SendRedoRequest(RedoRequest request);
-        Task<bool> SubmitDeliverytAsync(SubmitDeliveryRequest request);
+        Task<bool> SubmitDeliveryAsync(SubmitDeliveryRequest request);
         Task<bool> SwitchStatusByRequestorAsync(ChangeOrderStatusRequest request);
         Task UpdateReviewAsync(UpdateReviewRequest updateReviewRequest);
     }
