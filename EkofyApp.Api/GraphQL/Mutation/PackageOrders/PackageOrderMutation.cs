@@ -4,6 +4,8 @@ using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 
 namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
 {
+    [ExtendObjectType<MutationInitialization>]
+    [MutationType]
     public sealed class PackageOrderMutation(IPackageOrderService packageOrderService)
     {
         private readonly IPackageOrderService _packageOrderService = packageOrderService;
