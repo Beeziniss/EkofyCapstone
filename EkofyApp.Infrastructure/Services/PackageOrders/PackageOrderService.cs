@@ -409,7 +409,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         // Ở ĐÂY CHỈ THỰC HIỆN BACKGROUND JOB VÀO MỖI 12H SÁNG VÀ TRƯA ĐỂ TRÁNH CẬP NHẬT NHIỀU LÊN DB
 
         // Nếu sau 3 NGÀY sau khi artist submit file mà requestor chưa approve hay chuyển trạng thái thì sẽ tự động Approve và chuyển tiền
-        private async Task ApproveDeliveryAutomatically(string packageOrderId)
+        public async Task ApproveDeliveryAutomatically(string packageOrderId)
         {
             //tự động duyệt các delivery đã quá hạn 3 ngày mà client không phản hồi
             var filter = Builders<PackageOrder>.Filter.And(
