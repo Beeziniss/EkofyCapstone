@@ -13,7 +13,6 @@ using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
@@ -123,7 +122,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             if (status == "active" && stripeSubscription.CancelAtPeriodEnd == true)
                             {
                                 // Cập nhật trạng thái CancelAtEndOfPeriod trong UserSubscription
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), true);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), true, false);
 
                                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                                 // Không cần dùng background job để kiểm tra và hủy gói currentSubscription vào đúng ngày PeriodEnd
@@ -145,6 +144,13 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                 .Project(x => x.Id)
                                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.Metadata["user_id"]}");
 
+                            User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
+                                .Project<User>(Builders<User>.Projection
+                                    .Include(x => x.Id)
+                                    .Include(x => x.Email)
+                                    .Include(x => x.FullName))
+                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {userId}");
+
                             string status = stripeSubscription.Status; // canceled, incomplete_expired, incomplete, trialing, active, past_due
 
                             // Case 1: Hủy ngay lập tức (có thể do thẻ hết hạn, không đủ tiền, v.v.)
@@ -154,7 +160,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             if (status == "canceled")
                             {
                                 // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false, false);
 
                                 // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                 // StripeSubscription Id null
@@ -162,6 +168,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
+
+                                string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset());
+
+                                // Gửi email thông báo hủy gói currentSubscription
+                                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionExpired, user.Email, user.FullName, user.Email, periodEndAtString));
                             }
 
                             // Case 2: Stripe không tự động charge được và phải thử lại nhiều lần
@@ -171,7 +182,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             else if (status == "past_due" || status == "unpaid")
                             {
                                 // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false, false);
 
                                 // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                 // StripeSubscription Id null
@@ -180,16 +191,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
 
-                                // Gửi email thông báo hủy gói currentSubscription do không thanh toán được
-                                User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
-                                    .Project<User>(Builders<User>.Projection
-                                        .Include(x => x.Id)
-                                        .Include(x => x.Email)
-                                        .Include(x => x.FullName))
-                                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {userId}");
-
                                 string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset());
 
+                                // Gửi email thông báo hủy gói currentSubscription do không thanh toán được
                                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                             }
 
@@ -333,7 +337,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                             });
 
                                             // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false, true);
 
                                             // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                             await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, latestSubscription.Id, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
@@ -396,7 +400,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         }
 
                                         // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false, true);
 
                                         // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                         await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, currentSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
