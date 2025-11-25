@@ -14,7 +14,7 @@ public sealed class OneOffSnapshot
     public ArtistPackageStatus ArtistPackageStatus { get; set; }
 
     // Package Order
-    public DateTimeOffset Deadline { get; set; }
+    public int Duration { get; set; }
     public decimal PlatformFeePercentage { get; set; }
     public decimal ArtistFeePercentage { get; set; }
 

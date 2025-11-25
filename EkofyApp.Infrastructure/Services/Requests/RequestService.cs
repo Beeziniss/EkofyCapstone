@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.Requests;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Requests;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -10,10 +11,11 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Requests
 {
-    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IRequestService
+    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IChatService chatService) : IRequestService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IChatService _chatService = chatService;
 
         public IQueryable<Request> GetRequestsQueryable()
         {
@@ -32,9 +34,11 @@ namespace EkofyApp.Infrastructure.Services.Requests
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
             var artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
-                                            .Find(r => r.Id == request.PackageId).Limit(1)
+                                            .Find(r => r.Id == request.PackageId)
+                                            .Limit(1)
                                             .Project<ArtistPackage>(Builders<ArtistPackage>.Projection
-                                                .Include(ap => ap.ArtistId))
+                                                .Include(ap => ap.ArtistId)
+                                                .Include(ap => ap.EstimateDeliveryDays))
                                             .FirstOrDefaultAsync()
                                 ?? throw new BadRequestCustomException("Package not found!"); ;
 
@@ -46,7 +50,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 {
                     RequestUserId = userId,
                     ArtistId = request.ArtistId,
-                    Deadline = request.Deadline,
+                    Duration = artistPackage.EstimateDeliveryDays,
                     Requirements = request.Requirements,
                     Status = RequestStatus.Pending,
                     Type = RequestType.DirectRequest,
@@ -79,12 +83,16 @@ namespace EkofyApp.Infrastructure.Services.Requests
 
         public async Task<bool> ChangeRequestStatus(ChangeStatusRequest request)
         {
-            bool isExist = await _unitOfWork.GetCollection<Request>().Find(r => r.Id == request.RequestId && r.Status == RequestStatus.Pending).AnyAsync();
+            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            if (!isExist)
-            {
-                throw new NotFoundCustomException("Not find suitable request to update!");
-            }
+            var requestDocument = await _unitOfWork.GetCollection<Request>()
+                                                    .Find(r => r.Id == request.RequestId && r.Status == RequestStatus.Pending)
+                                                    .Project<Request>(Builders<Request>.Projection
+                                                        .Include(r => r.Status)
+                                                        .Include(r => r.RequestUserId)
+                                                        .Include(r => r.Type))
+                                                    .FirstOrDefaultAsync()
+                                  ?? throw new NotFoundCustomException("Not find suitable request to update!");
 
             // chỉ cho update trong các status này
             if(request.Status != RequestStatus.Canceled && request.Status != RequestStatus.Confirmed && request.Status != RequestStatus.Rejected)
@@ -92,8 +100,38 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 throw new BadRequestCustomException("Invalid status update!");
             }
 
+            //Sau khi artist xác nhận thì mới đóng conversation của bên khác
+            if (request.Status == RequestStatus.Confirmed && requestDocument.Type == RequestType.PublicRequest)
+            {
+                var conversations = _unitOfWork.GetCollection<Conversation>();
+
+                // Update cho user artist xác nhận
+                var updateUserConversation = conversations.UpdateOneAsync(c => c.RequestId == request.RequestId && c.UserIds.Contains(userId), Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Confirmed));
+
+                // Update cho các user còn lại
+                var updateOtherUsersConversation = conversations.UpdateManyAsync(c => c.RequestId == request.RequestId && !c.UserIds.Contains(userId), Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Cancelled));
+
+                await Task.WhenAll(updateUserConversation, updateOtherUsersConversation);
+
+                if (updateUserConversation.Result.ModifiedCount <= 0)
+                {
+                    throw new BadRequestCustomException(
+                        "Cannot update conversation after confirming request!"
+                    );
+                }
+            }
+            if (request.Status == RequestStatus.Confirmed && requestDocument.Type == RequestType.DirectRequest)
+            {
+                await _chatService.AddConversationFromRequestAsync(new()
+                {
+                    OtherUserId = requestDocument.RequestUserId,
+                    RequestId = request.RequestId
+                });
+            }
+
             var update = Builders<Request>.Update.Set(r => r.Status, request.Status)
                                                  .Set(r => r.Notes,  "The request is " + request.Status.ToString().ToLower() + " by the artist");
+
             var result = await _unitOfWork.GetCollection<Request>().UpdateOneAsync(r => r.Id == request.RequestId, update);
 
             return result.ModifiedCount > 0;
@@ -153,7 +191,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 Summary = request.Summary,
                 SummaryUnsigned = HelperMethod.ToUnsigned(request.Summary),
                 DetailDescription = request.DetailDescription,
-                Deadline = HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(request.Deadline),
+                Duration = request.Duration,
                 Budget = request.Budget,
                 Status = RequestStatus.Open,
                 Type = RequestType.PublicRequest,
@@ -172,7 +210,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                                      .Find(rh => rh.Id == request.Id && rh.Status == RequestStatus.Open && rh.Type == RequestType.PublicRequest)
                                                      .Project<Request>(Builders<Request>.Projection
                                                         .Include(rh => rh.RequestUserId)
-                                                        .Include(rh => rh.Deadline))
+                                                        .Include(rh => rh.Duration))
                                                      .FirstOrDefaultAsync()
                                  ?? throw new BadRequestCustomException("Invalid to update this request!");
 
@@ -204,9 +242,9 @@ namespace EkofyApp.Infrastructure.Services.Requests
             {
                 updatedFields.Add(updateBuilder.Set(rh => rh.DetailDescription, request.DetailDescription));
             }
-            if (request.Deadline.HasValue)
+            if (request.Duration.HasValue)
             {
-                updatedFields.Add(updateBuilder.Set(rh => rh.Deadline, HelperMethod.ConvertDateTimeToUtcPlus7TimeOffset(request.Deadline.Value)));
+                updatedFields.Add(updateBuilder.Set(rh => rh.Duration, request.Duration.Value));
             }
             if (request.Budget != null)
             {

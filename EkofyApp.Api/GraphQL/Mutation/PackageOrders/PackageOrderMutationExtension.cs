@@ -11,7 +11,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
                 .Authorize(HelperRoleBase.ListenerRolesArray);
             descriptor.Field(x => x.RefundPartiallyAsync(default!))
                 .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
-            descriptor.Field(x => x.SubmitDeliverytAsync(default!))
+            descriptor.Field(x => x.SubmitDeliveryAsync(default!))
                 .Authorize(HelperRoleBase.ArtistRolesArray);
             descriptor.Field(x => x.ApproveDeliveryAsync(default!))
                 .Authorize(HelperRoleBase.ListenerRolesArray);

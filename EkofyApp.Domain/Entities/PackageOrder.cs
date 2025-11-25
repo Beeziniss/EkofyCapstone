@@ -20,17 +20,19 @@ public sealed class PackageOrder : TimeStamped
     public string PaymentTransactionId { get; set; } = null!;
     [BsonRepresentation(BsonType.ObjectId)]
     public string ConversationId { get; set; } = null!;
-
+    public string Requirements { get; set; } = null!;
     public PackageOrderStatus Status { get; set; }
     public int RevisionCount { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
-    public DateTimeOffset Deadline { get; set; }
+    public int Duration { get; set; }
+    public TimeSpan FreezedTime { get; set; } = TimeSpan.Zero;
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? DisputedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public bool IsEscrowReleased { get; set; } = false;
     public decimal PlatformFeePercentage { get; set; }
     public decimal ArtistFeePercentage => 100m - PlatformFeePercentage;
-
     public Review? Review { get; set; }
-
-    public string? BackgroundJobId { get; set; }
+    public string? ApprovedAutoJobId { get; set; }
+    public string? OverdueJobId { get; set; }
 }

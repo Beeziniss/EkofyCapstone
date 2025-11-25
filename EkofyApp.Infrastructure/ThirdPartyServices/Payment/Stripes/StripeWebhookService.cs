@@ -13,9 +13,9 @@ using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Serilog;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
@@ -122,7 +122,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             if (status == "active" && stripeSubscription.CancelAtPeriodEnd == true)
                             {
                                 // Cập nhật trạng thái CancelAtEndOfPeriod trong UserSubscription
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), true);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), true, false);
 
                                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                                 // Không cần dùng background job để kiểm tra và hủy gói currentSubscription vào đúng ngày PeriodEnd
@@ -144,6 +144,13 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                 .Project(x => x.Id)
                                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {stripeSubscription.Metadata["user_id"]}");
 
+                            User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
+                                .Project<User>(Builders<User>.Projection
+                                    .Include(x => x.Id)
+                                    .Include(x => x.Email)
+                                    .Include(x => x.FullName))
+                                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {userId}");
+
                             string status = stripeSubscription.Status; // canceled, incomplete_expired, incomplete, trialing, active, past_due
 
                             // Case 1: Hủy ngay lập tức (có thể do thẻ hết hạn, không đủ tiền, v.v.)
@@ -153,7 +160,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             if (status == "canceled")
                             {
                                 // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false, false);
 
                                 // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                 // StripeSubscription Id null
@@ -161,6 +168,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
+
+                                string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset());
+
+                                // Gửi email thông báo hủy gói currentSubscription
+                                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionExpired, user.Email, user.FullName, user.Email, periodEndAtString));
                             }
 
                             // Case 2: Stripe không tự động charge được và phải thử lại nhiều lần
@@ -170,7 +182,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             else if (status == "past_due" || status == "unpaid")
                             {
                                 // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, userId, stripeSubscription.CancelAtPeriodEnd, HelperMethod.GetUtcPlus7TimeOffset(), false, false);
 
                                 // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                 // StripeSubscription Id null
@@ -179,16 +191,9 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                 // Hạ cấp quyền entitlements về Free
                                 await _effectiveEntitlementService.RebuildFreeTierAsync(session, userId, UserRole.Listener);
 
-                                // Gửi email thông báo hủy gói currentSubscription do không thanh toán được
-                                User user = await _unitOfWork.GetCollection<User>().Find(x => x.Id == userId)
-                                    .Project<User>(Builders<User>.Projection
-                                        .Include(x => x.Id)
-                                        .Include(x => x.Email)
-                                        .Include(x => x.FullName))
-                                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user with the customer {userId}");
-
                                 string periodEndAtString = HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset());
 
+                                // Gửi email thông báo hủy gói currentSubscription do không thanh toán được
                                 BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.SubscriptionCancelled, user.Email, user.FullName, user.Email, periodEndAtString));
                             }
 
@@ -332,7 +337,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                             });
 
                                             // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                            await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false, true);
 
                                             // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                             await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, latestSubscription.Id, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
@@ -395,7 +400,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                         }
 
                                         // Cập nhật trạng thái UserSubscription thành Inactive/Deprecated
-                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false);
+                                        await _userSubscriptionService.UpdateStatusUserSubscriptionAsync(session, user.Id, false, HelperMethod.GetUtcPlus7TimeOffset(), false, true);
 
                                         // Tạo mới UserSubscription mỗi lần có thanh toán thành công
                                         await _userSubscriptionService.CreateUserSubscriptionAsync(session, user.Id, currentSubscriptionId, stripeSubscriptionId, HelperMethod.GetUtcPlus7TimeOffset());
@@ -663,10 +668,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             ProviderId = userArtistId,
                             ArtistPackageId = checkoutSession.Metadata["package_id"],
                             PaymentTransactionId = transaction.Id,
+                            Requirements = checkoutSession.Metadata["requirements"],
                             ConversationId = checkoutSession.Metadata["conversation_id"],
                             Status = PackageOrderStatus.Paid,
                             RevisionCount = 0,
-                            Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
+                            Duration = Convert.ToInt32(checkoutSession.Metadata["duration"]),
                             PlatformFeePercentage = platformFeePercentage,
                         });
 
@@ -685,7 +691,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             // Package Order
                             PlatformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]),
                             ArtistFeePercentage = 100m - Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]),
-                            Deadline = HelperMethod.ParseFromStringUtcPlus7(checkoutSession.Metadata["deadline"]),
+                            Duration = Convert.ToInt32(checkoutSession.Metadata["duration"]),
 
                             OneOffType = OneOffType.Payment,
                         };
@@ -712,21 +718,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             }
                         }
 
-                        // Cập nhật trạng thái của Requests Hub
+                        // Cập nhật trạng thái của Requests
                         RequestType requestType = await _unitOfWork.GetCollection<Request>()
                             .Find(session, x => x.Id == checkoutSession.Metadata["request_id"])
                             .Project(x => x.Type)
                             .FirstOrDefaultAsync();
 
-                        if (requestType == RequestType.PublicRequest)
+                        // Cập nhật trạng thái request thành Closed
+                        UpdateResult updateRequest = await _unitOfWork.GetCollection<Request>()
+                        .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Status == RequestStatus.Confirmed, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
+                        if (updateRequest.ModifiedCount == 0)
                         {
-                            // Cập nhật trạng thái request hub thành Closed
-                            UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
-                            .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Type == RequestType.PublicRequest, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
-                            if (updateRequestHub.ModifiedCount == 0)
-                            {
-                                throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
-                            }
+                            throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");
                         }
 
                         // Cập nhật service revenue cho Artist
@@ -785,10 +788,18 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         .Set(t => t.Status, TransactionStatus.Expired)
                         .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-                    UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, Builders<PaymentTransaction>.Filter.Eq(x => x.StripeCheckoutSessionId, checkoutSession.Id), update);
+                    UpdateResult updateResult = await _unitOfWork.GetCollection<PaymentTransaction>().UpdateOneAsync(session, x => x.StripeCheckoutSessionId == checkoutSession.Id && x.PaymentStatus == PaymentTransactionStatus.Pending && x.Status == TransactionStatus.Open, update);
                     if (updateResult.ModifiedCount == 0)
                     {
-                        throw new UnprocessableEntityCustomException($"Cannot update payment transaction {checkoutSession.Id} to expired.");
+                        Log.Error($"Cannot update payment transaction {checkoutSession.Id} to expired.");
+                    }
+
+                    // Cập nhật trạng thái request thành Canceled
+                    UpdateResult updateRequestHub = await _unitOfWork.GetCollection<Request>()
+                    .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Status == RequestStatus.Confirmed, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Canceled));
+                    if (updateRequestHub.ModifiedCount == 0)
+                    {
+                        Log.Error("Cannot update request status to canceled");
                     }
                 }
             }

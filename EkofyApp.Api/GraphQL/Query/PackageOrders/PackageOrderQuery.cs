@@ -11,7 +11,7 @@ public sealed class PackageOrderQuery(IPackageOrderService packageOrderService)
 {
     private readonly IPackageOrderService _packageOrderService = packageOrderService;
 
-    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistModeratorRoles)]
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
