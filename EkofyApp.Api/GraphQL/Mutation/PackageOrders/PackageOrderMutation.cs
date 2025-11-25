@@ -8,9 +8,9 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
     {
         private readonly IPackageOrderService _packageOrderService = packageOrderService;
 
-        public async Task<bool> SubmitDeliverytAsync(SubmitDeliveryRequest request)
+        public async Task<bool> SubmitDeliveryAsync(SubmitDeliveryRequest request)
         {
-            await _packageOrderService.SubmitDeliverytAsync(request);
+            await _packageOrderService.SubmitDeliveryAsync(request);
             return true;
         }
 

@@ -4,6 +4,7 @@ using EkofyApp.Application.ServiceInterfaces.Albums;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Artist;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
@@ -111,7 +112,7 @@ public sealed class AlbumService(IUnitOfWork unitOfWork, IHttpContextAccessor ht
                 NameUnsigned = HelperMethod.ToUnsigned(addTrackToAlbumRequest.AlbumName!),
                 Type = AlbumType.Album,
                 TrackIds = [addTrackToAlbumRequest.TrackId],
-                ContributingArtists = [new() { ArtistId = artistId, Role = Domain.Enums.Artist.ArtistRole.Main }],
+                ContributingArtists = [new() { ArtistId = artistId, Role = ArtistRole.Main }],
                 CoverImage = string.Empty,
                 ReleaseInfo = new() { IsRelease = false, ReleaseStatus = ReleaseStatus.NotAnnounced },
                 IsVisible = true,
