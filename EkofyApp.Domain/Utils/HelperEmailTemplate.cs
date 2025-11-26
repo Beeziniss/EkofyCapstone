@@ -10,6 +10,10 @@ public sealed class HelperEmailTemplate
     public static string SubjectPasswordChanged() => "Ekofy - Password Changed";
     public static string SubjectReportWarning() => "Ekofy - Warning Report";
     public static string SubjectTemporarySuspension() => "Ekofy - Temporary Suspension";
+    public static string SubjectEntitlementRestriction() => "Ekofy - Account Restriction Notice";
+    public static string SubjectTrackRemoval() => "Ekofy - Track Removal Notice";
+    public static string SubjectRequestRemoval() => "Ekofy - Request Removal Notice";
+    public static string SubjectCommentRemoval() => "Ekofy - Comment Removal Notice";
     public static string SubjectPermanentBan() => "Ekofy - Permanent Ban";
     public static string SubjectSubscriptionCancelled() => "Ekofy - Subscription Cancellation Notice";
     public static string SubjectSubscriptionResumed() => "Ekofy - Subscription Resumed";
@@ -483,6 +487,267 @@ public sealed class HelperEmailTemplate
 </body>
 </html>
 ";
+    }
+
+    /// <summary>
+    /// Entitlement restriction email template.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Type
+	/// 3 - Action
+    /// 4 - Reason
+    /// 5 - Restricted At (string)
+    /// 6 - Effective Until (string)
+    /// 7 - Report Id
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string EntitlementRestriction(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string type = parameters[2];
+        string action = parameters[3];
+        string reason = parameters[4];
+        string restrictedAt = parameters[5];
+        string effectiveUntil = parameters[6];
+        string reportId = parameters[7];
+
+        return @$"<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Account Restriction Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- ACCOUNT RESTRICTION NOTICE -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We regret to inform you that your account associated with the email <strong>{email}</strong> has received a restriction.
+      </p>
+      <p>
+        <strong>Type:</strong> {type}<br>
+        <strong>Action:</strong> {action}<br>
+        <strong>Reason:</strong> {reason}<br>
+        <strong>Restricted At:</strong> {restrictedAt}<br>
+        <strong>Effective Until:</strong> {effectiveUntil}<br>
+        <strong>Report ID:</strong> {reportId}
+      </p>
+      <p>
+        Please be aware that your account functionality may be limited during this restriction period. You will be notified once your restriction has been lifted or if further actions are necessary.
+      </p>
+      <p>
+        If you believe this restriction was applied in error or wish to appeal, please contact our support team.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Thank you for your attention.<br><br>
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// Track removal email template.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Track Name
+	/// 3 - Track Id
+    /// 4 - Reason
+    /// 5 - Restricted At (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string TrackRemoval(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string trackName = parameters[2];
+        string trackId = parameters[3];
+        string reason = parameters[4];
+        string restrictedAt = parameters[5];
+
+        return @$"<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Track Removal Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- TRACK REMOVAL NOTICE -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We regret to inform you that your track titled <strong>{trackName}</strong> (Track ID: <strong>{trackId}</strong>) associated with your account <strong>{email}</strong> has been removed from the Ekofy platform.
+      </p>
+      <p>
+        <strong>Reason for removal:</strong><br>
+        {reason}
+      </p>
+      <p>
+        This action was taken on <strong>{restrictedAt}</strong>. If you have any questions or believe this was a mistake, please contact our support team for clarification or appeal.
+      </p>
+      <p>
+        We appreciate your cooperation and understanding.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// Request removal email template.
+	/// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Email
+	/// 2 - Request Name
+	/// 3 - Request Id
+    /// 4 - Reason
+    /// 5 - Restricted At (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string RequestRemoval(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string requestName = parameters[2];
+        string requestId = parameters[3];
+        string reason = parameters[4];
+        string restrictedAt = parameters[5];
+
+        return @$"<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Request Removal Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- REQUEST REMOVAL NOTICE -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We regret to inform you that your request titled <strong>{requestName}</strong> (Request ID: <strong>{requestId}</strong>) associated with your account <strong>{email}</strong> has been removed from the Ekofy platform.
+      </p>
+      <p>
+        <strong>Reason for removal:</strong><br>
+        {reason}
+      </p>
+      <p>
+        This action was taken on <strong>{restrictedAt}</strong>. If you believe this was a mistake or wish to appeal the decision, please contact our support team.
+      </p>
+      <p>
+        We appreciate your cooperation and understanding.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// Request removal email template.
+    /// Expected parameters:
+    /// 0 - Full Name
+    /// 1 - Email
+    /// 2 - Comment content
+    /// 3 - Comment Id
+    /// 4 - Reason
+    /// 5 - Restricted At (string)
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string CommentRemoval(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string commentContent = parameters[2];
+        string commentId = parameters[3];
+        string reason = parameters[4];
+        string restrictedAt = parameters[5];
+
+        return @$"<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Comment Removal Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- COMMENT REMOVAL NOTICE -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We regret to inform you that your comment (Comment ID: <strong>{commentId}</strong>) associated with your account <strong>{email}</strong> has been removed from the Ekofy platform.
+      </p>
+      <p>
+        <strong>Reason for removal:</strong><br>
+        {reason}
+      </p>
+      <p>
+        <strong>Comment content:</strong><br>
+        <em style=""background-color: #f0f0f0; display: block; padding: 12px; border-left: 4px solid #ab4ee5; margin-top: 8px;"">{commentContent}</em>
+      </p>
+      <p>
+        This action was taken on <strong>{restrictedAt}</strong>. If you believe this was a mistake or wish to appeal the decision, please contact our support team.
+      </p>
+      <p>
+        We appreciate your cooperation and understanding.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>";
     }
 
     /// <summary>

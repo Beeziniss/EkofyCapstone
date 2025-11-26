@@ -10,7 +10,7 @@ public enum ReportAction
     [EnumMember(Value = "Warning")]
     Warning,                // C?nh báo user
     
-    [EnumMember(Value = "ContentRemoval")]
+    [EnumMember(Value = "TrackRemoval")]
     ContentRemoval,         // Xóa n?i dung vi ph?m
     
     [EnumMember(Value = "Suspended")]

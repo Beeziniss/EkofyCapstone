@@ -4,12 +4,27 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using TimeZoneConverter;
 
 namespace EkofyApp.Domain.Utils;
 
 public sealed class HelperMethod
 {
+    public static string NormalizeString(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        // Biểu thức chính quy tìm kiếm:
+        // (?<=[a-z]) : Positive Lookbehind - Đảm bảo trước đó là một ký tự thường (a-z)
+        // (?=[A-Z]) : Positive Lookahead - Đảm bảo sau đó là một ký tự hoa (A-Z)
+        // Kết hợp lại để tìm vị trí *giữa* một ký tự thường và một ký tự hoa, sau đó chèn " " (dấu cách).
+        return Regex.Replace(input, "(?<=[a-z])(?=[A-Z])", " ");
+    }
+
     public static string BuildContentNotification(NotificationActionType action, NotificationRelatedType? relatedType, string? relatedName, string actorName)
     {
         return (action, relatedType) switch
