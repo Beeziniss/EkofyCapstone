@@ -407,7 +407,9 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
                 // Gửi email
                 // TODO: Thêm email template riêng cho restriction
-                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.WarningReport, userRestrictedEntitlement.Email, userRestrictedEntitlement.FullName, userRestrictedEntitlement.Email, request.Note!));
+                // Resolved: Đã thêm email template EntilementRestriction
+                string expiredInfo = accountRestrictions.First().Expired.HasValue ? accountRestrictions.First().Expired!.Value.ToString("dd/MM/yyyy HH:mm:ss") : "Permanent";
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.EntilementRestriction, userRestrictedEntitlement.Email, userRestrictedEntitlement.FullName, userRestrictedEntitlement.Email, HelperMethod.NormalizeString(accountRestrictions.First().Type.ToString()), HelperMethod.NormalizeString(accountRestrictions.First().Action.ToString()!), accountRestrictions.First().Reason!, HelperMethod.NormalizeToStringUtcPlus7(accountRestrictions.First().RestrictedAt!.Value), expiredInfo, accountRestrictions.First().ReportId!));
 
                 break;
 
@@ -415,6 +417,14 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 // Logic xóa content nếu có RelatedContentId
                 // TODO: Implement based on content type
                 // Resolved: Đã implement cho Request, Comment, Track
+                User userContentRemoval = await _unitOfWork.GetCollection<User>()
+                    .Find(u => u.Id == report.ReportedUserId)
+                    .Project<User>(Builders<User>.Projection
+                        .Include(u => u.Id)
+                        .Include(u => u.Email)
+                        .Include(u => u.FullName))
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("User not found");
+
                 switch (report.RelatedContentType)
                 {
                     case ReportRelatedContentType.Request:
@@ -431,6 +441,15 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                             throw new UnprocessableEntityCustomException("Failed to remove reported request");
                         }
 
+                        // Gửi email
+                        Request requestRemoval = await _unitOfWork.GetCollection<Request>()
+                            .Find(x => x.Id == report.RelatedContentId)
+                            .Project<Request>(Builders<Request>.Projection
+                                .Include(x => x.Id)
+                                .Include(x => x.Title))
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Reported request not found");
+                        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RequestRemoval, userContentRemoval.Email, userContentRemoval.FullName, userContentRemoval.Email, requestRemoval.Title!, requestRemoval.Id, request.Note! ?? "Violation of the platform's policies", HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset())));
+
                         break;
                     case ReportRelatedContentType.Comment:
                         // Gỡ comment
@@ -445,6 +464,15 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                         {
                             throw new UnprocessableEntityCustomException("Failed to remove reported comment");
                         }
+
+                        // Gửi email
+                        Comment commentRemoval = await _unitOfWork.GetCollection<Comment>()
+                            .Find(x => x.Id == report.RelatedContentId)
+                            .Project<Comment>(Builders<Comment>.Projection
+                                .Include(x => x.Id)
+                                .Include(x => x.Content))
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Reported comment not found");
+                        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.CommentRemoval, userContentRemoval.Email, userContentRemoval.FullName, userContentRemoval.Email, commentRemoval.Content, commentRemoval.Id, request.Note! ?? "Violation of the platform's policies", HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset())));
 
                         break;
                     case ReportRelatedContentType.Track:
@@ -467,13 +495,19 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                             throw new UnprocessableEntityCustomException("Failed to remove reported track");
                         }
 
+                        // Gửi email
+                        Track trackRemoval = await _unitOfWork.GetCollection<Track>()
+                            .Find(x => x.Id == report.RelatedContentId)
+                            .Project<Track>(Builders<Track>.Projection
+                                .Include(x => x.Id)
+                                .Include(x => x.Name))
+                            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Reported track not found");
+                        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.TrackRemoval, userContentRemoval.Email, userContentRemoval.FullName, userContentRemoval.Email, trackRemoval.Name, trackRemoval.Id, request.Note!, HelperMethod.NormalizeToStringUtcPlus7(HelperMethod.GetUtcPlus7TimeOffset())));
+
                         break;
                     default:
                         throw new BadRequestCustomException("Invalid content type for removal");
                 }
-
-                // TODO: Gửi email
-
 
                 break;
 
@@ -978,19 +1012,23 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         // TODO: Implement job cancellation
         // Cần query JobTracker collection để lấy jobIds theo userId
         // Sau đó cancel các jobs đó
-        Report report = await _unitOfWork.GetCollection<Report>()
-            .FindOneAndUpdateAsync(
+        string reportBackgroundJobId = await _unitOfWork.GetCollection<Report>()
+            .Find(x => x.Id == reportId)
+            .Project(x => x.BackgroundJobId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found report or job. Report: {reportId}");
+
+        UpdateResult updateResult = await _unitOfWork.GetCollection<Report>()
+            .UpdateOneAsync(
                 x => x.Id == reportId,
                 Builders<Report>.Update
                     .Set(x => x.BackgroundJobId, null)
-                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
-                new FindOneAndUpdateOptions<Report, Report>
-                {
-                    ReturnDocument = ReturnDocument.Before,
-                    Projection = Builders<Report>.Projection.Include(r => r.BackgroundJobId),
-                }
-            ) ?? throw new NotFoundCustomException($"Not found report or job. Report: {reportId}");
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                );
+        if (updateResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException("Failed to clear background job ID from report");
+        }
 
-        BackgroundJob.Delete(report.BackgroundJobId);
+        BackgroundJob.Delete(reportBackgroundJobId);
     }
 }
