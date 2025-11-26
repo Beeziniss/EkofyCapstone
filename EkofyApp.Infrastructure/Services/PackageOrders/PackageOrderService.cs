@@ -60,13 +60,10 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 .Find(po => po.Id == request.PackageOrderId && po.Status == PackageOrderStatus.InProgress)
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(po => po.Deliveries)
-                    .Include(po => po.RevisionCount))
-                .FirstOrDefault();
-
-            if (packageOrder == null)
-            {
-                throw new NotFoundCustomException("The order of request is not found!");
-            }
+                    .Include(po => po.RevisionCount)
+                    .Include(po => po.ProviderId)
+                    .Include(po => po.ClientId))
+                .FirstOrDefault() ?? throw new NotFoundCustomException("The order of request is not found!");
 
             //get last revision number of deliveries
             int lastRevisionNumber = packageOrder.Deliveries.Count > 0
@@ -105,6 +102,28 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                         .UpdateOneAsync(po => po.Id == request.PackageOrderId, update);
 
             //TODO: gửi notification cho client...
+            string avatar = await _unitOfWork.GetCollection<Artist>()
+                .Find(u => u.UserId == packageOrder.ProviderId)
+                .Project(u => u.AvatarImage)
+                .FirstOrDefaultAsync() ?? string.Empty;
+            string content = $"New delivery #{newDelivery.RevisionNumber} has been submitted for your order {request.PackageOrderId}. Please review it.";
+            await _hubContext.Clients.User(packageOrder.ClientId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+                Avatar = avatar,
+            });
+
+            await _unitOfWork.GetCollection<Notification>()
+                .InsertOneAsync(new Notification
+                {
+                    ActorId = packageOrder.ProviderId,
+                    TargetId = packageOrder.ClientId,
+                    Content = content,
+                    Action = NotificationActionType.Other,
+                    RelatedId = request.PackageOrderId,
+                    RelatedType = NotificationRelatedType.Order,
+                    Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{request.PackageOrderId}/submission"
+                });
 
             return result.ModifiedCount > 0;
         }
@@ -127,6 +146,34 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 .UpdateOneAsync(filter, update);
 
             //TODO: gửi notification cho artist...
+            PackageOrder packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
+                .Find(po => po.Id == request.PackageOrderId)
+                .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                    .Include(po => po.ProviderId)
+                    .Include(po => po.ClientId))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("The order of request is not found!");
+            string avatar = await _unitOfWork.GetCollection<Listener>()
+                .Find(u => u.UserId == packageOrder.ProviderId)
+                .Project(u => u.AvatarImage)
+                .FirstOrDefaultAsync() ?? string.Empty;
+            string content = $"A redo request has been sent for your delivery #{request.RevisionNumber} on order {request.PackageOrderId}. Please review the feedback.";
+            await _hubContext.Clients.User(packageOrder.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+                Avatar = avatar,
+            });
+
+            await _unitOfWork.GetCollection<Notification>()
+                .InsertOneAsync(new Notification
+                {
+                    ActorId = packageOrder.ClientId,
+                    TargetId = packageOrder.ProviderId,
+                    Content = content,
+                    Action = NotificationActionType.Other,
+                    RelatedId = request.PackageOrderId,
+                    RelatedType = NotificationRelatedType.Order,
+                    Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{request.PackageOrderId}/submission"
+                });
 
             return result.ModifiedCount > 0;
         }
