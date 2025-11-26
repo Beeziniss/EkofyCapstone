@@ -71,7 +71,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             //get last revision number of deliveries
             int lastRevisionNumber = packageOrder.Deliveries.Count > 0
                 ? packageOrder.Deliveries.Max(d => d.RevisionNumber)
-                : 0;
+                : -1;
 
             if (packageOrder.RevisionCount > lastRevisionNumber)
             {
@@ -120,8 +120,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             //cập nhật feedback và requestedAt cho delivery tương ứng
             var update = Builders<PackageOrder>.Update
-                .Set(po => po.Deliveries[-1].ClientFeedback, request.ClientFeedback)
-                .Set(po => po.Deliveries[-1].RequestedAt, HelperMethod.GetUtcPlus7TimeOffset());
+                .Set(po => po.Deliveries[request.RevisionNumber].ClientFeedback, request.ClientFeedback)
+                .Set(po => po.Deliveries[request.RevisionNumber].RequestedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
             var result = await _unitOfWork.GetCollection<PackageOrder>()
                 .UpdateOneAsync(filter, update);
