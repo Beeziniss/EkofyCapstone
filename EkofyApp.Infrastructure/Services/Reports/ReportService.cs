@@ -843,7 +843,6 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                     u => u.Id == report.ReportedUserId,
                     userUpdate
                 );
-
             if (userUpdateResult.ModifiedCount == 0)
             {
                 throw new UnprocessableEntityCustomException("Failed to unban user");
@@ -987,6 +986,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                     .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
                 new FindOneAndUpdateOptions<Report, Report>
                 {
+                    ReturnDocument = ReturnDocument.Before,
                     Projection = Builders<Report>.Projection.Include(r => r.BackgroundJobId),
                 }
             ) ?? throw new NotFoundCustomException($"Not found report or job. Report: {reportId}");

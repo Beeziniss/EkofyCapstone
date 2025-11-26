@@ -671,7 +671,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             Requirements = checkoutSession.Metadata["requirements"],
                             ConversationId = checkoutSession.Metadata["conversation_id"],
                             Status = PackageOrderStatus.Paid,
-                            RevisionCount = 0,
+                            RevisionCount = -1,
                             Duration = Convert.ToInt32(checkoutSession.Metadata["duration"]),
                             PlatformFeePercentage = platformFeePercentage,
                         });
