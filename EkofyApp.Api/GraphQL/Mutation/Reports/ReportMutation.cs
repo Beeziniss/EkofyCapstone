@@ -73,7 +73,7 @@ public sealed class ReportMutation(IReportService reportService, IUserService us
     /// Khôi ph?c user kh?i permanent ban d?a trên reportId
     /// Ch? admin m?i có quy?n th?c hi?n
     /// </summary>
-    [AuthorizeRoles(HelperRoleBase.AdminRoles)]
+    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
     public async Task<bool> RestoreUserAsync(string reportId)
     {
         return await _reportService.UnbanUserAsync(reportId);
