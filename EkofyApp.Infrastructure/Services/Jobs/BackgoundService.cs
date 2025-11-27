@@ -26,6 +26,7 @@ using System.Net;
 using System.Net.Mail;
 
 namespace EkofyApp.Infrastructure.Services.Jobs;
+
 public class BackgoundService : IBackgoundService
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
@@ -181,11 +182,26 @@ public class BackgoundService : IBackgoundService
 
     [Queue("progressing_upload")]
     [JobDisplayName("Check Progressing Uploads")]
-    public async Task CheckProgressingUploadsJob(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
+    public async Task CheckProgressingUploadsJob(string userId, string filePath, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest)
     {
+        byte[] bytes = await File.ReadAllBytesAsync(filePath);
+
         using var scope = _serviceScopeFactory.CreateScope();
         var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
         await trackService.ApproveAutomaticallyAsync(userId, bytes, createTrackRequest, createWorkRequest, createRecordingRequest);
+
+        // Xóa file tạm sau khi xử lý
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Error deleting temporary file {filePath}: {ex}");
+        }
     }
 
     [Queue("progressing_upload_manually")]

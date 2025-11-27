@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using System.Security.Claims;
 
+
 namespace EkofyApp.Infrastructure.Services.Reports;
 
 public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor) : IReportService
