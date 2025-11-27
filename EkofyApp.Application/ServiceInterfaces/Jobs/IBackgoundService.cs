@@ -14,7 +14,7 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task MonthlyRoyaltyReportJob();
         Task UpdateStreamCountJob();
         Task RemoveExpiredRestrictionAsync(string userId);
-        Task CheckProgressingUploadsJob(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
+        Task CheckProgressingUploadsJob(string userId, string filePath, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
         Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType);
         Task ProcessTrackEngagementMetricJobAsync(string trackId, PopularityActionType actionType);
         Task ProcessTrackDiscoveryMetricJobAsync(string trackId, PopularityActionType actionType);

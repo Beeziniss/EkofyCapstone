@@ -114,9 +114,22 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             {
                 //await ApproveAutomaticallyAsync(autoStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
+                // Tạo file tạm để truyền vào job
+                string uploadsTempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MyAppUploads");
+                Directory.CreateDirectory(uploadsTempDir); // đảm bảo tồn tại
+
+                string tempFilePath = System.IO.Path.Combine(uploadsTempDir, ObjectId.GenerateNewId() + System.IO.Path.GetExtension(file.Name));
+                await File.WriteAllBytesAsync(tempFilePath, fileBytes);
+
+                // Kiểm tra file đã tạo chưa
+                if (!File.Exists(tempFilePath))
+                {
+                    throw new ConflictCustomException("Failed to create temporary file for upload processing.");
+                }
+
                 // Đẩy xuống queue để tránh bị treo api
                 BackgroundJob.Enqueue<IBackgoundService>(
-                            x => x.CheckProgressingUploadsJob(userId, fileBytes, createTrackRequest, createWorkRequest, createRecordingRequest)
+                            x => x.CheckProgressingUploadsJob(userId, tempFilePath, createTrackRequest, createWorkRequest, createRecordingRequest)
                         );
             }
             else
