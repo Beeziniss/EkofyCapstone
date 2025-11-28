@@ -5,32 +5,38 @@ namespace EkofyApp.Domain.Enums.Reports;
 public enum ReportType
 {
     [EnumMember(Value = "Spam")]
-    Spam,                   // Spam, qu?ng cáo
-    
+    Spam,
+
     [EnumMember(Value = "Harassment")]
-    Harassment,             // Qu?y r?i, b?t n?t
-    
+    Harassment,
+
     [EnumMember(Value = "HateSpeech")]
-    HateSpeech,             // Phát ngôn thù ??ch
-    
+    HateSpeech,
+
     [EnumMember(Value = "InappropriateContent")]
-    InappropriateContent,   // N?i dung không phù h?p
-    
+    InappropriateContent,
+
     [EnumMember(Value = "Impersonation")]
-    Impersonation,          // Gi? m?o danh tính
-    
+    Impersonation,
+
     [EnumMember(Value = "CopyrightViolation")]
-    CopyrightViolation,     // Vi ph?m b?n quy?n
-    
+    CopyrightViolation,
+
     [EnumMember(Value = "FakeAccount")]
-    FakeAccount,            // Tài kho?n gi? m?o
-    
+    FakeAccount,
+
     [EnumMember(Value = "ScamOrFraud")]
-    ScamOrFraud,            // L?a ??o
-    
+    ScamOrFraud,
+
     [EnumMember(Value = "SelfHarmOrDangerousContent")]
-    SelfHarmOrDangerousContent,  // T? gây h?i ho?c n?i dung nguy hi?m
-    
+    SelfHarmOrDangerousContent,
+
+    [EnumMember(Value = "PrivacyViolation")]
+    PrivacyViolation,
+
+    [EnumMember(Value = "UnapprovedUploadedTrack")]
+    UnapprovedUploadedTrack,
+
     [EnumMember(Value = "Other")]
     Other                   // Lý do khác
 }

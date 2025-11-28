@@ -5,6 +5,7 @@ using EkofyApp.Application.Models.Uploads;
 using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
+using EkofyApp.Domain.Enums;
 using MongoDB.Driver;
 
 namespace EkofyApp.Application.ServiceInterfaces.Tracks;
@@ -16,8 +17,6 @@ public interface ITrackService
     TrackTempRequest CreateTrackTemp(CreateTrackRequest createTrackRequest);
     Task<float[]> GenerateEmbeddingsAsync(string term);
     Task<IEnumerable<Track>> GetAllTracksBySemanticAsync(string text, int limit = 20);
-    Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20);
-    Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId);
     Task<TrackResponse> GetTrackResolverContext(ProjectionDefinition<Track> projection, string id);
     IQueryable<Track> GetTracks();
     Task<bool> CheckTrackInFavoriteAsync(string trackId);
@@ -31,4 +30,7 @@ public interface ITrackService
     IQueryable<Track> GetCosineRecommendedTracksByTrackId(string trackId, AudioFeatureWeight audioFeatureWeight, int limit = 10);
     Task ApproveAutomaticallyAsync(string userId, byte[] bytes, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest);
     Task<bool> ApproveTrackUploadRequestAsync(string actionByUserId, string uploadId);
+    Task EscalateOldUploadRequestsAsync();
+    Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(string? userId = null, ApprovalPriorityStatus? priority = null, int pageNumber = 1, int pageSize = 20);
+    Task<CombinedUploadRequest> GetPendingTrackUploadRequestByUploadIdAsync(string uploadId, ApprovalPriorityStatus? priority = null);
 }

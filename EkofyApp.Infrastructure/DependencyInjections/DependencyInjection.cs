@@ -754,6 +754,7 @@ public static class DependencyInjection
         BsonSerializer.RegisterSerializer(typeof(ReportPriority), new EnumMemberSerializer<ReportPriority>());
         BsonSerializer.RegisterSerializer(typeof(ReportRelatedContentType), new EnumMemberSerializer<ReportRelatedContentType>());
         BsonSerializer.RegisterSerializer(typeof(RestrictionAction), new EnumMemberSerializer<RestrictionAction>());
+        BsonSerializer.RegisterSerializer(typeof(ApprovalPriorityStatus), new EnumMemberSerializer<ApprovalPriorityStatus>());
 
         // Comment
         BsonSerializer.RegisterSerializer(typeof(CommentType), new EnumMemberSerializer<CommentType>());
