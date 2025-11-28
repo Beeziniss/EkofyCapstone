@@ -10,14 +10,16 @@ namespace EkofyApp.Infrastructure.BackgroundJobs
     {
         public static void ConfigureJobs(this WebApplication app)
         {
+            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
             //app.Services.CreateScope();
 
             //BackgroundJob.Enqueue(() => app.Services.GetService<IBackgoundService>()!.SendEmailJob("satori562003@gmail.com"));
 
-            RecurringJob.AddOrUpdate("add-stream-count", () => app.Services.GetService<IBackgoundService>()!.UpdateStreamCountJob(), "*/3 * * * *");
+            RecurringJob.AddOrUpdate("add-stream-count", () => app.Services.GetService<IBackgoundService>()!.UpdateStreamCountJob(), "*/3 * * * *", new RecurringJobOptions { TimeZone = vietnamTimeZone });
 
             // ở đây hangfire lấy theo giờ của mongo nên để chạy vào 23:59 ngày cuối tháng thì phải trừ 7 tiếng (giờ VN là GMT+7)
-            RecurringJob.AddOrUpdate("monthly-royalty-report", () => app.Services.GetService<IBackgoundService>()!.MonthlyRoyaltyReportJob(), "59 16 L * ?");
+            RecurringJob.AddOrUpdate("monthly-royalty-report", () => app.Services.GetService<IBackgoundService>()!.MonthlyRoyaltyReportJob(), "59 23 L * ?", new RecurringJobOptions { TimeZone = vietnamTimeZone });
 
             // Tạo daily playlist vào lúc 7 giờ sáng (GMT +7) mỗi ngày
             //RecurringJob.AddOrUpdate("daily-playlist-generation", () => app.Services.GetService<IBackgoundService>()!.DailyPlaylistGenerationJob(), Cron.Daily(0, 0));

@@ -817,9 +817,11 @@ public static class DependencyInjection
                 },
                 Prefix = "backgroundjobs.hangfire",
                 CheckConnection = false,
+                
 
                 //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
-            }));
+            })
+            );
 
 
         //đăng ký Hangfire server
