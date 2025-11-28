@@ -53,18 +53,18 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
         return _trackService.SearchTracks(name);
     }
 
-    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseProjection]
-    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(string? userId = null, ApprovalPriorityStatus? priority = null, int pageNumber = 1, int pageSize = 20)
     {
-        return await _trackService.GetPendingTrackUploadRequestsAsync(pageNumber, pageSize);
+        return await _trackService.GetPendingTrackUploadRequestsAsync(userId, priority, pageNumber, pageSize);
     }
 
-    [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]
+    [AuthorizeRoles(HelperRoleBase.ArtistModeratorAdminRoles)]
     [UseProjection]
-    public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId)
+    public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId, ApprovalPriorityStatus? priority = null)
     {
-        return await _trackService.GetPendingTrackUploadRequestByIdAsync(uploadId);
+        return await _trackService.GetPendingTrackUploadRequestByUploadIdAsync(uploadId, priority);
     }
 
     [AuthorizeRoles(HelperRoleBase.ModeratorAdminRoles)]

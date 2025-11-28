@@ -5,7 +5,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Work : IEntityCustom // TODO: Chưa xong hết các trường cần thiết
+public sealed class Work
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

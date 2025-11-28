@@ -708,7 +708,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return track;
     }
 
-    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
+    private async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(int pageNumber = 1, int pageSize = 20)
     {
         ICacheResult<PaginatedData<CombinedUploadRequest>> result = await _redisCacheService.GetPendingCombinedUploadsAsync(pageNumber, pageSize);
 
@@ -732,7 +732,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         return paginatedData;
     }
 
-    public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByIdAsync(string uploadId)
+    private async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByUploadIdAsync(string uploadId)
     {
         ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
 
@@ -742,6 +742,193 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         }
 
         return cacheResult.Value;
+    }
+
+    public async Task EscalateOldUploadRequestsAsync()
+    {
+        try
+        {
+            // Get all pending upload requests
+            PaginatedData<CombinedUploadRequest> allPendingRequests = await GetPendingTrackUploadRequestsAsync(1, int.MaxValue);
+
+            if (allPendingRequests.Items == null || !allPendingRequests.Items.Any())
+            {
+                return;
+            }
+
+            DateTimeOffset currentTime = HelperMethod.GetUtcPlus7TimeOffset();
+            DateTimeOffset threeDaysAgo = currentTime.AddDays(-3);
+
+            // Find requests older than 3 days that can be escalated
+            List<CombinedUploadRequest> requestsToEscalate = allPendingRequests.Items
+                .Where(request => request.RequestedAt <= threeDaysAgo &&
+                                request.ApprovalPriority != ApprovalPriorityStatus.Urgent)
+                .ToList();
+
+            if (requestsToEscalate.Count == 0)
+            {
+                return;
+            }
+
+            int escalatedCount = 0;
+
+            foreach (CombinedUploadRequest request in requestsToEscalate)
+            {
+                try
+                {
+                    ApprovalPriorityStatus? newPriority = GetNextPriorityLevel(request.ApprovalPriority);
+
+                    if (newPriority.HasValue)
+                    {
+                        await UpdateUploadRequestPriorityAsync(request.Id, newPriority.Value);
+                        escalatedCount++;
+
+                        //_logger.LogInformation(
+                        //    "Escalated upload request {UploadId} from {OldPriority} to {NewPriority}. Request age: {Age} days",
+                        //    request.Id, 
+                        //    request.ApprovalPriority, 
+                        //    newPriority.Value,
+                        //    (currentTime - request.RequestedAt).Days);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to escalate upload request {UploadId}", request.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during upload request escalation process");
+            throw;
+        }
+    }
+
+    private static ApprovalPriorityStatus? GetNextPriorityLevel(ApprovalPriorityStatus currentPriority)
+    {
+        return currentPriority switch
+        {
+            ApprovalPriorityStatus.Low => ApprovalPriorityStatus.Medium,
+            ApprovalPriorityStatus.Medium => ApprovalPriorityStatus.High,
+            ApprovalPriorityStatus.High => ApprovalPriorityStatus.Urgent,
+            ApprovalPriorityStatus.Urgent => null, // Already at highest level
+            _ => null
+        };
+    }
+
+    private async Task UpdateUploadRequestPriorityAsync(string uploadId, ApprovalPriorityStatus newPriority)
+    {
+        try
+        {
+            // Get the current request from Redis
+            ICacheResult<CombinedUploadRequest> cacheResult = await _redisCacheService.TryGetGenericAsync<CombinedUploadRequest>($"upload:{uploadId}:requestUpload");
+
+            if (!cacheResult.Success || cacheResult.Value == null)
+            {
+                _logger.LogError("Upload request {UploadId} not found in cache during priority update", uploadId);
+                return;
+            }
+
+            CombinedUploadRequest currentRequest = cacheResult.Value;
+
+            // Create updated request with new priority
+            CombinedUploadRequest updatedRequest = currentRequest with
+            {
+                ApprovalPriority = newPriority
+            };
+
+            // Update the request in Redis (maintain the same TTL)
+            TimeSpan? currentTtl = await _redisCacheService.GetTTLAsync($"upload:{uploadId}:requestUpload");
+            TimeSpan ttlToSet = currentTtl ?? TimeSpan.FromDays(7); // Default 7 days if no TTL found
+
+            await _redisCacheService.SetGenericAsync($"upload:{uploadId}:requestUpload", updatedRequest, ttlToSet);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update priority for upload request {UploadId}", uploadId);
+            throw;
+        }
+    }
+
+    public async Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(
+        string? userId = null,
+        ApprovalPriorityStatus? priority = null,
+        int pageNumber = 1,
+        int pageSize = 20)
+    {
+        try
+        {
+            // Get all pending requests
+            PaginatedData<CombinedUploadRequest> allRequests = await GetPendingTrackUploadRequestsAsync(1, int.MaxValue);
+
+            if (allRequests.Items == null || !allRequests.Items.Any())
+            {
+                return new PaginatedData<CombinedUploadRequest>
+                {
+                    Items = [],
+                    TotalCount = 0
+                };
+            }
+
+            // Filter by priority if specified
+            IEnumerable<CombinedUploadRequest> filteredItems = allRequests.Items;
+
+            if (priority.HasValue)
+            {
+                filteredItems = filteredItems.Where(r => r.ApprovalPriority == priority.Value);
+            }
+
+            // Filter by userId if specified
+            if (!string.IsNullOrEmpty(userId))
+            {
+                filteredItems = filteredItems.Where(r => r.CreatedBy == userId);
+            }
+
+            // Sort by priority (Urgent first) and then by request date (oldest first)
+            List<CombinedUploadRequest> sortedItems = filteredItems
+                .OrderByDescending(r => r.ApprovalPriority)
+                .ThenBy(r => r.RequestedAt)
+                .ToList();
+
+            // Apply pagination
+            List<CombinedUploadRequest> paginatedItems = sortedItems
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PaginatedData<CombinedUploadRequest>
+            {
+                Items = paginatedItems,
+                TotalCount = sortedItems.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving pending upload requests by priority");
+            throw;
+        }
+    }
+
+    public async Task<CombinedUploadRequest> GetPendingTrackUploadRequestByUploadIdAsync(string uploadId, ApprovalPriorityStatus? priority = null)
+    {
+        try
+        {
+            // Get the specific upload request by ID
+            CombinedUploadRequest uploadRequest = await GetPendingTrackUploadRequestByUploadIdAsync(uploadId);
+
+            // Check if priority filter should be applied
+            if (priority.HasValue && uploadRequest.ApprovalPriority != priority.Value)
+            {
+                throw new NotFoundCustomException($"Upload request with ID {uploadId} and priority {priority} not found.");
+            }
+
+            return uploadRequest;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving pending upload request by ID with priority filter");
+            throw;
+        }
     }
 
     #region Favorite Tracks
@@ -1009,7 +1196,6 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         {
             throw new BadRequestCustomException(e.Message);
         }
-
     }
 
     public async Task<float[]> GenerateEmbeddingsAsync(string term)

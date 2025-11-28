@@ -5,7 +5,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Recording : IEntityCustom
+public sealed class Recording
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
