@@ -90,6 +90,8 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
             // Lấy tất cả conversations mà user tham gia
             IEnumerable<Conversation> userConversations = await _unitOfWork.GetCollection<Conversation>()
                 .Find(c => c.UserIds.Contains(userId))
+                .Project<Conversation>(Builders<Conversation>.Projection
+                    .Include(x => x.UserIds))
                 .ToListAsync();
 
             // Thu thập tất cả contactIds (những người khác trong conversations)
