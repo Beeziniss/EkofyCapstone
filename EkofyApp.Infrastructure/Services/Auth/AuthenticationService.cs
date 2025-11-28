@@ -20,10 +20,10 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Google.Apis.Auth;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity.Data;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Claims;
@@ -541,6 +541,177 @@ public sealed class AuthenticationService(
             UserId = admin.Id,
             Role = admin.Role,
         };
+    }
+
+    public async Task<AuthListenerTokenResponse> LoginByGoogleAsync(LoginGoogleRequest loginGoogleRequest)
+    {
+        try
+        {
+            await _unitOfWork.ExecuteInTransactionAsync(async session =>
+            {
+                if (string.IsNullOrEmpty(loginGoogleRequest.GoogleToken))
+                {
+                    throw new BadRequestCustomException("Google Token is null or empty");
+                }
+
+                // Lấy token từ FE
+                // Xác thực token của Google và lấy thông tin người dùng
+                GoogleJsonWebSignature.Payload payload = await VerifyGoogleTokenAsync(loginGoogleRequest.GoogleToken) ?? throw new UnauthorizedAccessException("Invalid Google token.");
+
+                if (!payload.EmailVerified)
+                {
+                    throw new UnauthorizedCustomException("Email is not verified. Please verify your email to access our website");
+                }
+
+                string? givenName = payload.GivenName; // Given Name can be null
+                string? surName = payload.FamilyName; // Sur Name can be null
+                string? fullName = HelperMethod.ValidateAndCombineName(givenName, surName);
+
+                // Lấy URL ảnh người dùng
+                string avatar = payload.Picture;
+
+                // Lấy Email người dùng
+                string email = payload.Email;
+
+                // Lấy thông tin người dùng
+                User retrieveUser = await _unitOfWork.GetCollection<User>()
+                    .Find(user => user.Email == email.ToLowerInvariant())
+                    .Project<User>(Builders<User>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.Role)
+                        .Include(x => x.IsLinkedWithGoogle))
+                    .FirstOrDefaultAsync();
+
+                // Trường hợp mới đăng nhập google account lần đầu tức là chưa tồn tại tài khoản trong db
+                if (retrieveUser is null)
+                {
+                    string userId = ObjectId.GenerateNewId().ToString();
+
+                    retrieveUser = new User()
+                    {
+                        Id = userId,
+                        Email = email.Trim().ToLowerInvariant(),
+                        FullName = fullName ?? "Anonymous",
+                        Gender = UserGender.NotSpecified,
+                        BirthDate = DateTimeOffset.MinValue,
+                        Role = UserRole.Listener,
+                        Status = UserStatus.Active,
+                        IsLinkedWithGoogle = true,
+                    };
+
+                    await _unitOfWork.GetCollection<User>().InsertOneAsync(session, retrieveUser);
+
+                    await _unitOfWork.GetCollection<Listener>().InsertOneAsync(session, new Listener()
+                    {
+                        UserId = userId,
+                        DisplayName = fullName ?? "Anonymous",
+                        DisplayNameUnsigned = HelperMethod.ToUnsigned(fullName ?? "Anonymous"),
+                        Email = email.Trim().ToLowerInvariant(),
+                        AvatarImage = avatar,
+                    });
+                }
+                else // Kiểm tra user có liên kết google account chưa
+                {
+                    // Nếu chưa liên kết thì yêu cầu người dùng muốn liên kết hay không
+                    bool? isLinkedWithGoogle = retrieveUser.IsLinkedWithGoogle;
+                    if (isLinkedWithGoogle is not null && !isLinkedWithGoogle.Value) // isLink = False
+                    {
+                        throw new ConflictCustomException("This email is already registered in the platform. Please link your Google account with the existing account");
+                    }
+                }
+
+                // Nếu không cho phép liên kết thì không cho người dùng đăng nhập bằng google account vì account đã tồn tại google email rồi
+                // Nếu cho phép liên kết confirm liên kết
+                // Tạo API để FE gọi
+                // Cái này bên FE sẽ tự xử lý
+
+                // Nếu có liên kết thì đăng nhập bình thường
+                // Trường hợp đã đăng nhập vào hệ thống trước đó rồi
+                // Tạo JWT access token và refresh token
+
+                // Có thể không cần dùng claimList vì trên đó đã có list về claim và tùy theo hệ thống nên tạo mới list claim
+                Listener listener = await _unitOfWork.GetCollection<Listener>()
+                    .Find(x => x.Email == email.ToLowerInvariant())
+                    .Project<Listener>(Builders<Listener>.Projection
+                        .Include(x => x.Id)
+                        .Include(x => x.AvatarImage))
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found email {email}");
+                IEnumerable<Claim> claims =
+                [
+                    new Claim("userId", retrieveUser.Id),
+                    new Claim("listenerId", listener.Id),
+                    new Claim(ClaimTypes.Role, retrieveUser.Role.ToString()),
+                    new Claim("avatarImage", listener.AvatarImage ?? string.Empty),
+                ];
+
+                // Gọi phương thức để tạo access token và refresh token từ danh sách claim và thông tin người dùng
+                AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims, loginGoogleRequest.IsMobile);
+
+                CookieOptions cookieOptions = new()
+                {
+                    Secure = true,
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.None,
+                    MaxAge = TimeSpan.FromDays(7)
+                };
+
+                // Đảm bảo rằng hệ thống đã tạo AccessToken thành công thì mới cập nhật field LastLoginTime
+                UpdateDefinition<User> updateDefinition = Builders<User>.Update.Set(user => user.LastLoginAt, HelperMethod.GetUtcPlus7TimeOffset());
+                await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, user => user.Id == retrieveUser.Id, updateDefinition);
+
+                return new AuthListenerTokenResponse()
+                {
+                    AccessToken = token.AccessToken,
+                    RefreshToken = token.RefreshToken,
+                    UserId = retrieveUser.Id,
+                    ListenerId = listener.Id,
+                    Role = retrieveUser.Role,
+                    AvatarImage = listener.AvatarImage ?? string.Empty,
+                };
+            });
+
+            throw new ExternalServiceCustomException("Unreachable code reached in LoginByGoogleAsync");
+        }
+        catch (Exception ex)
+        {
+            throw new ExternalServiceCustomException($"{ex}");
+        }
+    }
+
+    public async Task LinkWithGoogleAccountAsync()
+    {
+        // Lấy thông tin người dùng
+        string userId = _httpContextAccessor.HttpContext?.User?.FindFirst("userId")?.Value
+            ?? throw new UnauthorizedCustomException("User is not authenticated.");
+
+        User user = await _unitOfWork.GetCollection<User>()
+            .Find(user => user.Id == userId && user.IsLinkedWithGoogle == false)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.IsLinkedWithGoogle))
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found user or user has been linked with google account");
+
+        // Cập nhật trạng thái liên kết tài khoản Google
+        UpdateDefinition<User> isLinkedWithGoogleUpdate = Builders<User>.Update
+            .Set(user => user.IsLinkedWithGoogle, true)
+            .Set(user => user.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+        UpdateResult isLinkedWithGoogleUpdateResult = await _unitOfWork.GetCollection<User>().UpdateOneAsync(user => user.Id == user.Id, isLinkedWithGoogleUpdate);
+        if (isLinkedWithGoogleUpdateResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException("Failed to link Google account.");
+        }
+    }
+
+    private async Task<GoogleJsonWebSignature.Payload> VerifyGoogleTokenAsync(string googleToken)
+    {
+        GoogleJsonWebSignature.ValidationSettings settings = new()
+        {
+            Audience = [Environment.GetEnvironmentVariable("Authentication_Google_ClientId") ?? throw new UnconfiguredEnvironmentCustomException("Authentication_Google_ClientId is not set in the environment")]
+        };
+
+        GoogleJsonWebSignature.Payload payload = await GoogleJsonWebSignature.ValidateAsync(googleToken, settings);
+        return payload;
     }
 
     public async Task<AccessTokenResponse> RefreshNewTokenAsync()

@@ -65,6 +65,20 @@ public class AuthenticationController(IAuthenticationService authenticationServi
         var result = await _authenticationService.LoginListenerAsync(loginRequest);
         return Ok(new { Message = "Login Successfully", result });
     }
+
+    [AllowAnonymous, HttpPost("login/listener/google")]
+    public async Task<IActionResult> LoginWithGoogleAsync([FromBody] LoginGoogleRequest loginGoogleRequest)
+    {
+        var result = await _authenticationService.LoginByGoogleAsync(loginGoogleRequest);
+        return Ok(new { Message = "Login with Google Successfully", result });
+    }
+
+    [Authorize(Roles = "Listener"), HttpPatch("listener/link-google")]
+    public async Task<IActionResult> LinkGoogleAccountAsync()
+    {
+        await _authenticationService.LinkWithGoogleAccountAsync();
+        return Ok(new { Message = "Link Google Account Successfully" });
+    }
     #endregion
 
     #region Artists

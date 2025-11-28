@@ -11,6 +11,24 @@ namespace EkofyApp.Domain.Utils;
 
 public sealed class HelperMethod
 {
+    public static string? ValidateAndCombineName(string? firstName, string? lastName)
+    {
+        // Nếu cả 2 biến đều là null thì trả về null thay vì chuỗi rỗng
+        if (firstName == null && lastName == null)
+        {
+            return null;
+        }
+
+        // Cắt bỏ khoảng trắng ở đầu và cuối của firstName và lastName
+        string trimmedFirstName = firstName?.Trim() ?? string.Empty;
+        string trimmedLastName = lastName?.Trim() ?? string.Empty;
+
+        // Kết hợp firstName và lastName với một khoảng trắng ở giữa
+        string fullName = $"{trimmedLastName} {trimmedFirstName}".Trim();
+
+        return fullName;
+    }
+
     public static string NormalizeString(string input)
     {
         if (string.IsNullOrEmpty(input))
