@@ -296,10 +296,10 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
         };
 
         // Đẩy combined request lên redis để chờ duyệt (sử dụng 1 key thay vì 3 keys)
-        await _redisCacheService.SetGenericAsync($"upload:{trackTemp.Id}:requestUpload", combinedRequest, TimeSpan.FromDays(3));
+        await _redisCacheService.SetGenericAsync($"upload:{trackTemp.Id}:requestUpload", combinedRequest);
 
         // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
-        await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTemp.Id);
+        await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTemp.Id, false);
 
         return;
     }

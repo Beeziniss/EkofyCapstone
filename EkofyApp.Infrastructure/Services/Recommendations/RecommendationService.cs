@@ -141,6 +141,7 @@ public sealed class RecommendationService(IUnitOfWork unitOfWork) : IRecommendat
         return await _unitOfWork.GetCollection<Track>()
                           .Find(compatibleFilter)
                           .Project(x => x.Id)
+                          .Limit(20)
                           .ToListAsync();
     }
 

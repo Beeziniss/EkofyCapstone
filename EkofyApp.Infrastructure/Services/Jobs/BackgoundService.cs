@@ -281,4 +281,13 @@ public class BackgoundService : IBackgoundService
         IPlaylistService playlistService = scope.ServiceProvider.GetRequiredService<IPlaylistService>();
         await playlistService.UpsertDailyPlaylistsFromRecommendationsAsync(recommendedTracks);
     }
+
+    [Queue("approval_escalation")]
+    [JobDisplayName("Escalate Old Upload Requests")]
+    public async Task EscalateOldUploadRequestsJob()
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
+        await trackService.EscalateOldUploadRequestsAsync();
+    }
 }

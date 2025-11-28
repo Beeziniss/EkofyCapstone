@@ -83,7 +83,7 @@ public sealed class AmazonS3Service(IAmazonS3 s3Client, AWSSetting aWSSettings) 
         string bucket = _aWSSettings.BucketName;
         string key = $"original-audio/{trackId}";
 
-        var putRequest = new PutObjectRequest
+        PutObjectRequest putRequest = new()
         {
             InputStream = audioStream,
             BucketName = bucket,
