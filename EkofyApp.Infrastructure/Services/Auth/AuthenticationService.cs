@@ -695,14 +695,12 @@ public sealed class AuthenticationService(
         UpdateDefinition<User> isLinkedWithGoogleUpdate = Builders<User>.Update
             .Set(user => user.IsLinkedWithGoogle, true)
             .Set(user => user.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
-        UpdateResult isLinkedWithGoogleUpdateResult = await _unitOfWork.GetCollection<User>().UpdateOneAsync(user => user.Id == user.Id, isLinkedWithGoogleUpdate);
 
-        // Kiểm tra nếu có ít nhất một field_name được cập nhật
+        UpdateResult isLinkedWithGoogleUpdateResult = await _unitOfWork.GetCollection<User>().UpdateOneAsync(user => user.Id == user.Id, isLinkedWithGoogleUpdate);
         if (isLinkedWithGoogleUpdateResult.ModifiedCount == 0)
         {
             throw new UnprocessableEntityCustomException("Failed to link Google account.");
         }
-
     }
 
     private async Task<GoogleJsonWebSignature.Payload> VerifyGoogleTokenAsync(string googleToken)
