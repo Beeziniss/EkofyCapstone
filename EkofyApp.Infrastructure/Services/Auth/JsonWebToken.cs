@@ -154,8 +154,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
             signingCredentials: new SigningCredentials(
                                 new SymmetricSecurityKey(symmetricKey),
-                                SecurityAlgorithms.HmacSha256Signature)
-        //use HmacSha256Signature algorithm to sign token
+                                Environment.GetEnvironmentVariable("JWT_ALGORITHM") ?? throw new Exception("JWT algorithm is not set"))
         );
         //write token with tokenDescriptor above
         string token = tokenHandler.WriteToken(tokenDescriptor);
@@ -189,7 +188,7 @@ public sealed class JsonWebToken : IJsonWebToken
 
             signingCredentials: new SigningCredentials(
                                 new SymmetricSecurityKey(symmetricKey),
-                                SecurityAlgorithms.HmacSha256Signature) //use HmacSha256Signature algorithm to sign token
+                                Environment.GetEnvironmentVariable("JWT_ALGORITHM") ?? throw new Exception("JWT algorithm is not set"))
         );
 
         var token = tokenHandler.WriteToken(tokenDescriptor);
@@ -221,7 +220,7 @@ public sealed class JsonWebToken : IJsonWebToken
         var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 
         //check if token is null or not and compare algorithm
-        if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256Signature, StringComparison.InvariantCultureIgnoreCase))
+        if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(Environment.GetEnvironmentVariable("JWT_ALGORITHM") ?? throw new Exception("JWT algorithm is not set"), StringComparison.InvariantCultureIgnoreCase))
         {
             //throw exception if information in token is invalid
             throw new SecurityTokenException("Invalid token");
