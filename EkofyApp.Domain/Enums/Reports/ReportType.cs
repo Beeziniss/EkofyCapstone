@@ -38,5 +38,5 @@ public enum ReportType
     UnapprovedUploadedTrack,
 
     [EnumMember(Value = "Other")]
-    Other                   // Lý do khác
+    Other // Lý do khác
 }

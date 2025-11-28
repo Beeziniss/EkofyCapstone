@@ -1,10 +1,9 @@
 ﻿using EkofyApp.Domain.Base;
-using EkofyApp.Domain.EmbeddedDocuments;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Listener : TimeStamped, IEntityCustom
+public sealed class Listener : TimeStamped
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]

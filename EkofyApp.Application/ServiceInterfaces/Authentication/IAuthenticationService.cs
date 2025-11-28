@@ -14,17 +14,15 @@ public interface IAuthenticationService
     Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest);
     Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest);
     Task<AuthModeratorTokenResponse> LoginModeratorAsync(LoginRequest loginRequest);
+    Task<AuthListenerTokenResponse> LoginByGoogleAsync(LoginGoogleRequest loginGoogleRequest);
+    Task LinkWithGoogleAccountAsync();
     Task LogoutAsync(bool isMobile = false);
     Task<AccessTokenResponse> RefreshNewTokenAsync();
     Task RegisterArtistAsync(ArtistRegisterRequest registerRequest);
     Task RegisterListenerAsync(ListenerRegisterRequest registerRequest);
     Task ResendOtpAsync(string email);
     Task VerifyOtpAsync(string email, string providedOtp);
-    
-    // Password Reset Methods
     Task ForgotPasswordAsync(ForgotPasswordRequest forgotPasswordRequest);
     Task ResetPasswordAsync(ResetPasswordRequest resetPasswordRequest);
-    
-    // Change Password Method
     Task ChangePasswordAsync(ChangePasswordRequest changePasswordRequest);
 }
