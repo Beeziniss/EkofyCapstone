@@ -8,8 +8,6 @@ public sealed class EmailTemplateFactory
         return type switch
         {
             EmailTemplateType.VerifyOtp => HelperEmailTemplate.VerifyOtp,
-            //EmailTemplateType.Welcome => HelperEmailTemplate.WelcomeTemplate,
-            //EmailTemplateType.ResetPassword => HelperEmailTemplate.ResetPasswordTemplate,
             EmailTemplateType.RegisterNotification => HelperEmailTemplate.RegisterNotification,
             EmailTemplateType.RegisterApprove => HelperEmailTemplate.RegisterApprove,
             EmailTemplateType.RegisterReject => HelperEmailTemplate.RegisterReject,
@@ -22,6 +20,7 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.RequestRemoval => HelperEmailTemplate.RequestRemoval,
             EmailTemplateType.CommentRemoval => HelperEmailTemplate.CommentRemoval,
             EmailTemplateType.PermanentBan => HelperEmailTemplate.PermanentBan,
+            EmailTemplateType.Unban => HelperEmailTemplate.Unban,
             EmailTemplateType.SubscriptionCancelled => HelperEmailTemplate.SubscriptionCancelled,
             EmailTemplateType.SubscriptionResumed => HelperEmailTemplate.SubscriptionResumed,
             EmailTemplateType.SubscriptionExpired => HelperEmailTemplate.SubscriptionExpired,
@@ -34,8 +33,6 @@ public sealed class EmailTemplateFactory
         return type switch
         {
             EmailTemplateType.VerifyOtp => HelperEmailTemplate.SubjectVerifyOtp(),
-            //EmailTemplateType.Welcome => "Welcome to Ekofy!",
-            //EmailTemplateType.ResetPassword => "Reset your password",
             EmailTemplateType.RegisterNotification => HelperEmailTemplate.SubjectRegisterNotification(),
             EmailTemplateType.RegisterApprove => HelperEmailTemplate.SubjectRegisterApprove(),
             EmailTemplateType.RegisterReject => HelperEmailTemplate.SubjectRegisterReject(),
@@ -48,6 +45,7 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.RequestRemoval => HelperEmailTemplate.SubjectRequestRemoval(),
             EmailTemplateType.CommentRemoval => HelperEmailTemplate.SubjectCommentRemoval(),
             EmailTemplateType.PermanentBan => HelperEmailTemplate.SubjectPermanentBan(),
+            EmailTemplateType.Unban => HelperEmailTemplate.SubjectUnban(),
             EmailTemplateType.SubscriptionCancelled => HelperEmailTemplate.SubjectSubscriptionCancelled(),
             EmailTemplateType.SubscriptionResumed => HelperEmailTemplate.SubjectSubscriptionResumed(),
             EmailTemplateType.SubscriptionExpired => HelperEmailTemplate.SubjectSubscriptionExpired(),

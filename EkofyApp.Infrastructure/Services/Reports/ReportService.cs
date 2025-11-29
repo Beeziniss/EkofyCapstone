@@ -12,6 +12,7 @@ using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
+using Serilog;
 using System.Security.Claims;
 
 
@@ -885,7 +886,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
 
             // Gửi email thông báo unban
             BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
-                EmailTemplateType.WarningReport, // TODO: Tạo template riêng cho unban
+                EmailTemplateType.Unban,
                 restrictedUser.Email,
                 restrictedUser.FullName,
                 restrictedUser.Email,
@@ -1010,14 +1011,22 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     /// </summary>
     private async Task CancelScheduledJobForUserAsync(string reportId)
     {
-        // TODO: Implement job cancellation
-        // Cần query JobTracker collection để lấy jobIds theo userId
-        // Sau đó cancel các jobs đó
         string reportBackgroundJobId = await _unitOfWork.GetCollection<Report>()
             .Find(x => x.Id == reportId)
             .Project(x => x.BackgroundJobId)
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found report or job. Report: {reportId}");
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found background job id for report {reportId}");
 
+        // Delete background job trước
+        try
+        {
+            bool deleted = BackgroundJob.Delete(reportBackgroundJobId);
+        }
+        catch (Exception ex)
+        {
+            throw new ExternalServiceCustomException($"Failed to delete background job {reportBackgroundJobId}: {ex.Message}");
+        }
+
+        // Sau đó mới update database để clear job ID
         UpdateResult updateResult = await _unitOfWork.GetCollection<Report>()
             .UpdateOneAsync(
                 x => x.Id == reportId,
@@ -1025,11 +1034,10 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                     .Set(x => x.BackgroundJobId, null)
                     .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
                 );
+
         if (updateResult.ModifiedCount == 0)
         {
             throw new UnprocessableEntityCustomException("Failed to clear background job ID from report");
         }
-
-        BackgroundJob.Delete(reportBackgroundJobId);
     }
 }

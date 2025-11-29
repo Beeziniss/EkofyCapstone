@@ -931,6 +931,64 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         }
     }
 
+    public async Task UpdateMetadataTrackAsync(UpdateTrackRequest updateTrackRequest)
+    {
+        string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+
+        // Verify that the track exists and the user has permission to edit it
+        Track existingTrack = await _unitOfWork.GetCollection<Track>()
+            .Find(t => t.Id == updateTrackRequest.TrackId)
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Track with ID {updateTrackRequest.TrackId} not found.");
+
+        // Check if user is authorized to update this track (owner or main artist)
+        if (existingTrack.CreatedBy != userId && !existingTrack.MainArtistIds.Contains(userId))
+        {
+            throw new UnauthorizedCustomException("You don't have permission to update this track.");
+        }
+
+        // Build update definition
+        UpdateDefinitionBuilder<Track> updateDefinitionBuilder = Builders<Track>.Update;
+        List<UpdateDefinition<Track>> updates = [];
+
+        // Update description if provided
+        if (!string.IsNullOrEmpty(updateTrackRequest.Description))
+        {
+            updates.Add(updateDefinitionBuilder.Set(t => t.Description, updateTrackRequest.Description));
+        }
+
+        // Update category IDs if provided
+        if (updateTrackRequest.CategoryIds != null && updateTrackRequest.CategoryIds.Count > 0)
+        {
+            updates.Add(updateDefinitionBuilder.Set(t => t.CategoryIds, updateTrackRequest.CategoryIds));
+        }
+
+        // Update tags if provided
+        if (updateTrackRequest.Tags != null && updateTrackRequest.Tags.Count > 0)
+        {
+            updates.Add(updateDefinitionBuilder.Set(t => t.Tags, updateTrackRequest.Tags));
+        }
+
+        // Update timestamp and user info
+        updates.Add(updateDefinitionBuilder.Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+        updates.Add(updateDefinitionBuilder.Set(t => t.UpdatedBy, userId));
+
+        if (updates.Count <= 2) // Only UpdatedAt and UpdatedBy were added
+        {
+            throw new BadRequestCustomException("No valid fields provided for update.");
+        }
+
+        // Combine all updates
+        UpdateDefinition<Track> combinedUpdate = updateDefinitionBuilder.Combine(updates);
+
+        // Execute update
+        UpdateResult updateResult = await _unitOfWork.GetCollection<Track>()
+            .UpdateOneAsync(t => t.Id == updateTrackRequest.TrackId, combinedUpdate);
+        if (updateResult.ModifiedCount == 0)
+        {
+            throw new UnprocessableEntityCustomException("Failed to update track metadata.");
+        }
+    }
+
     #region Favorite Tracks
     public async Task<long> AddToFavoriteTrackAsync(string trackId, bool isAdding)
     {
