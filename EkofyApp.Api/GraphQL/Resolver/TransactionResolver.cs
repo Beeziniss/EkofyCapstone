@@ -1,5 +1,4 @@
-﻿using EkofyApp.Api.GraphQL.DataLoader;
-using EkofyApp.Application.ServiceInterfaces;
+﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
 using HotChocolate.Data;
 using MongoDB.Driver;
@@ -15,5 +14,21 @@ public sealed class PaymentTransactionResolver
     public IQueryable<User> GetUser([Parent] PaymentTransaction transaction, [Service] IUnitOfWork unitOfWork)
     {
         return unitOfWork.GetCollection<User>().AsQueryable().Where(u => u.Id == transaction.UserId);
+    }
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Listener> GetListener([Parent] PaymentTransaction transaction, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<Listener>().AsQueryable().Where(l => l.UserId == transaction.UserId);
+    }
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Artist> GetArtist([Parent] PaymentTransaction transaction, [Service] IUnitOfWork unitOfWork)
+    {
+        return unitOfWork.GetCollection<Artist>().AsQueryable().Where(a => a.UserId == transaction.UserId);
     }
 }
