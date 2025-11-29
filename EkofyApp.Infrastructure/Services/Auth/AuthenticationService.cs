@@ -802,6 +802,7 @@ public sealed class AuthenticationService(
                         Email = pendingListener.Email,
                         PasswordHash = pendingListener.PasswordHash,
                         FullName = pendingListener.FullName,
+                        FullNameUnsigned = HelperMethod.ToUnsigned(pendingListener.FullName),
                         BirthDate = pendingListener.BirthDate,
                         Gender = pendingListener.Gender,
                         Role = UserRole.Listener,
@@ -858,7 +859,7 @@ public sealed class AuthenticationService(
         // Tìm trong pending pendingListener registrations
         foreach (string key in listenerKeys)
         {
-            if (_redisCacheService.TryGetGeneric<PendingListenerRegistrationResponse>(key, out var listener)
+            if (_redisCacheService.TryGetGeneric(key, out PendingListenerRegistrationResponse? listener)
                 && listener != null
                 && listener.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
             {
@@ -872,7 +873,7 @@ public sealed class AuthenticationService(
         {
             foreach (string key in artistKeys)
             {
-                if (_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(key, out var artist)
+                if (_redisCacheService.TryGetGeneric(key, out PendingArtistRegistrationRequest? artist)
                     && artist != null
                     && artist.Email.Equals(normalizedEmail, StringComparison.OrdinalIgnoreCase))
                 {

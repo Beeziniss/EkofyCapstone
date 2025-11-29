@@ -334,6 +334,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
                 Email = pendingRegistration.Email,
                 PasswordHash = pendingRegistration.PasswordHash,
                 FullName = pendingRegistration.FullName,
+                FullNameUnsigned = HelperMethod.ToUnsigned(pendingRegistration.FullName),
                 BirthDate = pendingRegistration.BirthDate,
                 Gender = pendingRegistration.Gender,
                 PhoneNumber = pendingRegistration.PhoneNumber,
