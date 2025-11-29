@@ -23,7 +23,7 @@ public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionSer
         // Search by full name (unsigned)
         string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
         IEnumerable<User> usersByName = _unitOfWork.GetCollection<User>()
-            .Find(u => u.FullName != null && HelperMethod.ToUnsigned(u.FullName).Contains(unsignedSearchTerm))
+            .Find(u => u.FullNameUnsigned != null && u.FullNameUnsigned.Contains(unsignedSearchTerm))
             .Project<User>(Builders<User>.Projection
                 .Include(x => x.Id))
             .ToEnumerable();
@@ -63,7 +63,7 @@ public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionSer
         // Search by full name (unsigned)
         string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
         IEnumerable<User> usersByName = _unitOfWork.GetCollection<User>()
-            .Find(u => u.FullName != null && HelperMethod.ToUnsigned(u.FullName).Contains(unsignedSearchTerm))
+            .Find(u => u.FullNameUnsigned != null && u.FullNameUnsigned.Contains(unsignedSearchTerm))
             .Project<User>(Builders<User>.Projection
                 .Include(x => x.Id))
             .ToEnumerable();
@@ -99,7 +99,7 @@ public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionSer
         // Search by full name (unsigned)
         string unsignedSearchTerm = HelperMethod.ToUnsigned(searchTerm);
         IEnumerable<User> usersByName = _unitOfWork.GetCollection<User>()
-            .Find(u => u.FullName != null && HelperMethod.ToUnsigned(u.FullName).Contains(unsignedSearchTerm))
+            .Find(u => u.FullNameUnsigned != null && u.FullNameUnsigned.Contains(unsignedSearchTerm))
             .Project<User>(Builders<User>.Projection
                 .Include(x => x.Id))
             .ToEnumerable();

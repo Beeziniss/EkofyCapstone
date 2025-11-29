@@ -14,7 +14,7 @@ public sealed class User : Auditable, IEntityCustom
     public string? PasswordHash { get; set; } // If null that means the user log in with Google or Facebook
 
     public string FullName { get; set; } = null!;
-    //public string FullNameUnsigned { get; set; } = null!; // Full name without accents for searching
+    public string FullNameUnsigned { get; set; } = null!; // Full name without accents for searching
     public UserGender Gender { get; set; }
     public DateTimeOffset BirthDate { get; set; }
     public UserRole Role { get; set; } // "Listener","Artist","Admin","Moderator"
