@@ -16,6 +16,36 @@ public sealed class TransactionQuery(ITransactionService transactionService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<PaymentTransaction>]
+    public IQueryable<PaymentTransaction> SearchPaymentTransactions(string? searchTerm = null)
+    {
+        return _transactionService.SearchPaymentTransactions(searchTerm);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<PayoutTransaction>]
+    public IQueryable<PayoutTransaction> SearchPayoutTransactions(string? searchTerm = null)
+    {
+        return _transactionService.SearchPayTransactions(searchTerm);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<RefundTransaction>]
+    public IQueryable<RefundTransaction> SearchRefundTransactions(string? searchTerm = null)
+    {
+        return _transactionService.SearchRefundTransactions(searchTerm);
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<PaymentTransaction>]
     public IQueryable<PaymentTransaction> GetPaymentTransactions()
     {
         return _transactionService.GetPaymentTransactions();
