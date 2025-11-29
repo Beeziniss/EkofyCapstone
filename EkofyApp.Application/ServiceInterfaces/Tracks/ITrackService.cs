@@ -33,4 +33,5 @@ public interface ITrackService
     Task EscalateOldUploadRequestsAsync();
     Task<PaginatedData<CombinedUploadRequest>> GetPendingTrackUploadRequestsAsync(string? userId = null, ApprovalPriorityStatus? priority = null, int pageNumber = 1, int pageSize = 20);
     Task<CombinedUploadRequest> GetPendingTrackUploadRequestByUploadIdAsync(string uploadId, ApprovalPriorityStatus? priority = null);
+    Task UpdateMetadataTrackAsync(UpdateTrackRequest updateTrackRequest);
 }

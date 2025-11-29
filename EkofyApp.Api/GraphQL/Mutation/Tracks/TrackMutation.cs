@@ -403,6 +403,12 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
         return true;
     }
 
+    public async Task<bool> UpdateMetadataTrackAsync(UpdateTrackRequest updateTrackRequest)
+    {
+        await _trackService.UpdateMetadataTrackAsync(updateTrackRequest);
+        return true;
+    }
+
     public async Task<bool> AddToFavoriteTrackAsync(string trackId, bool isAdding, [Service] ITopicEventSender eventSender, CancellationToken cancellationToken)
     {
         long favoriteCountUpdated = await _trackService.AddToFavoriteTrackAsync(trackId, isAdding);
