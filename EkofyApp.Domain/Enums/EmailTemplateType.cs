@@ -16,6 +16,7 @@ public enum EmailTemplateType
     RequestRemoval,
     CommentRemoval,
     PermanentBan,
+    Unban,
     SubscriptionCancelled,
     SubscriptionResumed,
     SubscriptionExpired

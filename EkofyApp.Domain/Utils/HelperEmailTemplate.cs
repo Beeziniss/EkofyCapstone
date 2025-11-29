@@ -15,6 +15,7 @@ public sealed class HelperEmailTemplate
     public static string SubjectRequestRemoval() => "Ekofy - Request Removal Notice";
     public static string SubjectCommentRemoval() => "Ekofy - Comment Removal Notice";
     public static string SubjectPermanentBan() => "Ekofy - Permanent Ban";
+    public static string SubjectUnban() => "Ekofy - Account Unbanned";
     public static string SubjectSubscriptionCancelled() => "Ekofy - Subscription Cancellation Notice";
     public static string SubjectSubscriptionResumed() => "Ekofy - Subscription Resumed";
     public static string SubjectSubscriptionExpired() => "Ekofy - Subscription Expired Notice";
@@ -857,6 +858,62 @@ public sealed class HelperEmailTemplate
       <p style=""font-size: 0.9em"">
         We appreciate your time with <strong>Ekofy</strong> and thank you for your past contributions.<br><br>
         Sincerely,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// Permanent ban email template.
+    /// Expected parameters:
+    /// 0 - Full Name
+    /// 1 - Email
+    /// 2 - Reason
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string Unban(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string email = parameters[1];
+        string reason = parameters[2];
+
+        return @$"<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Account Unbanned Notice</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- ACCOUNT UNBANNED NOTICE -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p>
+        We're pleased to inform you that your account associated with the email <strong>{email}</strong> has been successfully reinstated and is no longer subject to any bans or restrictions.
+      </p>
+      <p>
+        <strong>Note from our team:</strong><br>
+        <em style=""background-color: #f0f0f0; display: block; padding: 12px; border-left: 4px solid #3b54ea; margin-top: 8px;"">{reason}</em>
+      </p>
+      <p>
+        You may now continue using Ekofy as usual. We appreciate your patience during this process.
+      </p>
+      <p>
+        If you have any further questions or need support, feel free to reach out to our team.
+      </p>
+      <p style=""font-size: 0.9em"">
+        Welcome back,<br>
         <strong>The Ekofy Team</strong>
       </p>
     </div>
