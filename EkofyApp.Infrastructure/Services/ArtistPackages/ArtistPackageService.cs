@@ -2,6 +2,7 @@
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.ArtistPackages;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
@@ -10,10 +11,9 @@ using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.ArtistPackages
 {
-    public class ArtistPackageService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService) : IArtistPackageService
+    public class ArtistPackageService(IUnitOfWork unitOfWork) : IArtistPackageService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
-        private readonly IRedisCacheService _redisCacheService = redisCacheService;
 
         public IQueryable<ArtistPackage> GetArtistPackages()
         {
@@ -43,28 +43,84 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
                 Status = ArtistPackageStatus.Enabled,
             };
 
-            // Save to Redis for moderation
-            //var pendingPackage = new PendingArtistPackageResponse
-            //{
-            //    Id = newArtistPackage.Id,
-            //    ArtistId = newArtistPackage.ArtistId,
-            //    PackageName = newArtistPackage.PackageName,
-            //    Amount = newArtistPackage.Amount,
-            //    Currency = newArtistPackage.Currency,
-            //    EstimateDeliveryDays = newArtistPackage.EstimateDeliveryDays,
-            //    Description = newArtistPackage.Description,
-            //    ServiceDetails = newArtistPackage.ServiceDetails,
-            //    Status = newArtistPackage.Status,
-            //    RequestedAt = newArtistPackage.CreatedAt
-            //};
-
-            //string redisKey = $"artistpackage:{newArtistPackageId}:pending";
-            //TimeSpan expiry = TimeSpan.FromDays(3); // Cache for 7 days
-
-            //await _redisCacheService.SetGenericAsync(redisKey, pendingPackage, expiry);
-
             // insert directly to database for now
             await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(newArtistPackage);
+        }
+
+        public async Task CreateCustomArtistPackageAsync(CreateCustomArtistPackageRequest createRequest)
+        {
+           long artistPackageCount = await _unitOfWork.GetCollection<ArtistPackage>()
+                                                   .Find(ap => ap.ArtistId == createRequest.ArtistId 
+                                                     && !ap.IsDelete
+                                                     && ap.IsCustom
+                                                     && ap.CustomPackageInfo.ClientId == createRequest.ClientId
+                                                     && ap.CustomPackageInfo.ConversationId == createRequest.ConversationId)
+                                                   .CountDocumentsAsync();
+
+            //mặc định chỉ cho tạo tối đa 5 gói tùy chỉnh cho một user chỉ định trong 1 conversation
+            if(artistPackageCount > 5)
+            {
+                throw new BadRequestCustomException("You have reached the maximum number (5) of custom packages for this client in this conversation.");
+            }
+
+            ArtistPackage newArtistPackage = new()
+            {
+                ArtistId = createRequest.ArtistId,
+                PackageName = createRequest.PackageName,
+                Amount = createRequest.Amount,
+                EstimateDeliveryDays = createRequest.EstimateDeliveryDays,
+                Description = createRequest.Description,
+                ServiceDetails = createRequest.ServiceDetails,
+                MaxRevision = createRequest.MaxRevision == 0 ? 1 : createRequest.MaxRevision,
+                Status = ArtistPackageStatus.Enabled,
+                IsCustom = true,
+                CustomPackageInfo = new CustomArtistPackageInfo
+                {
+                    ConversationId = createRequest.ConversationId,
+                    ClientId = createRequest.ClientId
+                }
+            };
+            // insert directly to database for now
+            await _unitOfWork.GetCollection<ArtistPackage>().InsertOneAsync(newArtistPackage);
+        }
+
+        public async Task UpdateCustomPackageAsync(UpdateCustomArtistPackageRequest updateRequest)
+        {
+            var filter = Builders<ArtistPackage>.Filter.Where(ap => ap.Id == updateRequest.Id && !ap.IsDelete && ap.IsCustom);
+
+            var updates = new List<UpdateDefinition<ArtistPackage>>();
+
+            if (updateRequest.PackageName != null)
+                updates.Add(Builders<ArtistPackage>.Update.Set(ap => ap.PackageName, updateRequest.PackageName));
+
+            if (updateRequest.Amount != null)
+                updates.Add(Builders<ArtistPackage>.Update.Set(ap => ap.Amount, updateRequest.Amount));
+
+            if (updateRequest.EstimateDeliveryDays != null)
+                updates.Add(Builders<ArtistPackage>.Update.Set(ap => ap.EstimateDeliveryDays, updateRequest.EstimateDeliveryDays));
+
+            if (updateRequest.Description != null)
+                updates.Add(Builders<ArtistPackage>.Update.Set(ap => ap.Description, updateRequest.Description));
+
+            if (updateRequest.ServiceDetails != null)
+                updates.Add(Builders<ArtistPackage>.Update.Set(ap => ap.ServiceDetails, updateRequest.ServiceDetails));
+
+            if (updateRequest.MaxRevision != null)
+                updates.Add(Builders<ArtistPackage>.Update.Set(ap => ap.MaxRevision, updateRequest.MaxRevision));
+
+            var updateDefinition = Builders<ArtistPackage>.Update.Combine(updates);
+
+            var result = await _unitOfWork
+                .GetCollection<ArtistPackage>()
+                .UpdateOneAsync(filter, updateDefinition);
+            if (result.MatchedCount == 0)
+            {
+                throw new NotFoundCustomException("Custom artist package not found.");
+            }
+            if (result.ModifiedCount == 0)
+            {
+                throw new UnprocessableEntityCustomException("No changes were made to the custom artist package.");
+            }
         }
 
         public async Task UpdateArtistPackageAsync(UpdateArtistPackageRequest updateRequest)
@@ -111,6 +167,20 @@ namespace EkofyApp.Infrastructure.Services.ArtistPackages
             if (result.ModifiedCount == 0)
             {
                 throw new BadRequestCustomException("No changes were made to the artist package.");
+            }
+        }
+
+        public async Task DeleteCustomArtistPackageAsync(string id)
+        {
+            var updateDefinition = Builders<ArtistPackage>.Update.Set(ap => ap.IsDelete, true);
+            var result = await _unitOfWork.GetCollection<ArtistPackage>().UpdateOneAsync(ap => ap.Id == id && !ap.IsDelete && ap.IsCustom, updateDefinition);
+            if (result.MatchedCount == 0)
+            {
+                throw new NotFoundCustomException("Custom artist package not found.");
+            }
+            if (result.ModifiedCount == 0)
+            {
+                throw new BadRequestCustomException("No changes were made to the custom artist package.");
             }
         }
 

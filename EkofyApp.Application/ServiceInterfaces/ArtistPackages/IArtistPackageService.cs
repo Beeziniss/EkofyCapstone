@@ -17,5 +17,8 @@ namespace EkofyApp.Application.ServiceInterfaces.ArtistPackages
         //Task<PaginatedData<PendingArtistPackageResponse>> GetPendingArtistPackagesAsync(int pageNumber = 1, int pageSize = 20);
         //Task RejectArtistPackageAsync(string id);
         IQueryable<ArtistPackage> GetArtistPackagesInConversation(string artistId);
+        Task CreateCustomArtistPackageAsync(CreateCustomArtistPackageRequest createRequest);
+        Task UpdateCustomPackageAsync(UpdateCustomArtistPackageRequest updateRequest);
+        Task DeleteCustomArtistPackageAsync(string id);
     }
 }

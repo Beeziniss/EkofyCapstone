@@ -23,5 +23,8 @@ namespace EkofyApp.Domain.Entities
 
         // vì package được đánh theo version nên sẽ ko có xóa hay chỉnh sửa để tránh mấy khóa liên quan, cũng không cần biết thông tin ngày tạo
         public bool IsDelete { get; set; } = false; // Indicates if it is visible to users
+        public bool IsCustom { get; set; } = false; // Indicates if it is a custom package
+        public CustomArtistPackageInfo CustomPackageInfo { get; set; } = null!;
     }
+
 }

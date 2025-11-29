@@ -213,41 +213,46 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             if (orderPackage.Status == PackageOrderStatus.Paid && request.Status == PackageOrderStatus.Cancelled)
             {
                 //lấy payment intend id từ transaction
-                var transaction = await _unitOfWork.GetCollection<PaymentTransaction>()
-                                          .Find(pt => pt.Id == orderPackage.PaymentTransactionId)
-                                          .Project<PaymentTransaction>(Builders<PaymentTransaction>.Projection
-                                            .Include(pti => pti.Amount)
-                                            .Include(pti => pti.StripePaymentId)
-                                           )
-                                          .FirstOrDefaultAsync()
-                            ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
+                //var transaction = await _unitOfWork.GetCollection<PaymentTransaction>()
+                //                          .Find(pt => pt.Id == orderPackage.PaymentTransactionId)
+                //                          .Project<PaymentTransaction>(Builders<PaymentTransaction>.Projection
+                //                            .Include(pti => pti.Amount)
+                //                            .Include(pti => pti.StripePaymentId)
+                //                           )
+                //                          .FirstOrDefaultAsync()
+                //            ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
 
-                //REFUND HERE -- vì ở đây refund 100% nên ko cần chia nhỏ tiền ra
-                await _stripeService.RefundAsync(transaction.StripePaymentId, transaction.Amount, RefundReasonType.requested_by_customer);
+                ////REFUND HERE -- vì ở đây refund 100% nên ko cần chia nhỏ tiền ra
+                //await _stripeService.RefundAsync(transaction.StripePaymentId, transaction.Amount, RefundReasonType.requested_by_customer);
 
-                // Cập nhật service revenue cho Artist
-                UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
-                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                            .Inc(x => x.ServiceRevenue, -transaction.Amount);
-                UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
-                    .UpdateOneAsync(x => x.UserId == orderPackage.ProviderId, updateArtistRevenue);
-                if (updateArtistRevenueResult.ModifiedCount == 0)
-                {
-                    Log.Error("Cannot update artist revenue after checkout session completed.");
-                }
+                //// Cập nhật service revenue cho Artist
+                //UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
+                //            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                //            .Inc(x => x.ServiceRevenue, -transaction.Amount);
+                //UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
+                //    .UpdateOneAsync(x => x.UserId == orderPackage.ProviderId, updateArtistRevenue);
+                //if (updateArtistRevenueResult.ModifiedCount == 0)
+                //{
+                //    Log.Error("Cannot update artist revenue after checkout session completed.");
+                //}
 
-                // Cập nhật service revenue cho Platform
-                UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update
-                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                            .Inc(x => x.RefundAmount, transaction.Amount);
-                UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
-                    .UpdateOneAsync(_ => true, updatePlatformRevenue);
-                if (updatePlatformRevenueResult.ModifiedCount == 0)
-                {
-                    Log.Error("Cannot update platform revenue after checkout session completed.");
-                }
+                //// Cập nhật service revenue cho Platform
+                //UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update
+                //            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                //            .Inc(x => x.RefundAmount, transaction.Amount);
+                //UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                //    .UpdateOneAsync(_ => true, updatePlatformRevenue);
+                //if (updatePlatformRevenueResult.ModifiedCount == 0)
+                //{
+                //    Log.Error("Cannot update platform revenue after checkout session completed.");
+                //}
 
-                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
+                //var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund);
+                //var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
+                //return result.ModifiedCount > 0;
+
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed)
+                                                          .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
             }
@@ -262,7 +267,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 return result.ModifiedCount > 0;
             }
 
-            // trường hợp refund nhưng hủy trước khi mod duyệt
+            // trường hợp refund nhưng hủy trước khi mod duyệt hoặc mod hủy
             if (orderPackage.Status == PackageOrderStatus.Disputed && request.Status == PackageOrderStatus.InProgress)
             {
                 var now = HelperMethod.GetUtcPlus7TimeOffset();
