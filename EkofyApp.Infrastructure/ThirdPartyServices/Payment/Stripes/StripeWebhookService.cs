@@ -577,6 +577,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
                         .Set(t => t.StripeSubscriptionId, checkoutSession.SubscriptionId)
                         .Set(t => t.StripeInvoiceId, checkoutSession.InvoiceId)
+                        .Set(t => t.StripePaymentId, checkoutSession.PaymentIntentId)
                         .Set(t => t.StripePaymentMethod, checkoutSession.PaymentMethodTypes)
                         .Set(t => t.PaymentStatus, PaymentTransactionStatus.Paid)
                         .Set(t => t.Status, TransactionStatus.Completed)
