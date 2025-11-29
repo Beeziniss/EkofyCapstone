@@ -7,6 +7,6 @@ public interface ITransactionService
     IQueryable<PayoutTransaction> GetPayoutTransactions();
     IQueryable<RefundTransaction> GetRefundTransactions();
     IQueryable<PaymentTransaction> SearchPaymentTransactions(string? searchTerm = null);
-    IQueryable<PayoutTransaction> SearchPayTransactions(string? searchTerm = null);
+    IQueryable<PayoutTransaction> SearchPayoutTransactions(string? searchTerm = null);
     IQueryable<RefundTransaction> SearchRefundTransactions(string? searchTerm = null);
 }

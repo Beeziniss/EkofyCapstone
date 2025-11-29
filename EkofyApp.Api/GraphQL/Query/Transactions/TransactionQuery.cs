@@ -28,7 +28,7 @@ public sealed class TransactionQuery(ITransactionService transactionService)
     [UseSorting<PayoutTransaction>]
     public IQueryable<PayoutTransaction> SearchPayoutTransactions(string? searchTerm = null)
     {
-        return _transactionService.SearchPayTransactions(searchTerm);
+        return _transactionService.SearchPayoutTransactions(searchTerm);
     }
 
     [AuthorizeRoles(HelperRoleBase.FullRoles)]

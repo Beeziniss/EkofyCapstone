@@ -50,7 +50,7 @@ public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionSer
         return query;
     }
 
-    public IQueryable<PayoutTransaction> SearchPayTransactions(string? searchTerm = null)
+    public IQueryable<PayoutTransaction> SearchPayoutTransactions(string? searchTerm = null)
     {
         IQueryable<PayoutTransaction> query = _unitOfWork.GetCollection<PayoutTransaction>().AsQueryable();
         if (string.IsNullOrEmpty(searchTerm))
