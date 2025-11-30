@@ -20,5 +20,8 @@ public sealed class TrackMutationExtension : ObjectTypeExtension<TrackMutation>
 
         descriptor.Field(x => x.AddToFavoriteTrackAsync(default!, default!, default!, default!))
             .Authorize(HelperRoleBase.ListenerArtistRolesArray);
+
+        descriptor.Field(x => x.UpsertStreamCount(default!))
+            .Authorize(HelperRoleBase.ListenerArtistRolesArray);
     }
 }

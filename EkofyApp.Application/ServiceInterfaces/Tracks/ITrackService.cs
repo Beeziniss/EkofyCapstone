@@ -23,7 +23,7 @@ public interface ITrackService
     Task ReleaseScheduledTrackAsync(string trackId);
     IQueryable<Track> SearchTracks(string searchTerm);
     Task<long> AddToFavoriteTrackAsync(string trackId, bool isAdding);
-    Task UpdateStreamCount(string trackId);
+    Task UpsertStreamCountAsync(string trackId);
     IQueryable<Track> GetFavoriteTracks();
     Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year);
     IQueryable<Track> GetEuclideanRecommendedTracksByTrackId(string trackId, AudioFeatureWeight audioFeatureWeight, int limit = 10);
