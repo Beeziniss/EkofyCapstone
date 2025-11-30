@@ -631,7 +631,7 @@ public sealed class AuthenticationService(
 
                 // Có thể không cần dùng claimList vì trên đó đã có list về claim và tùy theo hệ thống nên tạo mới list claim
                 Listener listener = await _unitOfWork.GetCollection<Listener>()
-                    .Find(x => x.Email == email.ToLowerInvariant())
+                    .Find(session, x => x.Email == email.ToLowerInvariant())
                     .Project<Listener>(Builders<Listener>.Projection
                         .Include(x => x.Id)
                         .Include(x => x.AvatarImage))
