@@ -642,6 +642,20 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             .Project(x => x.UserId)
                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any user with artist {artistPackage.ArtistId}");
 
+                        // Ẩn artist package nếu là package custom
+                        if (artistPackage.IsCustom)
+                        {
+                            UpdateResult updateArtistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
+                                .UpdateOneAsync(session, x => x.Id == artistPackage.Id,
+                                    Builders<ArtistPackage>.Update
+                                        .Set(x => x.IsDelete, true)
+                                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+                            if (updateArtistPackage.ModifiedCount == 0)
+                            {
+                                throw new UnprocessableEntityCustomException("Cannot update artist package to deleted after purchased.");
+                            }
+                        }
+
                         // Tạo conversation nếu chưa có
                         bool isDirectRequest = false;
                         if (checkoutSession.Metadata["conversation_id"] == "empty")
