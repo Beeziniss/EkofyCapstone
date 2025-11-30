@@ -16,7 +16,7 @@ public class RequestQuery(IRequestService requestService)
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    [UseSorting<Track>]
+    [UseSorting<Request>]
     public IQueryable<Request> GetRequests()
     {
         return _requestService.GetRequestsQueryable();
@@ -32,7 +32,7 @@ public class RequestQuery(IRequestService requestService)
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
-    [UseSorting<Track>]
+    [UseSorting<Request>]
     public IQueryable<Request> SearchRequests(string searchTerm, bool isIndividual)
     {
         return _requestService.SearchRequests(searchTerm, isIndividual);
@@ -42,6 +42,7 @@ public class RequestQuery(IRequestService requestService)
     [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
+    [UseSorting<Request>]
     public IQueryable<Request> GetOwnRequests()
     {
         return _requestService.GetOwnRequestsAsync();
