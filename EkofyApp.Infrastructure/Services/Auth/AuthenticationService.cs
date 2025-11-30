@@ -545,6 +545,10 @@ public sealed class AuthenticationService(
 
     public async Task<AuthListenerTokenResponse> LoginByGoogleAsync(LoginGoogleRequest loginGoogleRequest)
     {
+        AccessTokenResponse token = default!;
+        User retrieveUser = default!;
+        Listener listener = default!;
+
         try
         {
             await _unitOfWork.ExecuteInTransactionAsync(async session =>
@@ -574,7 +578,7 @@ public sealed class AuthenticationService(
                 string email = payload.Email;
 
                 // Lấy thông tin người dùng
-                User retrieveUser = await _unitOfWork.GetCollection<User>()
+                retrieveUser = await _unitOfWork.GetCollection<User>()
                     .Find(user => user.Email == email.ToLowerInvariant())
                     .Project<User>(Builders<User>.Projection
                         .Include(x => x.Id)
@@ -630,7 +634,7 @@ public sealed class AuthenticationService(
                 // Tạo JWT access token và refresh token
 
                 // Có thể không cần dùng claimList vì trên đó đã có list về claim và tùy theo hệ thống nên tạo mới list claim
-                Listener listener = await _unitOfWork.GetCollection<Listener>()
+                listener = await _unitOfWork.GetCollection<Listener>()
                     .Find(session, x => x.Email == email.ToLowerInvariant())
                     .Project<Listener>(Builders<Listener>.Projection
                         .Include(x => x.Id)
@@ -645,7 +649,7 @@ public sealed class AuthenticationService(
                 ];
 
                 // Gọi phương thức để tạo access token và refresh token từ danh sách claim và thông tin người dùng
-                AccessTokenResponse token = await _jsonWebToken.GenerateAccessTokenAsync(claims, loginGoogleRequest.IsMobile);
+                token = await _jsonWebToken.GenerateAccessTokenAsync(claims, loginGoogleRequest.IsMobile);
 
                 CookieOptions cookieOptions = new()
                 {
@@ -658,19 +662,17 @@ public sealed class AuthenticationService(
                 // Đảm bảo rằng hệ thống đã tạo AccessToken thành công thì mới cập nhật field LastLoginTime
                 UpdateDefinition<User> updateDefinition = Builders<User>.Update.Set(user => user.LastLoginAt, HelperMethod.GetUtcPlus7TimeOffset());
                 await _unitOfWork.GetCollection<User>().UpdateOneAsync(session, user => user.Id == retrieveUser.Id, updateDefinition);
-
-                return new AuthListenerTokenResponse()
-                {
-                    AccessToken = token.AccessToken,
-                    RefreshToken = token.RefreshToken,
-                    UserId = retrieveUser.Id,
-                    ListenerId = listener.Id,
-                    Role = retrieveUser.Role,
-                    AvatarImage = listener.AvatarImage ?? string.Empty,
-                };
             });
 
-            throw new ExternalServiceCustomException("Unreachable code reached in LoginByGoogleAsync");
+            return new AuthListenerTokenResponse()
+            {
+                AccessToken = token.AccessToken,
+                RefreshToken = token.RefreshToken,
+                UserId = retrieveUser.Id,
+                ListenerId = listener.Id,
+                Role = retrieveUser.Role,
+                AvatarImage = listener.AvatarImage ?? string.Empty,
+            };
         }
         catch (Exception ex)
         {
