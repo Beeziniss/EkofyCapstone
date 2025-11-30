@@ -356,7 +356,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 ApprovalType = ApprovalType.TrackUpload,
                 ActionByUserId = currentUserId,
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = isCancled ? HistoryActionType.Cancled : HistoryActionType.Rejected,
+                Action = isCancled ? HistoryActionType.Canceled : HistoryActionType.Rejected,
                 Notes = reasonReject,
                 Snapshot = trackTempRequest,
             });
@@ -368,7 +368,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 ApprovalType = ApprovalType.WorkUpload,
                 ActionByUserId = currentUserId,
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = isCancled ? HistoryActionType.Cancled : HistoryActionType.Rejected,
+                Action = isCancled ? HistoryActionType.Canceled : HistoryActionType.Rejected,
                 Notes = reasonReject,
                 Snapshot = workTempRequest,
             });
@@ -380,7 +380,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 ApprovalType = ApprovalType.RecordingUpload,
                 ActionByUserId = currentUserId,
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = isCancled ? HistoryActionType.Cancled : HistoryActionType.Rejected,
+                Action = isCancled ? HistoryActionType.Canceled : HistoryActionType.Rejected,
                 Notes = reasonReject,
                 Snapshot = recordingTempRequest,
             });
