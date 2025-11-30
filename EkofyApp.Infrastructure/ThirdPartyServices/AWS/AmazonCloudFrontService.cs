@@ -485,7 +485,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         using StreamReader privateKeyStream = new(privateKeyPath);
 
         // Thời gian hết hạn của signed URL
-        DateTimeOffset expires = HelperMethod.GetUtcPlus7TimeOffset().AddMinutes(2);
+        DateTimeOffset expires = HelperMethod.GetUtcPlus7TimeOffset().AddMinutes(10);
 
         // Ký URL
         string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(
