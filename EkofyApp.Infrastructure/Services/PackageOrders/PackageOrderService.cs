@@ -463,24 +463,28 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         // Nếu sau 3 NGÀY sau khi artist submit file mà requestor chưa approve hay chuyển trạng thái thì sẽ tự động Approve và chuyển tiền
         public async Task ApproveDeliveryAutomatically(string packageOrderId)
         {
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
             //tự động duyệt các delivery đã quá hạn 3 ngày mà client không phản hồi
             var filter = Builders<PackageOrder>.Filter.And(
-                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > HelperMethod.GetUtcPlus7TimeOffset()),
+                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > now),
                 Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
+                Builders<PackageOrder>.Filter.Eq(po => po.Id, packageOrderId),
                 Builders<PackageOrder>.Filter.ElemMatch(po => po.Deliveries,
                          d => d.RequestedAt != null &&
-                         d.RequestedAt <= HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3) &&
+                         now - d.DeliveredAt > TimeSpan.FromDays(3) &&
                          d.ClientFeedback == null)
             );
             var update = Builders<PackageOrder>.Update
-                .Set(po => po.Deliveries[-1].ClientFeedback, "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
+                .Set("Deliveries.$.ClientFeedback", "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
                 .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
                 .Set(po => po.Status, PackageOrderStatus.Completed);
             // TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
-            await _stripeService.EscrowReleaseAsync(packageOrderId);
-
-            await _unitOfWork.GetCollection<PackageOrder>().UpdateManyAsync(filter, update);
-
+            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(filter, update);
+            if(result.ModifiedCount > 0)
+            {
+                await _stripeService.EscrowReleaseAsync(packageOrderId);
+            }
+            
             // có lỗi thì thông báo HERE!
         }
 
