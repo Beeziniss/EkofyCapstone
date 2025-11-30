@@ -415,4 +415,10 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
         //await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
         return true;
     }
+
+    public async Task<bool> UpsertStreamCount(string trackId)
+    {
+        await _trackService.UpsertStreamCountAsync(trackId);
+        return true;
+    }
 }

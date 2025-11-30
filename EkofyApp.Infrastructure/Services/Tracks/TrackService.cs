@@ -1196,7 +1196,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     }
     #endregion
 
-    public async Task UpdateStreamCount(string trackId)
+    public async Task UpsertStreamCountAsync(string trackId)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
