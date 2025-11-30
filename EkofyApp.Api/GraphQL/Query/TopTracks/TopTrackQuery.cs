@@ -11,7 +11,7 @@ namespace EkofyApp.Api.GraphQL.Query.TopTracks
     {
         private readonly ITopTrackService _topTrackService = topTrackService;
 
-        [AuthorizeRoles(HelperRoleBase.ListenerRoles)]
+        [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
         [UseProjection]
         public IQueryable<TopTrackResponse> GetTopTracks()
         {

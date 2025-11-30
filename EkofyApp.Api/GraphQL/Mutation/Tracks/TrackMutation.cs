@@ -326,7 +326,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     //    return (result.BestConfidence, result.TrackId, result.TrackName);
     //}
 
-    public async Task<bool> RejectTrackUploadRequestAsync(string uploadId, string reasonReject)
+    public async Task<bool> RejectTrackUploadRequestAsync(string uploadId, string reasonReject, bool isCancled = false)
     {
         if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
         {
@@ -337,9 +337,9 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 throw new NotFoundCustomException("Upload request not found");
             }
 
-            var trackTempRequest = combinedRequest.Track;
-            var workTempRequest = combinedRequest.Work;
-            var recordingTempRequest = combinedRequest.Recording;
+            TrackTempRequest trackTempRequest = combinedRequest.Track;
+            WorkTempRequest workTempRequest = combinedRequest.Work;
+            RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
 
             // Xóa file đã upload trên cloud storage
             await _amazonS3Service.DeleteOriginalAudioAsync(trackTempRequest.Id);
@@ -356,7 +356,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 ApprovalType = ApprovalType.TrackUpload,
                 ActionByUserId = currentUserId,
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Rejected,
+                Action = isCancled ? HistoryActionType.Canceled : HistoryActionType.Rejected,
                 Notes = reasonReject,
                 Snapshot = trackTempRequest,
             });
@@ -368,7 +368,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 ApprovalType = ApprovalType.WorkUpload,
                 ActionByUserId = currentUserId,
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Rejected,
+                Action = isCancled ? HistoryActionType.Canceled : HistoryActionType.Rejected,
                 Notes = reasonReject,
                 Snapshot = workTempRequest,
             });
@@ -380,7 +380,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
                 ApprovalType = ApprovalType.RecordingUpload,
                 ActionByUserId = currentUserId,
                 ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-                Action = HistoryActionType.Rejected,
+                Action = isCancled ? HistoryActionType.Canceled : HistoryActionType.Rejected,
                 Notes = reasonReject,
                 Snapshot = recordingTempRequest,
             });
@@ -413,6 +413,12 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     {
         long favoriteCountUpdated = await _trackService.AddToFavoriteTrackAsync(trackId, isAdding);
         //await eventSender.SendAsync(trackId, favoriteCountUpdated, cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> UpsertStreamCount(string trackId)
+    {
+        await _trackService.UpsertStreamCountAsync(trackId);
         return true;
     }
 }

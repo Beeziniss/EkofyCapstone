@@ -7,6 +7,8 @@ public enum HistoryActionType
     Approved,
     [EnumMember(Value = "Rejected")]
     Rejected,
+    [EnumMember(Value = "Canceled")]
+    Canceled,
     [EnumMember(Value = "RequestChange")]
     RequestChange,
     [EnumMember(Value = "Dismissed")]

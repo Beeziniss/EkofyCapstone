@@ -38,5 +38,26 @@ namespace EkofyApp.Api.GraphQL.Mutation.ArtistPackages
             await _artistPackageService.ChangeArtistPackageStatusAsync(updateStatusRequest);
             return true;
         }
+
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
+        public async Task<bool> CreateCustomArtistPackageAsync(CreateCustomArtistPackageRequest createRequest)
+        {
+            await _artistPackageService.CreateCustomArtistPackageAsync(createRequest);
+            return true;
+        }
+
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
+        public async Task<bool> UpdateCustomPackageAsync(UpdateCustomArtistPackageRequest updateRequest)
+        {
+            await _artistPackageService.UpdateCustomPackageAsync(updateRequest);
+            return true;
+        }
+
+        [AuthorizeRoles(HelperRoleBase.ArtistRoles)]
+        public async Task<bool> DeleteCustomArtistPackageAsync(string artistPackageId)
+        {
+            await _artistPackageService.DeleteCustomArtistPackageAsync(artistPackageId);
+            return true;
+        }
     }
 }

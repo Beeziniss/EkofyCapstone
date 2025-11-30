@@ -430,7 +430,7 @@ public class TestController : ControllerBase
     [HttpPost("add-count-to-cache")]
     public async Task<IActionResult> AddCountToCache(string trackId, [FromServices] ITrackService trackService)
     {
-        await trackService.UpdateStreamCount(trackId);
+        await trackService.UpsertStreamCountAsync(trackId);
         return Ok(new
         {
             Message = "Add count to cache successfully",

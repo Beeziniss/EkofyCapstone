@@ -12,6 +12,7 @@ using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using Serilog;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -85,7 +86,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
                 throw new UnauthorizedCustomException("Invalid token for the requested track");
             }
         }
-        catch
+        catch(Exception ex)
         {
             //await _distributedCache.SetStringAsync(
             //cacheKey, "0",
@@ -94,6 +95,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
             //    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
             //});
 
+            Log.Error(ex, "Error validating HLS token");
             throw new UnauthorizedCustomException("Invalid or expired token");
         }
     }
@@ -483,7 +485,7 @@ public sealed class AmazonCloudFrontService(IAmazonS3 s3Client, AWSSetting aWSSe
         using StreamReader privateKeyStream = new(privateKeyPath);
 
         // Thời gian hết hạn của signed URL
-        DateTimeOffset expires = HelperMethod.GetUtcPlus7TimeOffset().AddMinutes(2);
+        DateTimeOffset expires = HelperMethod.GetUtcPlus7TimeOffset().AddMinutes(10);
 
         // Ký URL
         string signedUrl = AmazonCloudFrontUrlSigner.GetCannedSignedURL(

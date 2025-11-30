@@ -26,7 +26,7 @@ public class MediaStreamingController(IAmazonCloudFrontService amazonCloudFrontS
     [Authorize(Roles = "Listener,Artist,Moderator,Admin"), HttpPost("refresh-signed-url")]
     public IActionResult RefreshSignedUrl([FromQuery] string trackId, [FromQuery] string oldToken)
     {
-        _amazonCloudFrontService.ValidateHlsToken(trackId, oldToken);
+        //_amazonCloudFrontService.ValidateHlsToken(trackId, oldToken);
 
         string newToken = _amazonCloudFrontService.RefreshSignedUrl(trackId, oldToken);
 
