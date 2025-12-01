@@ -135,141 +135,146 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
             // Convert sang WAV
             await _trackUploadNotifier.SendProgressAsync(userId, 10, "Processing audio file");
-            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-            //AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
+            //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
 
             // Convert file sang định dạng wav
-            //wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
+            wavFileResponse = await _ffmpegService.ConvertToWavAsync(stream, tempName, audioConvertPathOptionsWav);
 
             // Tạo track temp
             await _trackUploadNotifier.SendProgressAsync(userId, 20, "Processing track metadata");
-            //TrackTempRequest trackTempRequest = CreateTrackTemp(createTrackRequest);
+            TrackTempRequest trackTempRequest = CreateTrackTemp(createTrackRequest);
             await _trackUploadNotifier.SendProgressAsync(userId, 25, "Processing work metadata");
-            //WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
+            WorkTempRequest workTempRequest = _workService.CreateWorkTemp(createWorkRequest);
             await _trackUploadNotifier.SendProgressAsync(userId, 30, "Processing recording metadata");
-            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-            //RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
+            //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            RecordingTempRequest recordingTempRequest = _recordingService.CreateRecordingTemp(createRecordingRequest);
 
             // Tạo hls từ file wav
             await _trackUploadNotifier.SendProgressAsync(userId, 40, "Processing streaming audio file");
-            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-            //AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
-            //outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+            //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
+            outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
 
             //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
             await _trackUploadNotifier.SendProgressAsync(userId, 50, "Analyzing audio file");
-            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-            //AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+            //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
             // Xác định mood của track dựa trên đặc trưng âm thanh
             await _trackUploadNotifier.SendProgressAsync(userId, 60, "Extracting mood from audio file");
-            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-            //IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
-            //IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+            //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+            IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
 
             await _trackUploadNotifier.SendProgressAsync(userId, 70, "Creating summary description from audio file");
-            await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-            //string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
-            //float[] embeddingVector = await GenerateEmbeddingsAsync(alternativeDescription);
+            //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+            string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+            float[] embeddingVector = await GenerateEmbeddingsAsync(alternativeDescription);
 
-            //TrackTempResponse trackTempResponse = new()
-            //{
-            //    Id = trackTempRequest.Id,
-            //    Name = trackTempRequest.Name,
-            //    Description = trackTempRequest.Description,
-            //    MainArtistIds = trackTempRequest.MainArtistIds,
-            //    FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
-            //    CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
-            //    Tags = trackTempRequest.Tags,
-            //    CoverImage = trackTempRequest.CoverImage,
-            //    PreviewVideo = trackTempRequest.PreviewVideo,
-            //    IsExplicit = trackTempRequest.IsExplicit,
-            //    Lyrics = trackTempRequest.Lyrics,
-            //    ReleaseInfo = trackTempRequest.ReleaseInfo,
-            //    LegalDocuments = trackTempRequest.LegalDocuments,
-            //    //AudioFingerprint = audioFingerprint,
-            //    AudioFeature = audioAnalysisResponse,
-            //    AlternativeDescription = alternativeDescription,
-            //    EmbeddingVector = embeddingVector,
+            TrackTempResponse trackTempResponse = new()
+            {
+                Id = trackTempRequest.Id,
+                Name = trackTempRequest.Name,
+                Description = trackTempRequest.Description,
+                MainArtistIds = trackTempRequest.MainArtistIds,
+                FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
+                CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
+                Tags = trackTempRequest.Tags,
+                CoverImage = trackTempRequest.CoverImage,
+                PreviewVideo = trackTempRequest.PreviewVideo,
+                IsExplicit = trackTempRequest.IsExplicit,
+                Lyrics = trackTempRequest.Lyrics,
+                ReleaseInfo = trackTempRequest.ReleaseInfo,
+                LegalDocuments = trackTempRequest.LegalDocuments,
+                //AudioFingerprint = audioFingerprint,
+                AudioFeature = audioAnalysisResponse,
+                AlternativeDescription = alternativeDescription,
+                EmbeddingVector = embeddingVector,
 
-            //    CreatedBy = trackTempRequest.CreatedBy,
-            //};
+                CreatedBy = trackTempRequest.CreatedBy,
+            };
 
             await _trackUploadNotifier.SendProgressAsync(userId, 80, "Uploading...");
-            await Task.Delay(5000); // Giả lập delay cho người dùng thấy progress
+            //await Task.Delay(5000); // Giả lập delay cho người dùng thấy progress
 
-            //await CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+            await CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
 
             // Upload original file to cloud storage (S3, GCP, Azure Blob, etc.)
-            //await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
+            await _amazonS3Service.UploadOriginalAudioAsync(stream, trackTempResponse.Id, false);
 
             // Đẩy hls playlist lên S3
-            //await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+            await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
 
             // Kiểm tra và lên lịch phát hành track nếu cần thiết
             await _trackUploadNotifier.SendProgressAsync(userId, 85, "Checking release schedule");
-            await Task.Delay(2000);
-            //if (ShouldScheduleTrackRelease(trackTempResponse.ReleaseInfo))
-            //{
-            //    DateTimeOffset releaseTime = trackTempResponse.ReleaseInfo.ReleaseDate!.Value;
-            //    BackgroundJob.Schedule<IBackgoundService>(
-            //        x => x.ReleaseScheduledTrackJob(trackTempResponse.Id),
-            //        releaseTime
-            //    );
-            //}
+            //await Task.Delay(2000);
+            if (ShouldScheduleTrackRelease(trackTempResponse.ReleaseInfo))
+            {
+                DateTimeOffset releaseTime = trackTempResponse.ReleaseInfo.ReleaseDate!.Value;
+                BackgroundJob.Schedule<IBackgoundService>(
+                    x => x.ReleaseScheduledTrackJob(trackTempResponse.Id),
+                    releaseTime
+                );
+            }
 
             // Upload fingerprint lên EmySound
             await _trackUploadNotifier.SendProgressAsync(userId, 90, "Generating fingerprint");
-            await Task.Delay(2000);
-            //string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempResponse.CreatedBy);
-            //string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
+            //await Task.Delay(2000);
+            string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempResponse.CreatedBy);
+            string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
 
             // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
             // Resolved: Đã xóa tag trên S3 và xóa request trên redis
             await _trackUploadNotifier.SendProgressAsync(userId, 95, "Cleaning up temporary resources");
-            await Task.Delay(1000);
-            //await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
+            //await Task.Delay(1000);
+            await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
 
             // Lưu snapshot
-            // Track
-            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            //{
-            //    TargetOwnerId = trackTempRequest.CreatedBy,
-            //    TargetId = trackTempRequest.Id,
-            //    ApprovalType = ApprovalType.TrackUpload,
-            //    ActionByUserId = "68abf0fc5252e66631121e57",
-            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            //    Action = HistoryActionType.Approved,
-            //    Notes = null,
-            //    Snapshot = trackTempRequest,
-            //});
+            //Track
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetOwnerId = trackTempRequest.CreatedBy,
+                TargetId = trackTempRequest.Id,
+                ApprovalType = ApprovalType.TrackUpload,
+                ActionByUserId = "68abf0fc5252e66631121e57",
+                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = trackTempRequest,
+            });
 
-            //// Work
-            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            //{
-            //    TargetId = workTempRequest.Id,
-            //    ApprovalType = ApprovalType.WorkUpload,
-            //    ActionByUserId = "68abf0fc5252e66631121e57",
-            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            //    Action = HistoryActionType.Approved,
-            //    Notes = null,
-            //    Snapshot = workTempRequest,
-            //});
+            // Work
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = workTempRequest.Id,
+                ApprovalType = ApprovalType.WorkUpload,
+                ActionByUserId = "68abf0fc5252e66631121e57",
+                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = workTempRequest,
+            });
 
-            //// Recording
-            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            //{
-            //    TargetId = recordingTempRequest.Id,
-            //    ApprovalType = ApprovalType.RecordingUpload,
-            //    ActionByUserId = "68abf0fc5252e66631121e57",
-            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            //    Action = HistoryActionType.Approved,
-            //    Notes = null,
-            //    Snapshot = recordingTempRequest,
-            //});
+            // Recording
+            await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+            {
+                TargetId = recordingTempRequest.Id,
+                ApprovalType = ApprovalType.RecordingUpload,
+                ActionByUserId = "68abf0fc5252e66631121e57",
+                ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                Action = HistoryActionType.Approved,
+                Notes = null,
+                Snapshot = recordingTempRequest,
+            });
 
             await _trackUploadNotifier.SendProgressAsync(userId, 100, "Done");
             await _trackUploadNotifier.SendCompletedAsync(userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during automatic approval process for userId: {UserId}", userId);
+            await _trackUploadNotifier.SendFailedAsync(userId, "An error occurred during automatic approval process.");
         }
         finally
         {
@@ -283,8 +288,6 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             {
                 File.Delete(wavFileResponse.OutputWavPath);
             }
-
-            await _trackUploadNotifier.SendFailedAsync(userId, "An error occurred during automatic approval process.");
         }
     }
 
@@ -295,180 +298,180 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             // Lưu xuống database
             if (_redisCacheService.TryGetGeneric($"upload:{uploadId}:requestUpload", out CombinedUploadRequest? combinedRequest))
             {
-                //WavFileResponse wavFileResponse = default!;
+                WavFileResponse wavFileResponse = default!;
 
-                //if (combinedRequest is null)
-                //{
-                //    throw new NotFoundCustomException("Upload request not found");
-                //}
+                if (combinedRequest is null)
+                {
+                    throw new NotFoundCustomException("Upload request not found");
+                }
 
-                //TrackTempRequest trackTempRequest = combinedRequest.Track;
-                //WorkTempRequest workTempRequest = combinedRequest.Work;
-                //RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
+                TrackTempRequest trackTempRequest = combinedRequest.Track;
+                WorkTempRequest workTempRequest = combinedRequest.Work;
+                RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
 
                 // Tài nguyên từ S3
                 await _trackUploadNotifier.SendProgressAsync(actionByUserId, 10, "Processing audio file");
-                await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
-                                        //await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
-                                        //{
-                                        //    byte[] originalBytes;
-                                        //    using (MemoryStream originalStream = new())
-                                        //    {
-                                        //        await stream.CopyToAsync(originalStream);
-                                        //        originalBytes = originalStream.ToArray();
-                                        //    }
+                //await Task.Delay(2000); // Giả lập delay cho người dùng thấy progress
+                await _amazonS3Service.DownloadOriginalAudioAsync(trackTempRequest.Id, async stream =>
+                {
+                    byte[] originalBytes;
+                    using (MemoryStream originalStream = new())
+                    {
+                        await stream.CopyToAsync(originalStream);
+                        originalBytes = originalStream.ToArray();
+                    }
 
-                //    using MemoryStream ffmpegStream = new(originalBytes);
-                //    using MemoryStream emyStream = new(originalBytes);
+                    using MemoryStream ffmpegStream = new(originalBytes);
+                    using MemoryStream emyStream = new(originalBytes);
 
-                //    ffmpegStream.Position = 0;
-                //    emyStream.Position = 0;
+                    ffmpegStream.Position = 0;
+                    emyStream.Position = 0;
 
-                //    string tempName = ObjectId.GenerateNewId().ToString();
+                    string tempName = ObjectId.GenerateNewId().ToString();
 
-                // Convert sang WAV
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 20, "Processing audio file");
-                await Task.Delay(500); // Giả lập delay cho người dùng thấy progress
-                                       //AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
+                    // Convert sang WAV
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 20, "Processing audio file");
+                    //await Task.Delay(500); // Giả lập delay cho người dùng thấy progress
+                    AudioConvertPathOptions audioConvertPathOptionsWav = AudioConvertPathOptions.ForConvertToWav();
 
-                // Convert file sang định dạng wav
-                //wavFileResponse = await _ffmpegService.ConvertToWavAsync(ffmpegStream, tempName, audioConvertPathOptionsWav);
+                    // Convert file sang định dạng wav
+                    wavFileResponse = await _ffmpegService.ConvertToWavAsync(ffmpegStream, tempName, audioConvertPathOptionsWav);
 
-                // Tạo hls từ file wav
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 30, "Processing streaming audio file");
-                await Task.Delay(500);
-                //AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
-                //string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
+                    // Tạo hls từ file wav
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 30, "Processing streaming audio file");
+                    //await Task.Delay(500);
+                    AudioConvertPathOptions audioConvertPathOptionsHls = AudioConvertPathOptions.ForConvertToHls(trackTempRequest.Id);
+                    string outputHlsPath = await _ffmpegService.ConvertToHlsAsync(wavFileResponse, audioConvertPathOptionsHls);
 
-                //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 40, "Analyzing audio file");
-                await Task.Delay(2000);
-                //AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
+                    //AudioFingerprint audioFingerprint = await _audioFingerprintService.GenerateFingerprint(wavFileResponse);
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 40, "Analyzing audio file");
+                    //await Task.Delay(2000);
+                    AudioFeature audioAnalysisResponse = await _audioAnalysisService.AnalyzeAudioAsync(wavFileResponse);
 
-                // Xác định mood của track dựa trên đặc trưng âm thanh
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 50, "Extracting mood from audio file");
-                await Task.Delay(2000);
-                //IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
-                //IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+                    // Xác định mood của track dựa trên đặc trưng âm thanh
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 50, "Extracting mood from audio file");
+                    //await Task.Delay(2000);
+                    IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(audioAnalysisResponse);
+                    IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
 
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 60, "Creating summary description from audio file");
-                await Task.Delay(2000);
-                //string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
-                //float[] embeddingVector = await GenerateEmbeddingsAsync(alternativeDescription);
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 60, "Creating summary description from audio file");
+                    //await Task.Delay(2000);
+                    string alternativeDescription = _categoryService.GenerateAlternativeDescription(audioAnalysisResponse, moodTypes);
+                    float[] embeddingVector = await GenerateEmbeddingsAsync(alternativeDescription);
 
-                //TrackTempResponse trackTempResponse = new()
-                //{
-                //    Id = trackTempRequest.Id,
-                //    Name = trackTempRequest.Name,
-                //    Description = trackTempRequest.Description,
-                //    MainArtistIds = trackTempRequest.MainArtistIds,
-                //    FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
-                //    CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
-                //    Tags = trackTempRequest.Tags,
-                //    CoverImage = trackTempRequest.CoverImage,
-                //    PreviewVideo = trackTempRequest.PreviewVideo,
-                //    IsExplicit = trackTempRequest.IsExplicit,
-                //    Lyrics = trackTempRequest.Lyrics,
-                //    ReleaseInfo = trackTempRequest.ReleaseInfo,
+                    TrackTempResponse trackTempResponse = new()
+                    {
+                        Id = trackTempRequest.Id,
+                        Name = trackTempRequest.Name,
+                        Description = trackTempRequest.Description,
+                        MainArtistIds = trackTempRequest.MainArtistIds,
+                        FeaturedArtistIds = trackTempRequest.FeaturedArtistIds,
+                        CategoryIds = trackTempRequest.CategoryIds.Concat(moodCategoryIds).ToList(),
+                        Tags = trackTempRequest.Tags,
+                        CoverImage = trackTempRequest.CoverImage,
+                        PreviewVideo = trackTempRequest.PreviewVideo,
+                        IsExplicit = trackTempRequest.IsExplicit,
+                        Lyrics = trackTempRequest.Lyrics,
+                        ReleaseInfo = trackTempRequest.ReleaseInfo,
 
-                //    //AudioFingerprint = audioFingerprint,
-                //    AudioFeature = audioAnalysisResponse,
-                //    AlternativeDescription = alternativeDescription,
-                //    EmbeddingVector = embeddingVector,
+                        //AudioFingerprint = audioFingerprint,
+                        AudioFeature = audioAnalysisResponse,
+                        AlternativeDescription = alternativeDescription,
+                        EmbeddingVector = embeddingVector,
 
-                //    CreatedBy = trackTempRequest.CreatedBy,
-                //};
+                        CreatedBy = trackTempRequest.CreatedBy,
+                    };
 
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 70, "Processing metadata");
-                await Task.Delay(2000);
-                //await CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 70, "Processing metadata");
+                    //await Task.Delay(2000);
+                    await CreateTrackFromTrackUploadRequestAsync(trackTempResponse, workTempRequest, recordingTempRequest);
 
-                // Đẩy hls playlist lên S3
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 80, "Uploading...");
-                await Task.Delay(2000);
-                //await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
+                    // Đẩy hls playlist lên S3
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 80, "Uploading...");
+                    //await Task.Delay(2000);
+                    await _amazonS3Service.UploadFolderAsync(outputHlsPath, trackTempRequest.Id);
 
-                // Kiểm tra và lên lịch phát hành track nếu cần thiết
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 85, "Checking release schedule");
-                await Task.Delay(1000);
-                //if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
-                //{
-                //    DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
-                //    BackgroundJob.Schedule<IBackgoundService>(
-                //        x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
-                //        releaseTime
-                //    );
-                //}
+                    // Kiểm tra và lên lịch phát hành track nếu cần thiết
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 85, "Checking release schedule");
+                    //await Task.Delay(1000);
+                    if (ShouldScheduleTrackRelease(trackTempRequest.ReleaseInfo))
+                    {
+                        DateTimeOffset releaseTime = trackTempRequest.ReleaseInfo.ReleaseDate!.Value;
+                        BackgroundJob.Schedule<IBackgoundService>(
+                            x => x.ReleaseScheduledTrackJob(trackTempRequest.Id),
+                            releaseTime
+                        );
+                    }
 
-                // Upload fingerprint lên EmySound
-                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 90, "Generating fingerprint");
-                await Task.Delay(2000);
-                //string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempRequest.CreatedBy);
-                //string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
+                    // Upload fingerprint lên EmySound
+                    await _trackUploadNotifier.SendProgressAsync(actionByUserId, 90, "Generating fingerprint");
+                    //await Task.Delay(2000);
+                    string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempRequest.CreatedBy);
+                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
 
-                // Xóa folder, file tạm sau khi upload lên S3
-                //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
-                //if (Directory.Exists(outputHlsPath))
-                //{
-                //    Directory.Delete(outputHlsPath, true);
-                //}
-                //if (File.Exists(wavFileResponse.OutputWavPath))
-                //{
-                //    File.Delete(wavFileResponse.OutputWavPath);
-                //}
+                    // Xóa folder, file tạm sau khi upload lên S3
+                    //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
+                    if (Directory.Exists(outputHlsPath))
+                    {
+                        Directory.Delete(outputHlsPath, true);
+                    }
+                    if (File.Exists(wavFileResponse.OutputWavPath))
+                    {
+                        File.Delete(wavFileResponse.OutputWavPath);
+                    }
+                });
+
+                // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
+                // Resolved: Đã xóa tag trên S3 và xóa request trên redis
+                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 95, "Cleaning up temporary resources");
+                //await Task.Delay(1000);
+                await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
+                await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
+
+                // Lưu snapshot
+                // Track
+                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+                {
+                    TargetOwnerId = trackTempRequest.CreatedBy,
+                    TargetId = trackTempRequest.Id,
+                    ApprovalType = ApprovalType.TrackUpload,
+                    ActionByUserId = actionByUserId,
+                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                    Action = HistoryActionType.Approved,
+                    Notes = null,
+                    Snapshot = trackTempRequest,
+                });
+
+                // Work
+                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+                {
+                    TargetId = workTempRequest.Id,
+                    ApprovalType = ApprovalType.WorkUpload,
+                    ActionByUserId = actionByUserId,
+                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                    Action = HistoryActionType.Approved,
+                    Notes = null,
+                    Snapshot = workTempRequest,
+                });
+
+                // Recording
+                await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
+                {
+                    TargetId = recordingTempRequest.Id,
+                    ApprovalType = ApprovalType.RecordingUpload,
+                    ActionByUserId = actionByUserId,
+                    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
+                    Action = HistoryActionType.Approved,
+                    Notes = null,
+                    Snapshot = recordingTempRequest,
+                });
+
+                await _trackUploadNotifier.SendProgressAsync(actionByUserId, 100, "Done");
+                await _trackUploadNotifier.SendCompletedAsync(actionByUserId);
             }
-
-            // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
-            // Resolved: Đã xóa tag trên S3 và xóa request trên redis
-            await _trackUploadNotifier.SendProgressAsync(actionByUserId, 95, "Cleaning up temporary resources");
-            await Task.Delay(1000);
-            //await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
-            //await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
-
-            // Lưu snapshot
-            // Track
-            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            //{
-            //    TargetOwnerId = trackTempRequest.CreatedBy,
-            //    TargetId = trackTempRequest.Id,
-            //    ApprovalType = ApprovalType.TrackUpload,
-            //    ActionByUserId = actionByUserId,
-            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            //    Action = HistoryActionType.Approved,
-            //    Notes = null,
-            //    Snapshot = trackTempRequest,
-            //});
-
-            //// Work
-            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            //{
-            //    TargetId = workTempRequest.Id,
-            //    ApprovalType = ApprovalType.WorkUpload,
-            //    ActionByUserId = actionByUserId,
-            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            //    Action = HistoryActionType.Approved,
-            //    Notes = null,
-            //    Snapshot = workTempRequest,
-            //});
-
-            //// Recording
-            //await _approvalHistoryService.CreateApprovalHistoryAsync(new ApprovalHistoryRequest
-            //{
-            //    TargetId = recordingTempRequest.Id,
-            //    ApprovalType = ApprovalType.RecordingUpload,
-            //    ActionByUserId = actionByUserId,
-            //    ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
-            //    Action = HistoryActionType.Approved,
-            //    Notes = null,
-            //    Snapshot = recordingTempRequest,
-            //});
-
-            await _trackUploadNotifier.SendProgressAsync(actionByUserId, 100, "Done");
-            await _trackUploadNotifier.SendCompletedAsync(actionByUserId);
 
             return true;
         }
-
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error approving track upload request for uploadId: {UploadId}", uploadId);
