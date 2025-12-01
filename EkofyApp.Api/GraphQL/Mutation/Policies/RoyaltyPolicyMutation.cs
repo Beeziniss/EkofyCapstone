@@ -21,6 +21,12 @@ public sealed class RoyaltyPolicyMutation(IRoyaltyPolicyService royaltyPolicySer
         return true;
     }
 
+    public async Task<bool> SwitchToLatestVersionAsync()
+    {
+        await _royaltyPolicyService.SwitchToLatestVersionAsync();
+        return true;
+    }
+
     public async Task<bool> DowngradeRoyaltyPolicyVersionAsync(long? version = null)
     {
         await _royaltyPolicyService.DowngradeVersionAsync(version);

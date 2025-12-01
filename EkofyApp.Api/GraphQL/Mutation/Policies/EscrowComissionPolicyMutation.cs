@@ -27,6 +27,12 @@ public sealed class EscrowComissionPolicyMutation(IEscrowCommissionPolicyService
         return true;
     }
 
+    public async Task<bool> SwitchToLatestVersionAsync()
+    {
+        await _escrowCommissionPolicyService.SwitchToLatestVersionAsync();
+        return true;
+    }
+
     public async Task<bool> SeedEscrowCommissionPolicyDataAsync(string password)
     {
         if (password == "Tú đẹp trai")

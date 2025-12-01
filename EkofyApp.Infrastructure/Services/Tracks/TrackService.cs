@@ -1015,6 +1015,14 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         {
             // Xóa track khỏi cache yêu thích của users
             await RemoveTrackFromFavoriteCacheAsync(userId, trackId);
+
+            // Xóa track yêu thích của users khỏi UserEngagement
+            await _unitOfWork.GetCollection<UserEngagement>()
+                .DeleteOneAsync(ue => ue.ActorId == userId &&
+                                      ue.TargetId == trackId &&
+                                      ue.TargetType == UserEngagementTargetType.Track &&
+                                      ue.Action == UserEngagementAction.Like);
+
             return trackUpdated.FavoriteCount;
         }
 

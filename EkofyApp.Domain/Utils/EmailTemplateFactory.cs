@@ -24,6 +24,7 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.SubscriptionCancelled => HelperEmailTemplate.SubscriptionCancelled,
             EmailTemplateType.SubscriptionResumed => HelperEmailTemplate.SubscriptionResumed,
             EmailTemplateType.SubscriptionExpired => HelperEmailTemplate.SubscriptionExpired,
+            EmailTemplateType.UpdatePolicy => HelperEmailTemplate.UpdatePolicy,
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -49,6 +50,7 @@ public sealed class EmailTemplateFactory
             EmailTemplateType.SubscriptionCancelled => HelperEmailTemplate.SubjectSubscriptionCancelled(),
             EmailTemplateType.SubscriptionResumed => HelperEmailTemplate.SubjectSubscriptionResumed(),
             EmailTemplateType.SubscriptionExpired => HelperEmailTemplate.SubjectSubscriptionExpired(),
+            EmailTemplateType.UpdatePolicy => HelperEmailTemplate.SubjectUpdatePolicy(),
             _ => "Ekofy Notification"
         };
     }

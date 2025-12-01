@@ -1,5 +1,4 @@
-﻿using EkofyApp.Domain.Utils;
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace EkofyApp.Application.Models.Policies;
 public sealed class CreateRoyalPolicyRequestValidator : AbstractValidator<CreateRoyalPolicyRequest>
