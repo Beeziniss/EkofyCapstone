@@ -165,6 +165,16 @@ public class BackgoundService : IBackgoundService
                 await unitOfWork.GetCollection<Track>().UpdateOneAsync(rh => rh.Id == trackId, updateDefinition);
                 await redis.HashDecrementAsync(key, trackId, playedCount);
 
+                await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+                    x => x.TrackId == trackId &&
+                    x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
+                    x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month && 
+                    x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
+                    Builders<TrackDailyMetric>.Update
+                        .Inc(x => x.StreamCount, playedCount)
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                    new UpdateOptions { IsUpsert = true }
+                );
                 await monthlyStreamCountService.UpsertMonthlyStreamCountAsync(trackId, playedCount, HelperMethod.GetUtcPlus7TimeOffset().Month, HelperMethod.GetUtcPlus7TimeOffset().Year);
             }
         }

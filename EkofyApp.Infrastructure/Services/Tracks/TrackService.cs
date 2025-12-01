@@ -1023,6 +1023,18 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                                       ue.TargetType == UserEngagementTargetType.Track &&
                                       ue.Action == UserEngagementAction.Like);
 
+            // Cập nhật daily metrics
+            await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+                x => x.TrackId == trackId &&
+                x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
+                x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month &&
+                x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
+                Builders<TrackDailyMetric>.Update
+                    .Inc(x => x.FavoriteCount, updatedFavoriteCount)
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                new UpdateOptions { IsUpsert = true }
+            );
+
             return trackUpdated.FavoriteCount;
         }
 
@@ -1039,6 +1051,18 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
         // Thêm track yêu thích của users vào cache
         await AddTrackToFavoriteCacheAsync(userId, trackId);
+
+        // Cập nhật daily metrics
+        await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+                    x => x.TrackId == trackId &&
+                    x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
+                    x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month &&
+                    x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
+                    Builders<TrackDailyMetric>.Update
+                        .Inc(x => x.FavoriteCount, updatedFavoriteCount)
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                    new UpdateOptions { IsUpsert = true }
+                );
 
         // Trả về số lượt yêu thích mới của bài hát
         return trackUpdated.FavoriteCount;
@@ -1320,6 +1344,11 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             .FirstOrDefault() ?? throw new NotFoundCustomException($"Track with ID {trackId} not found.");
 
         return _recommendationService.GetCosineRecommendedTracks(audioFeature, audioFeatureWeight, limit);
+    }
+
+    public IQueryable<TrackDailyMetric> GetTrackDailyMetrics()
+    {
+        return _unitOfWork.GetCollection<TrackDailyMetric>().AsQueryable();
     }
 
     #region Không đụng đến
