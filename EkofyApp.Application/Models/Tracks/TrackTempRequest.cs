@@ -11,6 +11,7 @@ public sealed record class TrackTempRequest
 
     public TrackType Type { get; init; }
 
+    public string? CreatedByArtistId { get; init; }
     public List<string> MainArtistIds { get; init; } = [];
     public List<string> FeaturedArtistIds { get; init; } = [];
     public List<string> CategoryIds { get; init; } = [];
