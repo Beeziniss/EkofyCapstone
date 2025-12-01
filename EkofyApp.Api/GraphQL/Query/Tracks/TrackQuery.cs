@@ -22,6 +22,16 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<TrackDailyMetric>]
+    public IQueryable<TrackDailyMetric> GetTrackDailyMetrics()
+    {
+        return _trackService.GetTrackDailyMetrics();
+    }
+
     //[AuthorizeRoles(HelperRoleBase.FullRoles)]
     [AllowAnonymous]
     [UseOffsetPaging(IncludeTotalCount = true)]
