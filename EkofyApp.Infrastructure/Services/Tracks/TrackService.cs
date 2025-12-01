@@ -221,8 +221,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             // Upload fingerprint lên EmySound
             await _trackUploadNotifier.SendProgressAsync(userId, 90, "Generating fingerprint");
             //await Task.Delay(2000);
-            string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempResponse.CreatedBy);
-            string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
+            string stageName = await _artistService.GetArtistStageNameByUserIdAsync(trackTempResponse.CreatedBy);
+            string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedByArtistId!) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
 
             // TODO: Xóa request trên redis và xóa tag trên S3 nếu có
             // Resolved: Đã xóa tag trên S3 và xóa request trên redis
@@ -406,8 +406,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                     // Upload fingerprint lên EmySound
                     await _trackUploadNotifier.SendProgressAsync(actionByUserId, 90, "Generating fingerprint");
                     //await Task.Delay(2000);
-                    string stageName = await _artistService.GetArtistStageNameByArtistIdAsync(trackTempRequest.CreatedBy);
-                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedBy) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
+                    string stageName = await _artistService.GetArtistStageNameByUserIdAsync(trackTempRequest.CreatedBy);
+                    string trackId = await _emySoundService.UploadTrackFingerprintAsync(emyStream, trackTempRequest.Id, trackTempRequest.Name, stageName, trackTempRequest.CreatedByArtistId!) ?? throw new ConflictCustomException("There is an error while uploading track fingerprint.");
 
                     // Xóa folder, file tạm sau khi upload lên S3
                     //HelperMethod.DeleteBatchIO(outputHlsPath, wavFileResponse.OutputWavPath);
@@ -675,7 +675,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     public TrackTempRequest CreateTrackTemp(CreateTrackRequest createTrackRequest)
     {
         // Workaround for tránh trùng userId khi tạo track
-        createTrackRequest.MainArtistIds.Add(createTrackRequest.CreatedByArtistId);
+        createTrackRequest.MainArtistIds.Add(createTrackRequest.CreatedByArtistId!);
         createTrackRequest.MainArtistIds = createTrackRequest.MainArtistIds.Distinct().ToList();
 
         TrackTempRequest track = new()
@@ -684,6 +684,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             Name = createTrackRequest.Name,
             Description = createTrackRequest.Description,
 
+            CreatedByArtistId = createTrackRequest.CreatedByArtistId,
             MainArtistIds = createTrackRequest.MainArtistIds,
             FeaturedArtistIds = createTrackRequest.FeaturedArtistIds,
             CategoryIds = createTrackRequest.CategoryIds,
@@ -703,7 +704,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
             LegalDocuments = createTrackRequest.LegalDocuments,
 
-            CreatedBy = createTrackRequest.CreatedByUserId,
+            CreatedBy = createTrackRequest.CreatedByUserId!,
         };
 
         return track;
