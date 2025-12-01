@@ -28,6 +28,11 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
         return _unitOfWork.GetCollection<Comment>().AsQueryable().Where(x => x.CommentType == CommentType.Track);
     }
 
+    public IQueryable<Comment> GetRequestHubComments()
+    {
+        return _unitOfWork.GetCollection<Comment>().AsQueryable().Where(x => x.CommentType == CommentType.Request);
+    }
+
     public async Task CreateCommentAsync(CreateCommentRequest request)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value

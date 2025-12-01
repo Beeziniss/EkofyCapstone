@@ -18,4 +18,5 @@ public interface ICommentService
     // Utility methods
     Task<int> GetCommentDepthAsync(string commentId);
     Task<bool> IsCommentInThreadAsync(string commentId, string threadRootId);
+    IQueryable<Comment> GetRequestHubComments();
 }
