@@ -674,10 +674,8 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
     public TrackTempRequest CreateTrackTemp(CreateTrackRequest createTrackRequest)
     {
-        string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("artistId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-
         // Workaround for tránh trùng userId khi tạo track
-        createTrackRequest.MainArtistIds.Add(artistId);
+        createTrackRequest.MainArtistIds.Add(createTrackRequest.CreatedByArtistId);
         createTrackRequest.MainArtistIds = createTrackRequest.MainArtistIds.Distinct().ToList();
 
         TrackTempRequest track = new()
@@ -705,7 +703,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
             LegalDocuments = createTrackRequest.LegalDocuments,
 
-            CreatedBy = artistId,
+            CreatedBy = createTrackRequest.CreatedByUserId,
         };
 
         return track;

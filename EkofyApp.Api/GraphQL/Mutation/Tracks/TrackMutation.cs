@@ -49,6 +49,9 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest, bool isTesting = false)
     {
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        string artistId = _httpContextAccessor.HttpContext?.User.FindFirst("artistId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+        createTrackRequest = createTrackRequest with { CreatedByArtistId = artistId };
+        createTrackRequest = createTrackRequest with { CreatedByUserId = userId };
 
         // Kiểm tra hạn chế upload track
         bool hasAnyRestriction = await _userService.CheckMultipleRestrictionsAsync(RestrictionAction.UploadTrack);
@@ -285,14 +288,13 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
         RecordingTempRequest recordingTemp = _recordingService.CreateRecordingTemp(createRecordingRequest);
 
         // Tạo combined upload request
-        string currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
         CombinedUploadRequest combinedRequest = new()
         {
             Id = trackTemp.Id, // Sử dụng trackId làm ID chính
             Track = trackTemp,
             Work = workTemp,
             Recording = recordingTemp,
-            CreatedBy = currentUserId
+            CreatedBy = createTrackRequest.CreatedByUserId,
         };
 
         // Đẩy combined request lên redis để chờ duyệt (sử dụng 1 key thay vì 3 keys)
