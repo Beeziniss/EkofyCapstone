@@ -8,6 +8,7 @@ public sealed record class CreateTrackRequest
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; } = null;
 
+    public string CreatedByArtistId { get; init; } = default!;
     public List<string> MainArtistIds { get; set; } = [];
     public List<string> FeaturedArtistIds { get; init; } = [];
 
@@ -27,4 +28,5 @@ public sealed record class CreateTrackRequest
     public List<LegalDocument> LegalDocuments { get; set; } = [];
 
     public bool IsOriginal { get; init; }
+    public string CreatedByUserId { get; init; } = default!;
 }
