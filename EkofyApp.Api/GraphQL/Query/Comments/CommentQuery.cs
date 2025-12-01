@@ -8,38 +8,58 @@ namespace EkofyApp.Api.GraphQL.Query.Comments;
 
 [ExtendObjectType(typeof(QueryInitialization))]
 [QueryType]
-public sealed class CommentQuery(ICommentService trackCommentService)
+public sealed class CommentQuery(ICommentService commentService)
 {
-    private readonly ICommentService _trackCommentService = trackCommentService;
+    private readonly ICommentService _commentService = commentService;
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Comment>]
+    public IQueryable<Comment> GetTrackComments()
+    {
+        return _commentService.GetTrackComments();
+    }
+
+    [AuthorizeRoles(HelperRoleBase.FullRoles)]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting<Comment>]
+    public IQueryable<Comment> GetRequestHubComments()
+    {
+        return _commentService.GetRequestHubComments();
+    }
 
     #region Track Comments
     // New hierarchical comment queries
     [UseProjection]
     public async Task<ThreadedCommentsResponse> GetThreadedCommentsAsync(ThreadedCommentsRequest request)
     {
-        return await _trackCommentService.GetThreadedCommentsAsync(request);
+        return await _commentService.GetThreadedCommentsAsync(request);
     }
 
     [UseProjection]
     public async Task<CommentRepliesResponse> GetCommentRepliesAsync(CommentRepliesRequest request)
     {
-        return await _trackCommentService.GetCommentRepliesAsync(request);
+        return await _commentService.GetCommentRepliesAsync(request);
     }
 
     [UseProjection]
     public async Task<List<CommentResponse>> GetCommentThreadAsync(CommentThreadRequest request)
     {
-        return await _trackCommentService.GetCommentThreadAsync(request);
+        return await _commentService.GetCommentThreadAsync(request);
     }
 
     public async Task<int> GetCommentDepthAsync(string commentId)
     {
-        return await _trackCommentService.GetCommentDepthAsync(commentId);
+        return await _commentService.GetCommentDepthAsync(commentId);
     }
 
     public async Task<bool> IsCommentInThreadAsync(string commentId, string threadRootId)
     {
-        return await _trackCommentService.IsCommentInThreadAsync(commentId, threadRootId);
+        return await _commentService.IsCommentInThreadAsync(commentId, threadRootId);
     }
     #endregion
 }
