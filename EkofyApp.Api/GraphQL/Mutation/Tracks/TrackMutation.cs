@@ -294,7 +294,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             Track = trackTemp,
             Work = workTemp,
             Recording = recordingTemp,
-            CreatedBy = createTrackRequest.CreatedByUserId,
+            CreatedBy = createTrackRequest.CreatedByUserId!,
         };
 
         // Đẩy combined request lên redis để chờ duyệt (sử dụng 1 key thay vì 3 keys)
