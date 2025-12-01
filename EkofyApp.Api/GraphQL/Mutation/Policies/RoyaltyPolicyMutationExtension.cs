@@ -14,5 +14,8 @@ public sealed class RoyaltyPolicyMutationExtension : ObjectTypeExtension<Royalty
 
         descriptor.Field(x => x.UpdateRoyaltyPolicyAsync(default!))
             .Authorize(HelperRoleBase.AdminRolesArray);
+
+        descriptor.Field(x => x.SwitchToLatestVersionAsync())
+            .Authorize(HelperRoleBase.AdminRolesArray);
     }
 }

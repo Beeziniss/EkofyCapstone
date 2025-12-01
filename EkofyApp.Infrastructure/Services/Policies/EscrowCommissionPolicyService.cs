@@ -1,10 +1,13 @@
 ﻿using EkofyApp.Application.Models.Policies;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
+using Hangfire;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Policies;
@@ -52,6 +55,25 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
 
         // Cập nhật lại cache
         await UpdateRedisCacheAsync(previousPolicy);
+
+        // Gửi email thông báo tới người dùng về chính sách mới
+        string content = $@"
+            <ul style=""padding-left: 20px; margin: 0;"">
+              <li><strong>Platform fee Percentage:</strong> {previousPolicy.PlatformFeePercentage}%</li>
+              <li><strong>Artist Commission Percentage:</strong> {100m - previousPolicy.PlatformFeePercentage}%</li>
+            </ul>
+        ";
+
+        foreach (User? user in await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Role == UserRole.Artist)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .ToListAsync())
+        {
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.UpdatePolicy, user.Email, user.FullName, user.Email, content));
+        }
     }
 
     public async Task CreatePolicyAsync(CreateEscrowCommissionPolicyRequest createRequest)
@@ -69,8 +91,6 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
             Version = ++currentVersion,
             Status = PolicyStatus.Pending,
         });
-
-        // TODO: gửi log, noti, hoặc schedule kích hoạt chính sách sau N ngày
     }
 
     public async Task UpdatePolicyAsync(UpdateEscrowCommissionPolicyRequest updateRequest)
@@ -144,6 +164,25 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
         });
 
         await UpdateRedisCacheAsync(newestPolicy);
+
+        // Gửi email thông báo tới người dùng về chính sách mới
+        string content = $@"
+            <ul style=""padding-left: 20px; margin: 0;"">
+              <li><strong>Platform fee Percentage:</strong> {newestPolicy.PlatformFeePercentage}%</li>
+              <li><strong>Artist Commission Percentage:</strong> {100m - newestPolicy.PlatformFeePercentage}%</li>
+            </ul>
+        ";
+
+        foreach (User? user in await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Role == UserRole.Artist)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .ToListAsync())
+        {
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.UpdatePolicy, user.Email, user.FullName, user.Email, content));
+        }
     }
 
     public async Task InitializePolicyAsync()

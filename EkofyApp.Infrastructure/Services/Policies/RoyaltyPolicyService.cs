@@ -1,14 +1,17 @@
 ﻿using EkofyApp.Application.Models.Policies;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Policies;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
-using EkofyApp.Domain.Utils;
+using Hangfire;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Policies;
+
 public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService) : IRoyaltyPolicyService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -50,6 +53,26 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
 
         // Cập nhật lại cache trong Redis
         await UpdateRedisCacheAsync(previousPolicy);
+
+        // Gửi email thông báo tới người dùng về chính sách mới
+        string content = $@"
+            <ul style=""padding-left: 20px; margin: 0;"">
+              <li><strong>Rate Per Stream:</strong> {previousPolicy.RatePerStream}</li>
+              <li><strong>Recording Percentage:</strong> {previousPolicy.RecordingPercentage}%</li>
+              <li><strong>Work Percentage:</strong> {previousPolicy.WorkPercentage}%</li>
+            </ul>
+        ";
+
+        foreach (User? user in await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Role == UserRole.Artist)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .ToListAsync())
+        {
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.UpdatePolicy, user.Email, user.FullName, user.Email, content));
+        }
     }
 
     public async Task CreateRoyalPolicyAsync(CreateRoyalPolicyRequest createRoyalPolicyRequest)
@@ -69,10 +92,6 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
             Version = ++currentVersion,
             Status = PolicyStatus.Pending,
         });
-
-        // TODO: Gửi thông báo tới người dùng (giả lập log, thực tế có thể gửi noti, email,...)
-
-        // TODO: Lên lịch công bố chính sách sau n ngày
     }
 
     public async Task UpdateRoyalPolicyAsync(UpdateRoyalPolicyRequest updateRequest)
@@ -159,6 +178,26 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
 
         // Cập nhật lại cache trong Redis
         await UpdateRedisCacheAsync(newestPolicy);
+
+        // Gửi email thông báo tới người dùng về chính sách mới
+        string content = $@"
+            <ul style=""padding-left: 20px; margin: 0;"">
+              <li><strong>Rate Per Stream:</strong> {newestPolicy.RatePerStream}</li>
+              <li><strong>Recording Percentage:</strong> {newestPolicy.RecordingPercentage}%</li>
+              <li><strong>Work Percentage:</strong> {newestPolicy.WorkPercentage}%</li>
+            </ul>
+        ";
+
+        foreach (User? user in await _unitOfWork.GetCollection<User>()
+            .Find(x => x.Role == UserRole.Artist)
+            .Project<User>(Builders<User>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.Email)
+                .Include(x => x.FullName))
+            .ToListAsync())
+        {
+            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.UpdatePolicy, user.Email, user.FullName, user.Email, content));
+        }
     }
 
     // Method for initializing policy when the system is first set up
