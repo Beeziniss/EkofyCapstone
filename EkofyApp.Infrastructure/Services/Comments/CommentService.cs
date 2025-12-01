@@ -52,6 +52,21 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
             ThreadUpdatedAt = HelperMethod.GetUtcPlus7TimeOffset()
         };
 
+        // C?p nh?t track daily metrics
+        if (request.CommentType == CommentType.Track)
+        {
+            await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+                    x => x.TrackId == request.TargetId &&
+                    x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
+                    x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month &&
+                    x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
+                    Builders<TrackDailyMetric>.Update
+                        .Inc(x => x.CommentCount, 1)
+                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                    new UpdateOptions { IsUpsert = true }
+                );
+        }
+
         // Handle hierarchical structure
         if (!string.IsNullOrEmpty(request.ParentCommentId))
         {

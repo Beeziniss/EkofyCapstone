@@ -19,6 +19,26 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test;
 [MutationType]
 public sealed class TestMutation
 {
+    public async Task<bool> TestDateComparing([Service] IUnitOfWork unitOfWork)
+    {
+        DateTimeOffset date = await unitOfWork.GetCollection<Track>().Find(Builders<Track>.Filter.Empty)
+            .Project(track => track.CreatedAt)
+            .FirstOrDefaultAsync();
+        DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+
+        Console.WriteLine("=========================");
+        Console.WriteLine(date.Day);
+        Console.WriteLine(date.Month);
+        Console.WriteLine(date.Year);
+        Console.WriteLine("=========================");
+        Console.WriteLine(now.Day);
+        Console.WriteLine(now.Month);
+        Console.WriteLine(now.Year);
+        Console.WriteLine("=========================");
+
+        return true;
+    }
+
     public TransferResponse TestTransferMoneyToArtist(string artistAccountId, decimal amount, [Service] IStripeService stripeService)
     {
         //decimal sgdAmount = HelperCurrencyConverter.ConvertVndToSgd(amount);
