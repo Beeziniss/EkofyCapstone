@@ -228,7 +228,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             // Resolved: Đã xóa tag trên S3 và xóa request trên redis
             await _trackUploadNotifier.SendProgressAsync(userId, 95, "Cleaning up temporary resources");
             //await Task.Delay(1000);
-            await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
+            //await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
 
             // Lưu snapshot
             //Track
@@ -425,7 +425,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 // Resolved: Đã xóa tag trên S3 và xóa request trên redis
                 await _trackUploadNotifier.SendProgressAsync(actionByUserId, 95, "Cleaning up temporary resources");
                 //await Task.Delay(1000);
-                await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
+                //await _amazonS3Service.RemoveTagAsync(trackTempRequest.Id, [KeyTag.delete]);
                 await _redisCacheService.RemoveAsync($"upload:{uploadId}:requestUpload");
 
                 // Lưu snapshot
