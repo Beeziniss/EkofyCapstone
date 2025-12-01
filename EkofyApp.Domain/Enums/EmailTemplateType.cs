@@ -19,5 +19,6 @@ public enum EmailTemplateType
     Unban,
     SubscriptionCancelled,
     SubscriptionResumed,
-    SubscriptionExpired
+    SubscriptionExpired,
+    UpdatePolicy,
 }

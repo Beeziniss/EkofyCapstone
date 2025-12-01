@@ -197,6 +197,10 @@ public sealed class PlaylistService(IUnitOfWork unitOfWork, IHttpContextAccessor
             // Xóa track khỏi cache yêu thích của users
             await RemovePlaylistFromFavoriteCacheAsync(userId, playlistId);
 
+            // Xóa favorite playlist khỏi UserEngagement
+            await _unitOfWork.GetCollection<UserEngagement>()
+                .DeleteOneAsync(x => x.ActorId == userId && x.TargetId == playlistId && x.TargetType == UserEngagementTargetType.Playlist && x.Action == UserEngagementAction.Like);
+
             return;
         }
 

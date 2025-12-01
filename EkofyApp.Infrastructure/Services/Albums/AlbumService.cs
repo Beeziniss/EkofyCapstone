@@ -149,6 +149,11 @@ public sealed class AlbumService(IUnitOfWork unitOfWork, IHttpContextAccessor ht
         {
             // Remove album from user's favorite cache
             await RemoveAlbumFromFavoriteCacheAsync(userId, albumId);
+
+            // Remove album from user's favorites in UserEngagement
+            await _unitOfWork.GetCollection<UserEngagement>()
+                .DeleteOneAsync(x => x.ActorId == userId && x.TargetId == albumId && x.TargetType == UserEngagementTargetType.Album && x.Action == UserEngagementAction.Like);
+
             return;
         }
 
