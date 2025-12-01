@@ -10,13 +10,13 @@ public sealed class CreateRoyalPolicyRequestValidator : AbstractValidator<Create
             .GreaterThan(0).WithMessage("Rate per stream must be greater than 0.");
 
         RuleFor(x => x.RecordingPercentage)
-            .InclusiveBetween(0, 1).WithMessage("Recording percentage must be between 0 and 1.");
+            .InclusiveBetween(0, 100).WithMessage("Recording percentage must be between 0 and 100.");
 
         RuleFor(x => x.WorkPercentage)
-            .InclusiveBetween(0, 1).WithMessage("Work percentage must be between 0 and 1.");
+            .InclusiveBetween(0, 100).WithMessage("Work percentage must be between 0 and 100.");
 
         RuleFor(x => x)
-            .Must(x => x.RecordingPercentage + x.WorkPercentage == 1).WithMessage("The sum of recording and work percentages must equal 1.");
+            .Must(x => x.RecordingPercentage + x.WorkPercentage == 100).WithMessage("The sum of recording and work percentages must equal 100.");
 
         RuleFor(RuleFor => RuleFor.Currency)
             .IsInEnum().WithMessage("Invalid currency type.");
