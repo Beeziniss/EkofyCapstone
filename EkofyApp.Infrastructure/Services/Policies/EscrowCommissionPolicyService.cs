@@ -163,6 +163,8 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
                 .UpdateOneAsync(session, x => x.Id == newestPolicy.Id, update.Set(x => x.Status, PolicyStatus.Active));
         });
 
+        // Cập nhật lại cache
+        newestPolicy.Status = PolicyStatus.Active;
         await UpdateRedisCacheAsync(newestPolicy);
 
         // Gửi email thông báo tới người dùng về chính sách mới
