@@ -90,7 +90,7 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
             RecordingPercentage = createRoyalPolicyRequest.RecordingPercentage,
             WorkPercentage = createRoyalPolicyRequest.WorkPercentage,
             Version = ++currentVersion,
-            Status = PolicyStatus.Pending,
+            Status = PolicyStatus.Inactive,
         });
     }
 
@@ -157,9 +157,9 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         }
 
         // Bản mới nhất phải ở trạng thái Pending để có thể kích hoạt
-        if (newestPolicy.Status != PolicyStatus.Pending)
+        if (newestPolicy.Status != PolicyStatus.Inactive)
         {
-            throw new BadRequestCustomException("The latest version is not in a pending state, cannot activate.");
+            throw new BadRequestCustomException("The latest version is not in an inactive state, cannot activate.");
         }
 
         // Transaction: disable bản hiện tại + active bản mới nhất
