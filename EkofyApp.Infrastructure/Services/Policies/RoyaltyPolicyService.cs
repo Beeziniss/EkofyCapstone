@@ -57,7 +57,7 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         // Gửi email thông báo tới người dùng về chính sách mới
         string content = $@"
             <ul style=""padding-left: 20px; margin: 0;"">
-              <li><strong>Rate Per Stream:</strong> {previousPolicy.RatePerStream}</li>
+              <li><strong>Rate Per Stream:</strong> {previousPolicy.RatePerStream} vnd</li>
               <li><strong>Recording Percentage:</strong> {previousPolicy.RecordingPercentage}%</li>
               <li><strong>Work Percentage:</strong> {previousPolicy.WorkPercentage}%</li>
             </ul>
@@ -182,7 +182,7 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         // Gửi email thông báo tới người dùng về chính sách mới
         string content = $@"
             <ul style=""padding-left: 20px; margin: 0;"">
-              <li><strong>Rate Per Stream:</strong> {newestPolicy.RatePerStream}</li>
+              <li><strong>Rate Per Stream:</strong> {newestPolicy.RatePerStream} vnd</li>
               <li><strong>Recording Percentage:</strong> {newestPolicy.RecordingPercentage}%</li>
               <li><strong>Work Percentage:</strong> {newestPolicy.WorkPercentage}%</li>
             </ul>
