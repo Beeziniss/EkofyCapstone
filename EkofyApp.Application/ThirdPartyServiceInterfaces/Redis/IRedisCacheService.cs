@@ -50,4 +50,5 @@ public interface IRedisCacheService
     Task<long> ListRemoveAsync(string key, string value, long count = 0);
     Task<long> ListLengthAsync(string key);
     Task<bool> ListContainsAsync(string key, string value);
+    Task<bool> ExecuteWithLockAsync(string lockKey, Func<Task> action, TimeSpan expiry);
 }
