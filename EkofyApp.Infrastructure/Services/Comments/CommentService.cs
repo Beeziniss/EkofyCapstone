@@ -1,4 +1,4 @@
-using EkofyApp.Application.Models.Comments;
+﻿using EkofyApp.Application.Models.Comments;
 using EkofyApp.Application.Models.Notifications;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Notifications;
@@ -52,19 +52,22 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
             ThreadUpdatedAt = HelperMethod.GetUtcPlus7TimeOffset()
         };
 
-        // C?p nh?t track daily metrics
+        // Cập nhật track daily metrics
         if (request.CommentType == CommentType.Track)
         {
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+            DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
+            DateTimeOffset endOfDay = startOfDay.AddDays(1);
+
             await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
-                    x => x.TrackId == request.TargetId &&
-                    x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
-                    x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month &&
-                    x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
-                    Builders<TrackDailyMetric>.Update
-                        .Inc(x => x.CommentCount, 1)
-                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
-                    new UpdateOptions { IsUpsert = true }
-                );
+                x => x.TrackId == request.TargetId &&
+                     x.CreatedAt >= startOfDay &&
+                     x.CreatedAt < endOfDay,
+                Builders<TrackDailyMetric>.Update
+                    .Inc(x => x.CommentCount, 1)
+                    .Set(x => x.UpdatedAt, now),
+                new UpdateOptions { IsUpsert = true }
+            );
         }
 
         // Handle hierarchical structure
@@ -177,6 +180,30 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                 var decrementAmount = -(1 + totalRepliesDeleted);
                 await UpdateParentReplyCounts(session, comment.ParentCommentId, comment.RootCommentId!, decrementAmount);
             }
+
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+            DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
+            DateTimeOffset endOfDay = startOfDay.AddDays(1);
+
+            string trackId = await _unitOfWork.GetCollection<Comment>()
+                .Find(c => c.Id == request.CommentId)
+                .Project(c => c.TargetId)
+                .FirstOrDefaultAsync() ?? string.Empty;
+
+            if(string.IsNullOrEmpty(trackId))
+            {
+                return;
+            }
+
+            await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(session,
+                x => x.TrackId == trackId &&
+                     x.CreatedAt >= startOfDay &&
+                     x.CreatedAt < endOfDay,
+                Builders<TrackDailyMetric>.Update
+                    .Inc(x => x.CommentCount, -1)
+                    .Set(x => x.UpdatedAt, now),
+                new UpdateOptions { IsUpsert = true }
+            );
         });
     }
 

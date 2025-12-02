@@ -1010,6 +1010,10 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
         string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
+        DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+        DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
+        DateTimeOffset endOfDay = startOfDay.AddDays(1);
+
         // Nếu isAdding false, tức là người dùng bỏ thích bài hát
         if (!isAdding)
         {
@@ -1026,12 +1030,11 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             // Cập nhật daily metrics
             await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
                 x => x.TrackId == trackId &&
-                x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
-                x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month &&
-                x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
+                     x.CreatedAt >= startOfDay &&
+                     x.CreatedAt < endOfDay,
                 Builders<TrackDailyMetric>.Update
                     .Inc(x => x.FavoriteCount, updatedFavoriteCount)
-                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
+                    .Set(x => x.UpdatedAt, now),
                 new UpdateOptions { IsUpsert = true }
             );
 
@@ -1054,15 +1057,14 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
         // Cập nhật daily metrics
         await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
-                    x => x.TrackId == trackId &&
-                    x.CreatedAt.Day == HelperMethod.GetUtcPlus7TimeOffset().Day &&
-                    x.CreatedAt.Month == HelperMethod.GetUtcPlus7TimeOffset().Month &&
-                    x.CreatedAt.Year == HelperMethod.GetUtcPlus7TimeOffset().Year,
-                    Builders<TrackDailyMetric>.Update
-                        .Inc(x => x.FavoriteCount, updatedFavoriteCount)
-                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()),
-                    new UpdateOptions { IsUpsert = true }
-                );
+            x => x.TrackId == trackId &&
+                 x.CreatedAt >= startOfDay &&
+                 x.CreatedAt < endOfDay,
+            Builders<TrackDailyMetric>.Update
+                .Inc(x => x.FavoriteCount, updatedFavoriteCount)
+                .Set(x => x.UpdatedAt, now),
+            new UpdateOptions { IsUpsert = true }
+        );
 
         // Trả về số lượt yêu thích mới của bài hát
         return trackUpdated.FavoriteCount;
