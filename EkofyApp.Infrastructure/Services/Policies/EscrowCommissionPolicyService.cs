@@ -54,6 +54,7 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
         });
 
         // Cập nhật lại cache
+        previousPolicy.Status = PolicyStatus.Active;
         await UpdateRedisCacheAsync(previousPolicy);
 
         // Gửi email thông báo tới người dùng về chính sách mới
