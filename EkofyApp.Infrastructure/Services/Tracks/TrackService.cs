@@ -1034,7 +1034,11 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                      x.CreatedAt < endOfDay,
                 Builders<TrackDailyMetric>.Update
                     .Inc(x => x.FavoriteCount, updatedFavoriteCount)
-                    .Set(x => x.UpdatedAt, now),
+                    .Set(x => x.UpdatedAt, now)
+                    .SetOnInsert(x => x.CreatedAt, now)
+                    .SetOnInsert(x => x.StreamCount, 0)
+                    .SetOnInsert(x => x.DownloadCount, 0)
+                    .SetOnInsert(x => x.CommentCount, 0),
                 new UpdateOptions { IsUpsert = true }
             );
 
@@ -1062,7 +1066,11 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                  x.CreatedAt < endOfDay,
             Builders<TrackDailyMetric>.Update
                 .Inc(x => x.FavoriteCount, updatedFavoriteCount)
-                .Set(x => x.UpdatedAt, now),
+                .Set(x => x.UpdatedAt, now)
+                .SetOnInsert(x => x.CreatedAt, now)
+                .SetOnInsert(x => x.StreamCount, 0)
+                .SetOnInsert(x => x.DownloadCount, 0)
+                .SetOnInsert(x => x.CommentCount, 0),
             new UpdateOptions { IsUpsert = true }
         );
 
