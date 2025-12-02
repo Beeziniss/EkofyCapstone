@@ -89,7 +89,7 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
             Currency = createRequest.Currency,
             PlatformFeePercentage = createRequest.PlatformFeePercentage,
             Version = ++currentVersion,
-            Status = PolicyStatus.Pending,
+            Status = PolicyStatus.Inactive,
         });
     }
 
@@ -145,9 +145,9 @@ public sealed class EscrowCommissionPolicyService(IUnitOfWork unitOfWork, IRedis
             throw new BadRequestCustomException("Cannot switch, the active version is already the latest.");
         }
 
-        if (newestPolicy.Status != PolicyStatus.Pending)
+        if (newestPolicy.Status != PolicyStatus.Inactive)
         {
-            throw new BadRequestCustomException("The latest version is not in a pending state, cannot activate.");
+            throw new BadRequestCustomException("The latest version is not in an inactive state, cannot activate.");
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
