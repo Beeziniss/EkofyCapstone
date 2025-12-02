@@ -52,6 +52,7 @@ public sealed class RoyaltyPolicyService(IUnitOfWork unitOfWork, IRedisCacheServ
         });
 
         // Cập nhật lại cache trong Redis
+        previousPolicy.Status = PolicyStatus.Active;
         await UpdateRedisCacheAsync(previousPolicy);
 
         // Gửi email thông báo tới người dùng về chính sách mới

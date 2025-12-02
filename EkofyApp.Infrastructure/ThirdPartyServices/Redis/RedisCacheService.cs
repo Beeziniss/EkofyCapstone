@@ -795,7 +795,7 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         try
         {
             RedisValue[] values = await _redisDb.ListRangeAsync(key, 0, -1);
-            return values.Any(v => v == value);
+            return values.Any(v => v.ToString() == value);
         }
         catch (Exception ex)
         {
