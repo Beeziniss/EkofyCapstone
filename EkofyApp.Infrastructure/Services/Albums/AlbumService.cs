@@ -144,6 +144,10 @@ public sealed class AlbumService(IUnitOfWork unitOfWork, IHttpContextAccessor ht
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
         string role = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
+        DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+        DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
+        DateTimeOffset endOfDay = startOfDay.AddDays(1);
+
         // If isAdding is false, remove album from favorites
         if (!isAdding)
         {
@@ -182,13 +186,7 @@ public sealed class AlbumService(IUnitOfWork unitOfWork, IHttpContextAccessor ht
             .Project<Album>(Builders<Album>.Projection
                 .Include(x => x.Id)
                 .Include(x => x.ContributingArtists))
-            .FirstOrDefaultAsync();
-
-        if (album == null)
-        {
-            throw new NotFoundCustomException("Album not found.");
-        }
-
+            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Album not found.");
         if (!album.ContributingArtists.Any(a => a.ArtistId == artistId))
         {
             throw new UnauthorizedCustomException("You don't have permission to remove tracks from this album.");
