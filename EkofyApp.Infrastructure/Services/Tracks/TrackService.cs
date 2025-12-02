@@ -1203,34 +1203,46 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
     private async Task<bool> EnsureCachePopulatedAsync(string userId)
     {
+        string cacheKey = $"favorite_track:{userId}";
+        string lockKey = $"lock:{cacheKey}";
+        TimeSpan lockExpiry = TimeSpan.FromSeconds(5);
+
         try
         {
-            string cacheKey = $"favorite_track:{userId}";
-
-            // Check if cache already exists
+            // Check if cache already populated (tránh gọi DB nếu không cần thiết)
             long listLength = await _redisCacheService.ListLengthAsync(cacheKey);
             if (listLength > 0)
             {
-                return true; // Cache already populated
-            }
-
-            // Fetch favorite track from database
-            List<string> favoriteTrackIds = await _unitOfWork.GetCollection<UserEngagement>()
-                .Find(x => x.ActorId == userId && x.TargetType == UserEngagementTargetType.Track && x.Action == UserEngagementAction.Like)
-                .Project(x => x.TargetId)
-                .ToListAsync();
-
-            if (favoriteTrackIds.Count > 0)
-            {
-                // Populate cache with track IDs
-                await _redisCacheService.ListPushRangeAsync(cacheKey, favoriteTrackIds, TimeSpan.FromHours(1));
-
-                _logger.LogDebug("Populated favorite cache for user {UserId} with {Count} tracks", userId, favoriteTrackIds.Count);
                 return true;
             }
 
-            _logger.LogDebug("No favorite tracks found for user {UserId}", userId);
-            return false;
+            // Dùng distributed lock để tránh nhiều request cùng populate cache
+            bool lockAcquired = await _redisCacheService.ExecuteWithLockAsync(lockKey, async () =>
+            {
+                // Double check lại cache sau khi acquire lock (tránh đua nhau)
+                long lengthAfterLock = await _redisCacheService.ListLengthAsync(cacheKey);
+                if (lengthAfterLock > 0)
+                {
+                    return; // Cache đã có bởi thread khác → bỏ qua
+                }
+
+                // Truy vấn DB
+                List<string> favoriteTrackIds = await _unitOfWork.GetCollection<UserEngagement>()
+                    .Find(x => x.ActorId == userId &&
+                               x.TargetType == UserEngagementTargetType.Track &&
+                               x.Action == UserEngagementAction.Like)
+                    .Project(x => x.TargetId)
+                    .ToListAsync();
+
+                if (favoriteTrackIds.Count > 0)
+                {
+                    await _redisCacheService.ListPushRangeAsync(cacheKey, favoriteTrackIds, TimeSpan.FromHours(1));
+                }
+
+            }, lockExpiry);
+
+            // Sau khi lock, kiểm tra lại cache có chưa
+            return await _redisCacheService.ListLengthAsync(cacheKey) > 0;
         }
         catch (Exception ex)
         {
@@ -1238,6 +1250,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
             return false;
         }
     }
+
     #endregion
 
     public async Task UpsertStreamCountAsync(string trackId)
