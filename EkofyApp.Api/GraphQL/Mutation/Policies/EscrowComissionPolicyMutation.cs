@@ -27,7 +27,7 @@ public sealed class EscrowComissionPolicyMutation(IEscrowCommissionPolicyService
         return true;
     }
 
-    public async Task<bool> SwitchToLatestVersionAsync()
+    public async Task<bool> SwitchEscrowCommissionPolicyToLatestVersionAsync()
     {
         await _escrowCommissionPolicyService.SwitchToLatestVersionAsync();
         return true;
