@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using EkofyApp.Domain.Exceptions;
+using MongoDB.Bson;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.Redis;
 public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheService> logger) : IRedisCacheService
@@ -801,6 +803,28 @@ public sealed class RedisCacheService(IDatabase redisDb, ILogger<RedisCacheServi
         {
             _logger.LogError(ex, $"[Redis] ListContainsAsync failed. Key: {key}, Value: {value}");
             return false;
+        }
+    }
+
+    public async Task<bool> ExecuteWithLockAsync(string lockKey, Func<Task> action, TimeSpan expiry)
+    {
+        string lockValue = ObjectId.GenerateNewId().ToString();
+
+        bool acquired = await _redisDb.LockTakeAsync(lockKey, lockValue, expiry);
+        if (!acquired)
+        {
+            return false; // Không acquire được lock → bỏ qua request
+        }
+
+        try
+        {
+            await action();
+            return true;
+        }
+        finally
+        {
+            // Release lock chỉ nếu đúng owner
+            await _redisDb.LockReleaseAsync(lockKey, lockValue);
         }
     }
     #endregion
