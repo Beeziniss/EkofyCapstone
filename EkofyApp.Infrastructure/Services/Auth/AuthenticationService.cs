@@ -175,7 +175,6 @@ public sealed class AuthenticationService(
         FilterDefinition<User> userFilter = Builders<User>.Filter.And(
             filterBuilder.Eq(l => l.Email, loginRequest.Email.Trim().ToLowerInvariant()),
             filterBuilder.Eq(l => l.Status, UserStatus.Active),
-            filterBuilder.Eq(l => l.IsLinkedWithGoogle, false),
             filterBuilder.Eq(l => l.Role, UserRole.Listener)
         );
         ProjectionDefinition<UserProjection> listenerUserProjection = Builders<UserProjection>.Projection
