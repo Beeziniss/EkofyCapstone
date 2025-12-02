@@ -59,13 +59,17 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
             DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
             DateTimeOffset endOfDay = startOfDay.AddDays(1);
 
-            await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+            await _unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
                 x => x.TrackId == request.TargetId &&
                      x.CreatedAt >= startOfDay &&
                      x.CreatedAt < endOfDay,
                 Builders<TrackDailyMetric>.Update
                     .Inc(x => x.CommentCount, 1)
-                    .Set(x => x.UpdatedAt, now),
+                    .Set(x => x.UpdatedAt, now)
+                    .SetOnInsert(x => x.CreatedAt, now)
+                    .SetOnInsert(x => x.StreamCount, 0)
+                    .SetOnInsert(x => x.DownloadCount, 0)
+                    .SetOnInsert(x => x.FavoriteCount, 0),
                 new UpdateOptions { IsUpsert = true }
             );
         }
@@ -201,7 +205,11 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                      x.CreatedAt < endOfDay,
                 Builders<TrackDailyMetric>.Update
                     .Inc(x => x.CommentCount, -1)
-                    .Set(x => x.UpdatedAt, now),
+                    .Set(x => x.UpdatedAt, now)
+                    .SetOnInsert(x => x.CreatedAt, now)
+                    .SetOnInsert(x => x.StreamCount, 0)
+                    .SetOnInsert(x => x.DownloadCount, 0)
+                    .SetOnInsert(x => x.FavoriteCount, 0),
                 new UpdateOptions { IsUpsert = true }
             );
         });

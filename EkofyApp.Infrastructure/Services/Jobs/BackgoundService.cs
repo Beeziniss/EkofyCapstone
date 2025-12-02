@@ -175,7 +175,11 @@ public class BackgoundService : IBackgoundService
                          x.CreatedAt < endOfDay,
                     Builders<TrackDailyMetric>.Update
                         .Inc(x => x.StreamCount, playedCount)
-                        .Set(x => x.UpdatedAt, now),
+                        .Set(x => x.UpdatedAt, now)
+                        .SetOnInsert(x => x.CreatedAt, now)
+                        .SetOnInsert(x => x.FavoriteCount, 0)
+                        .SetOnInsert(x => x.DownloadCount, 0)
+                        .SetOnInsert(x => x.CommentCount, 0),
                     new UpdateOptions { IsUpsert = true }
                 );
                 await monthlyStreamCountService.UpsertMonthlyStreamCountAsync(trackId, playedCount, HelperMethod.GetUtcPlus7TimeOffset().Month, HelperMethod.GetUtcPlus7TimeOffset().Year);
