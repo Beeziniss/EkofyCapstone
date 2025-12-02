@@ -18,7 +18,7 @@ public sealed class EscrowComissionPolicyMutationExtention : ObjectTypeExtension
         descriptor.Field(x => x.DowngradeEscrowCommissionPolicyVersionAsync(default))
             .Authorize(HelperRoleBase.AdminRolesArray);
 
-        descriptor.Field(x => x.SwitchToLatestVersionAsync())
+        descriptor.Field(x => x.SwitchEscrowCommissionPolicyToLatestVersionAsync())
             .Authorize(HelperRoleBase.AdminRolesArray);
     }
 }

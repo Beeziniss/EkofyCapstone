@@ -14,5 +14,5 @@ public sealed class EscrowCommissionPolicy : TimeStamped
 
     public long Version { get; set; }
 
-    public PolicyStatus Status { get; set; } = PolicyStatus.Pending;
+    public PolicyStatus Status { get; set; } = PolicyStatus.Inactive;
 }

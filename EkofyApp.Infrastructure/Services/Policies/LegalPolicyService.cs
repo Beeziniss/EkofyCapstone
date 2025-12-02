@@ -73,7 +73,7 @@ public sealed class LegalPolicyService(IUnitOfWork unitOfWork, IRedisCacheServic
             Name = createLegalPolicyRequest.Name,
             Content = createLegalPolicyRequest.Content,
             Version = ++currentVersion,
-            Status = PolicyStatus.Pending,
+            Status = PolicyStatus.Inactive,
         });
 
         // TODO: Gửi thông báo tới người dùng (giả lập log, thực tế có thể gửi noti, email,...)
