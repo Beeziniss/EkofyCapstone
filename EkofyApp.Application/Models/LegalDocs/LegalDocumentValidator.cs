@@ -10,7 +10,8 @@ public sealed class LegalDocumentValidator : AbstractValidator<LegalDocument>
             .IsInEnum().WithMessage("Each legal document must have a valid document type.");
 
         RuleFor(d => d.DocumentUrl)
-            .NotEmpty().WithMessage("Each legal document must have a URL.")
-            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).WithMessage("Each legal document URL must be valid.");
+            .NotEmpty().WithMessage("Each legal document must have a URL.");
+            //.Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute))
+            //.WithMessage("Each legal document URL must be valid.");
     }
 }

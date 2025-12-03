@@ -37,15 +37,15 @@ public sealed class CreateIdentityCardRequestValidator : AbstractValidator<Creat
 
         RuleFor(x => x.PlaceOfResidence)
             .NotEmpty().WithMessage("Place of Residence is required");
-            //.SetValidator(new AddressValidator()).WithMessage("Invalid Place of Residence details");
+        //.SetValidator(new AddressValidator()).WithMessage("Invalid Place of Residence details");
 
         RuleFor(x => x.FrontImage)
-            .NotEmpty().WithMessage("Front Image URL is required")
-            .Must(url => Uri.IsWellFormedUriString(url, UriKind.Absolute)).WithMessage("Front Image URL must be a valid URL");
+            .NotEmpty().WithMessage("Front Image URL is required");
+            //.Must(url => Uri.IsWellFormedUriString(url, UriKind.Absolute)).WithMessage("Front Image URL must be a valid URL");
 
         RuleFor(x => x.BackImage)
-            .NotEmpty().WithMessage("Back Image URL is required")
-            .Must(url => Uri.IsWellFormedUriString(url, UriKind.Absolute)).WithMessage("Back Image URL must be a valid URL");
+            .NotEmpty().WithMessage("Back Image URL is required");
+            //.Must(url => Uri.IsWellFormedUriString(url, UriKind.Absolute)).WithMessage("Back Image URL must be a valid URL");
 
         RuleFor(x => x.ValidUntil)
             .GreaterThanOrEqualTo(x => HelperMethod.NormalizeToUtcPlus7TimeOffset(x.ValidUntil)).WithMessage("Valid Until date must be in the future");

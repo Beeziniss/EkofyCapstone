@@ -306,6 +306,10 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 }
 
                 TrackTempRequest trackTempRequest = combinedRequest.Track;
+                if(trackTempRequest.ReleaseInfo.ReleaseStatus == ReleaseStatus.Official)
+                {
+                    trackTempRequest.ReleaseInfo.ReleaseDate = HelperMethod.GetUtcPlus7TimeOffset();
+                }
                 WorkTempRequest workTempRequest = combinedRequest.Work;
                 RecordingTempRequest recordingTempRequest = combinedRequest.Recording;
 
@@ -379,6 +383,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                         AlternativeDescription = alternativeDescription,
                         EmbeddingVector = embeddingVector,
 
+                        LegalDocuments = trackTempRequest.LegalDocuments,
                         CreatedBy = trackTempRequest.CreatedBy,
                     };
 
@@ -968,6 +973,24 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         if (updateTrackRequest.Tags != null && updateTrackRequest.Tags.Count > 0)
         {
             updates.Add(updateDefinitionBuilder.Set(t => t.Tags, updateTrackRequest.Tags));
+        }
+
+        // Update release info if provided
+        if (updateTrackRequest.IsPublic != null)
+        {
+            if(updateTrackRequest.IsPublic == false)
+            {
+                // If making the track private, also clear release date and status
+                updates.Add(updateDefinitionBuilder.Set(t => t.ReleaseInfo.IsRelease, false));
+                updates.Add(updateDefinitionBuilder.Set(t => t.ReleaseInfo.ReleaseDate, null));
+                updates.Add(updateDefinitionBuilder.Set(t => t.ReleaseInfo.ReleaseStatus, ReleaseStatus.NotAnnounced));
+            }
+            else
+            {
+                updates.Add(updateDefinitionBuilder.Set(t => t.ReleaseInfo.IsRelease, true));
+                updates.Add(updateDefinitionBuilder.Set(t => t.ReleaseInfo.ReleaseDate, HelperMethod.GetUtcPlus7TimeOffset()));
+                updates.Add(updateDefinitionBuilder.Set(t => t.ReleaseInfo.ReleaseStatus, ReleaseStatus.Official));
+            }
         }
 
         // Update timestamp and user info

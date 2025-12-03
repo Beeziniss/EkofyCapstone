@@ -230,7 +230,6 @@ public class BackgoundService : IBackgoundService
         return await trackService.ApproveTrackUploadRequestAsync(actionByUserId, uploadId);
     }
 
-
     [Queue("process_track_popularity_metric")]
     [JobDisplayName("Process Track Popularity Metric")]
     public async Task ProcessTrackStreamingMetricJobAsync(string trackId, PopularityActionType actionType)
