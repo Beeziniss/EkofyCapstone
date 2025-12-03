@@ -1028,7 +1028,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                                       ue.Action == UserEngagementAction.Like);
 
             // Cập nhật daily metrics
-            await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+            await _unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
                 x => x.TrackId == trackId &&
                      x.CreatedAt >= startOfDay &&
                      x.CreatedAt < endOfDay,
@@ -1060,7 +1060,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         await AddTrackToFavoriteCacheAsync(userId, trackId);
 
         // Cập nhật daily metrics
-        await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
+        await _unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(
             x => x.TrackId == trackId &&
                  x.CreatedAt >= startOfDay &&
                  x.CreatedAt < endOfDay,
@@ -1269,47 +1269,62 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     {
         try
         {
-            IEnumerable<Track> tracks = await _unitOfWork.GetCollection<Track>()
-            .Find(t => t.Description != null)
-            .ToListAsync();
+            IEnumerable<Track> tracksWithoutEmbedding = await _unitOfWork.GetCollection<Track>()
+                .Find(t => t.EmbeddingVector == null)
+                .Project<Track>(Builders<Track>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.AudioFeature))
+                .ToListAsync();
 
-            //lọc ra các track chưa có embedding
-            var trackWithoutEmbedding = tracks
-                                        .Where(t => t.EmbeddingVector is null or { Length: 0 })
-                                        .ToList();
-
-
-            var embedding = new Dictionary<string, float[]>();
-
-            //lặp qua các track chưa có embedding và tạo vector cho từng track
-            foreach (var track in trackWithoutEmbedding)
+            if (!tracksWithoutEmbedding.Any())
             {
-                //nối description và alternative description
-                string totalDescription = (track.Description ?? string.Empty) + ". " + track.AlternativeDescription;
-                if (!embedding.ContainsKey(totalDescription))
+                return;
+            }
+
+            // Process tracks in batches to avoid memory issues
+            const int batchSize = 100;
+            var trackBatches = tracksWithoutEmbedding.Chunk(batchSize);
+
+            foreach (var batch in trackBatches)
+            {
+                List<WriteModel<Track>> bulkOperations = [];
+
+                foreach (Track track in batch)
                 {
-                    embedding[track.Id] = await GenerateEmbeddingsAsync(totalDescription);
+                    try
+                    {
+                        IEnumerable<MoodType> moodTypes = _categoryService.DetectMoods(track.AudioFeature);
+                        IEnumerable<string> moodCategoryIds = await _categoryService.GetMoodsFromAudioFeaturesAsync(moodTypes);
+
+                        string alternativeDescription = _categoryService.GenerateAlternativeDescription(track.AudioFeature, moodTypes);
+                        float[] embeddingVector = await GenerateEmbeddingsAsync(alternativeDescription);
+
+                        var updateDefinition = Builders<Track>.Update
+                            .Set(t => t.EmbeddingVector, embeddingVector)
+                            .Set(t => t.AlternativeDescription, alternativeDescription)
+                            .Set(t => t.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                        var filter = Builders<Track>.Filter.Eq(t => t.Id, track.Id);
+                        
+                        bulkOperations.Add(new UpdateOneModel<Track>(filter, updateDefinition));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to process embedding for track {TrackId}", track.Id);
+                    }
+                }
+
+                if (bulkOperations.Count > 0)
+                {
+                    BulkWriteResult result = await _unitOfWork.GetCollection<Track>()
+                        .BulkWriteAsync(bulkOperations);
                 }
             }
-
-            //update tất cả các track chưa có embedding
-            var updates = new List<UpdateOneModel<Track>>();
-            foreach (var track in trackWithoutEmbedding)
-            {
-                var filter = Builders<Track>.Filter.Eq(t => t.Id, track.Id);
-                var update = Builders<Track>.Update.Set(t => t.EmbeddingVector, embedding[track.Id]);
-                updates.Add(new UpdateOneModel<Track>(filter, update));
-
-            }
-
-            if (updates.Any())
-            {
-                await _unitOfWork.GetCollection<Track>().BulkWriteAsync(updates);
-            }
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            throw new BadRequestCustomException(e.Message);
+            _logger.LogError(ex, "Error occurred while adding embedding vectors to tracks");
+            throw new BadRequestCustomException($"Failed to add embedding vectors: {ex.Message}");
         }
     }
 
