@@ -41,5 +41,10 @@ public sealed class UpdateTrackRequestValidator : AbstractValidator<UpdateTrackR
                            (request.CategoryIds != null && request.CategoryIds.Count > 0) ||
                            (request.Tags != null && request.Tags.Count > 0))
             .WithMessage("At least one field (Description, CategoryIds, or Tags) must be provided for update.");
+
+        RuleFor(x => x.IsPublic)
+            .Must(v => v is bool)
+            .When(x => x.IsPublic.HasValue)
+            .WithMessage("IsPublic must be a boolean value.");
     }
 }
