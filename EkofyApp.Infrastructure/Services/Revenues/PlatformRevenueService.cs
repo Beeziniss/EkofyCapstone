@@ -77,7 +77,12 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
             RefundAmount = totalRefundAmount,
         };
 
-        await _unitOfWork.GetCollection<PlatformRevenue>().InsertOneAsync(platformRevenue);
+        await _unitOfWork.GetCollection<PlatformRevenue>()
+            .ReplaceOneAsync(
+                filter: _ => true, // luôn match document duy nhất
+                replacement: platformRevenue,
+                options: new ReplaceOptions { IsUpsert = true }
+            );
 
         return platformRevenue;
     }
