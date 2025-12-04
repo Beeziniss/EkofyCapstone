@@ -7,17 +7,29 @@ using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 namespace EkofyApp.Api.REST;
 [Route("api/authentication")]
 [ApiController]
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] //"Bearer"
-public class AuthenticationController(IAuthenticationService authenticationService, IUserSubscriptionService userSubscriptionService) : ControllerBase
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+public class AuthenticationController : ControllerBase
 {
-    private readonly IAuthenticationService _authenticationService = authenticationService;
-    private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
+    private readonly IAuthenticationService _authenticationService;
+    private readonly IUserSubscriptionService _userSubscriptionService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public AuthenticationController(
+        IAuthenticationService authenticationService,
+        IUserSubscriptionService userSubscriptionService,
+        IHttpContextAccessor httpContextAccessor)
+    {
+        _authenticationService = authenticationService;
+        _userSubscriptionService = userSubscriptionService;
+        _httpContextAccessor = httpContextAccessor;
+    }
 
     [AllowAnonymous, HttpGet("test-ip-address")]
     public IActionResult TestIpAddress()
@@ -171,6 +183,21 @@ public class AuthenticationController(IAuthenticationService authenticationServi
     public async Task<IActionResult> RefreshTokenAsync() 
     {
         var result = await _authenticationService.RefreshNewTokenAsync();
+
+        // Assuming result contains RefreshToken property
+        var refreshToken = result?.RefreshToken;
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            CookieOptions cookieOptions = new()
+            {
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                MaxAge = TimeSpan.FromDays(7)
+            };
+            _httpContextAccessor.HttpContext?.Response.Cookies.Append("refresh_token", refreshToken, cookieOptions);
+        }
+
         return Ok(new { Message = "Refresh Token Successfully", result });
     }
 
