@@ -8,7 +8,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.TopTracks
         {
             // Configure the TopTrackMutation type here if needed
             descriptor.Field(x => x.UpsertTopTrackCountAsync(default!))
-                .Authorize(roles: HelperRoleBase.ListenerRolesArray);
+                .Authorize(HelperRoleBase.ListenerRolesArray);
         }
     }
 }
