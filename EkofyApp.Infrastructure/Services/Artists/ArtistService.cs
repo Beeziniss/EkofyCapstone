@@ -446,19 +446,52 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         decimal totalRoyaltyEarnings = royaltyEarnings.Sum();
 
         // Tính tổng service revenue cho artist
+        IEnumerable<string> packageOrderTransactionIds = await _unitOfWork.GetCollection<PackageOrder>()
+            .Find(x => x.ProviderId == userId)
+            .Project(x => x.PaymentTransactionId)
+            .ToListAsync();
+
         IEnumerable<decimal> serviceRevenues = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
-            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && x.UserId == userId)
+            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && packageOrderTransactionIds.Contains(x.PaymentTransactionId))
             .Project(x => x.Amount)
             .ToListAsync();
 
         decimal totalServiceRevenue = serviceRevenues.Sum();
 
-        IEnumerable<decimal> serviceEarnings = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
-            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && x.UserId == userId)
-            .Project(x => (x.OneOffSnapshot!.ArtistFeePercentage / 100m) * x.OneOffSnapshot.PackageAmount)
+        // Tính tổng Service Earnings (artist thật sự nhận được)
+        // Từ PackageOrder → join sang PayoutTransaction
+        IEnumerable<PackageOrder> completedOrders = await _unitOfWork.GetCollection<PackageOrder>()
+            .Find(x => x.ProviderId == userId &&
+                       x.Status == PackageOrderStatus.Completed &&
+                       x.PayoutTransactionId != null)
             .ToListAsync();
 
-        decimal totalServiceEarnings = serviceEarnings.Sum();
+        IEnumerable<string> payoutIds = completedOrders
+            .Select(x => x.PayoutTransactionId!)
+            .Distinct()
+            .ToList();
+
+        Dictionary<string, PayoutTransaction> payoutDict = await _unitOfWork.GetCollection<PayoutTransaction>()
+            .Find(p => payoutIds.Contains(p.Id) && p.Status == PayoutTransactionStatus.paid)
+            .ToListAsync()
+            .ContinueWith(t => t.Result.ToDictionary(p => p.Id, p => p));
+
+        decimal totalServiceEarnings = 0m;
+
+        foreach (PackageOrder order in completedOrders)
+        {
+            if (order.PayoutTransactionId == null)
+            {
+                continue;
+            }
+
+            if (!payoutDict.TryGetValue(order.PayoutTransactionId, out PayoutTransaction? payout))
+            {
+                continue;
+            }
+
+            totalServiceEarnings += payout.Amount;
+        }
 
         ArtistRevenueResponse artistRevenue = new()
         {
@@ -468,9 +501,9 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         };
 
         UpdateResult updateResult = await _unitOfWork.GetCollection<Artist>().UpdateOneAsync(x => x.UserId == userId, Builders<Artist>.Update
-                .Inc(x => x.RoyaltyEarnings, totalRoyaltyEarnings)
-                .Inc(x => x.ServiceRevenue, totalServiceRevenue)
-                .Inc(x => x.ServiceEarnings, totalServiceEarnings)
+                .Set(x => x.RoyaltyEarnings, totalRoyaltyEarnings)
+                .Set(x => x.ServiceRevenue, totalServiceRevenue)
+                .Set(x => x.ServiceEarnings, totalServiceEarnings)
                 .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
         if (updateResult.ModifiedCount == 0)
         {
