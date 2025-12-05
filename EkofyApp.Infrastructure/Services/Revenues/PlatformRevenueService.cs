@@ -29,11 +29,11 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
 
 
         // Lấy platform fee percentage từ Redis
-        string platformFeePercentageStr = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
-            .Find(x => x.Status == PolicyStatus.Active)
-            .Project(x => x.PlatformFeePercentage.ToString())
-            .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
-        decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
+        //string platformFeePercentageStr = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
+        //    .Find(x => x.Status == PolicyStatus.Active)
+        //    .Project(x => x.PlatformFeePercentage.ToString())
+        //    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
+        //decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
 
         // Tính tổng doanh thu từ service
         IEnumerable<decimal> serviceAmounts = await _unitOfWork.GetCollection<Invoice>()
@@ -59,6 +59,49 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
 
         decimal totalServicePayoutAmount = servicePayoutAmounts.Sum();
 
+        // Tính CommissionProfit từ các PackageOrder đã hoàn tất và đã payout thành công
+        IEnumerable<PackageOrder> completedOrders = await _unitOfWork.GetCollection<PackageOrder>()
+            .Find(x => x.Status == PackageOrderStatus.Completed && x.PayoutTransactionId != null)
+            .ToListAsync();
+
+        IEnumerable<string> payoutIds = completedOrders
+            .Select(x => x.PayoutTransactionId!)
+            .Distinct()
+            .ToList();
+
+        var payoutDict = await _unitOfWork.GetCollection<PayoutTransaction>()
+            .Find(p => payoutIds.Contains(p.Id) && p.Status == PayoutTransactionStatus.paid)
+            .ToListAsync()
+            .ContinueWith(t => t.Result.ToDictionary(p => p.Id, p => p));
+
+        decimal commissionProfit = 0m;
+
+        foreach (PackageOrder order in completedOrders)
+        {
+            if (order.PayoutTransactionId == null)
+            {
+                continue;
+            }
+
+            if (!payoutDict.TryGetValue(order.PayoutTransactionId, out var payout))
+            {
+                continue;
+            }
+
+            decimal payoutAmount = payout.Amount;
+            decimal artistFeePercentage = order.ArtistFeePercentage;
+
+            if (artistFeePercentage == 0)
+            {
+                continue; // tránh chia cho 0
+            }
+
+            decimal orderTotalAmount = payoutAmount / (artistFeePercentage / 100m);
+            decimal platformFeeAmount = orderTotalAmount - payoutAmount;
+
+            commissionProfit += platformFeeAmount;
+        }
+
         // Tính tổng refund amount
         IEnumerable<decimal> refundAmounts = await _unitOfWork.GetCollection<Invoice>()
                 .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Refund && x.SubscriptionSnapshot == null)
@@ -74,6 +117,7 @@ public sealed class PlatformRevenueService(IUnitOfWork unitOfWork, IRedisCacheSe
             ServiceRevenue = totalServiceRevenue,
             RoyaltyPayoutAmount = totalRoyaltyPayoutAmount,
             ServicePayoutAmount = totalServicePayoutAmount,
+            CommissionProfit = commissionProfit,
             RefundAmount = totalRefundAmount,
         };
 

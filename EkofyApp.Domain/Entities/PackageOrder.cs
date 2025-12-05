@@ -19,6 +19,8 @@ public sealed class PackageOrder : TimeStamped
     [BsonRepresentation(BsonType.ObjectId)]
     public string PaymentTransactionId { get; set; } = null!;
     [BsonRepresentation(BsonType.ObjectId)]
+    public string? PayoutTransactionId { get; set; }
+    [BsonRepresentation(BsonType.ObjectId)]
     public string ConversationId { get; set; } = null!;
     public string Requirements { get; set; } = null!;
     public PackageOrderStatus Status { get; set; }

@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace EkofyApp.Domain.Entities;
-public sealed class Invoice : IEntityCustom // Snapshot
+public sealed class Invoice // Snapshot
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
