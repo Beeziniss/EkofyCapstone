@@ -9,9 +9,9 @@ public class TopTrackMutation(ITopTrackService topTrackService)
 {
     private readonly ITopTrackService _topTrackService = topTrackService;
 
-    public async Task<bool> UpsertTopTrackCountAsync(string trackId)
-    {
-        await _topTrackService.UpsertTopTrackCountAsync(trackId);
-        return true;
-    }
+    //public async Task<bool> UpsertTopTrackCountAsync(string trackId)
+    //{
+    //    await _topTrackService.UpsertTopTrackCountAsync(trackId);
+    //    return true;
+    //}
 }

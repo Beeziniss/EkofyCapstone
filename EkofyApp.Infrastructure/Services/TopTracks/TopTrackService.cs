@@ -68,11 +68,11 @@ namespace EkofyApp.Infrastructure.Services.TopTracks
         //    await _redis.SetExpirationAsync($"top_tracks:{userId}", TimeSpan.FromMinutes(3));
         //}
 
-        public async Task UpsertTopTrackCountAsync(string trackId, CancellationToken cancellationToken = default)
+        public async Task UpsertTopTrackCountAsync(string trackId, string userId, CancellationToken cancellationToken = default)
         {
             // Lấy userId từ HttpContext
-            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
-                            ?? throw new UnauthorizedCustomException("Your session is limited");
+            //string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
+            //                ?? throw new UnauthorizedCustomException("Your session is limited");
 
             IMongoCollection<TopTrack> collection = _unitOfWork.GetCollection<TopTrack>();
 
