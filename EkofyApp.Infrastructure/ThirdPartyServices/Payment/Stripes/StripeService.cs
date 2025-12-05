@@ -411,7 +411,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .Find(x => x.PaymentTransactionId == paymentTransaction.Id)
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(x => x.Id)
-                    .Include(x => x.Duration))
+                    .Include(x => x.Duration)
+                    .Include(x => x.PlatformFeePercentage))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found artist package for refund.");
 
             // Lấy package
@@ -428,11 +429,12 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found user for refund.");
 
             // Lấy platform fee percentage từ Redis
-            string platformFeePercentageStr = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
-                .Find(x => x.Status == PolicyStatus.Active)
-                .Project(x => x.PlatformFeePercentage.ToString())
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
-            decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
+            //string platformFeePercentageStr = await _redisCacheService.HashGetAsync("escrow_commission_policy:active", "platform_fee_percentage") ?? await _unitOfWork.GetCollection<EscrowCommissionPolicy>()
+            //    .Find(x => x.Status == PolicyStatus.Active)
+            //    .Project(x => x.PlatformFeePercentage.ToString())
+            //    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found active escrow commission policy.");
+            //decimal platformFeePercentage = Convert.ToDecimal(platformFeePercentageStr);
+            decimal platformFeePercentage = packageOrder.PlatformFeePercentage;
 
             // Tạo Invoice cho refund của listener
             await _unitOfWork.GetCollection<Domain.Entities.Invoice>().InsertOneAsync(session, new Domain.Entities.Invoice
@@ -753,6 +755,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             UpdateResult updateResult = await _unitOfWork.GetCollection<PlatformRevenue>()
                 .UpdateOneAsync(session, _ => true, Builders<PlatformRevenue>.Update
                     .Inc(x => x.ServicePayoutAmount, artistAmount)
+                    .Inc(x => x.CommissionProfit, platformFeeAmount)
                     .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
             if (updateResult.ModifiedCount == 0)
             {

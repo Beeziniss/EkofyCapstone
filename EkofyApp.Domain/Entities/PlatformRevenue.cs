@@ -17,7 +17,7 @@ public sealed class PlatformRevenue : TimeStamped
     public decimal GrossDeductions => RoyaltyPayoutAmount + ServicePayoutAmount + RefundAmount;
 
     // Profits
-    public decimal CommissionProfit => ServiceRevenue - ServicePayoutAmount;
+    public decimal CommissionProfit { get; set; }
     public decimal NetProfit => (SubscriptionRevenue + ServiceRevenue) - (RoyaltyPayoutAmount + ServicePayoutAmount + RefundAmount);
 
     public CurrencyType Currency { get; set; } = CurrencyType.vnd;
