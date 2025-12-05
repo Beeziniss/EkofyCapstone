@@ -708,7 +708,12 @@ public sealed class AuthenticationService(
     {
         GoogleJsonWebSignature.ValidationSettings settings = new()
         {
-            Audience = [Environment.GetEnvironmentVariable("Authentication_Google_ClientId") ?? throw new UnconfiguredEnvironmentCustomException("Authentication_Google_ClientId is not set in the environment")]
+            Audience = 
+            [
+                Environment.GetEnvironmentVariable("Authentication_Google_ClientId") ?? throw new UnconfiguredEnvironmentCustomException("Authentication_Google_ClientId is not set in the environment"),
+
+                Environment.GetEnvironmentVariable("Authentication_Google_ClientId_Mobile") ?? throw new UnconfiguredEnvironmentCustomException("Authentication_Google_ClientId_IOS is not set in the environment")
+            ]
         };
 
         GoogleJsonWebSignature.Payload payload = await GoogleJsonWebSignature.ValidateAsync(googleToken, settings);
