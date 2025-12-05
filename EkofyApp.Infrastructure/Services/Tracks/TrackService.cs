@@ -1283,7 +1283,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
         string key = $"stream_count:{userId}";  //--> cái cũ là top track ??
                                                 //tăng lượt stream count lên 1 khi được gọi
         await _redisCacheService.HashIncrementAsync(key, trackId);
-        //set thời gian tồn tại của key trong 30'
+        //set thời gian tồn tại của key trong 3'
         await _redisCacheService.SetExpirationAsync(key, TimeSpan.FromMinutes(3));
     }
 

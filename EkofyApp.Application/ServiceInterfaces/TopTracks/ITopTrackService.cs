@@ -8,6 +8,6 @@ namespace EkofyApp.Application.ServiceInterfaces.TopTracks
         IQueryable<TopTrackResponse> GetOwnTopTracks();
         Task<IEnumerable<TopTrack>> GetTopTrackBysUserIds(IEnumerable<string> userIds);
         IQueryable<TopTrackResponse> GetTopTracksByUserId(string userId);
-        Task UpsertTopTrackCountAsync(string trackId, CancellationToken cancellationToken = default);
+        Task UpsertTopTrackCountAsync(string trackId, string userId, CancellationToken cancellationToken = default);
     }
 }

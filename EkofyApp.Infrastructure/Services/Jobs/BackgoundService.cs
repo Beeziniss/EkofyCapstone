@@ -118,6 +118,7 @@ public class BackgoundService : IBackgoundService
             var redis = scope.ServiceProvider.GetRequiredService<IRedisCacheService>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var monthlyStreamCountService = scope.ServiceProvider.GetRequiredService<IMonthlyStreamCountService>();
+            var topTrackService = scope.ServiceProvider.GetRequiredService<ITopTrackService>();
 
             string pattern = "stream_count:*";
             string[] keyList = redis.GetAllKeysByPattern(pattern);
@@ -129,7 +130,9 @@ public class BackgoundService : IBackgoundService
             }
             var tasks = keyList.Select(async key =>
             {
-                await UpdateIntoMongoDB(key, redis, unitOfWork, monthlyStreamCountService);
+                string userId = key.Split(':')[1];
+
+                await UpdateIntoMongoDB(key, userId, redis, unitOfWork, monthlyStreamCountService, topTrackService);
             });
             await Task.WhenAll(tasks);
         }
@@ -140,7 +143,7 @@ public class BackgoundService : IBackgoundService
 
     }
 
-    private async Task UpdateIntoMongoDB(string key, IRedisCacheService redis, IUnitOfWork unitOfWork, IMonthlyStreamCountService monthlyStreamCountService)
+    private async Task UpdateIntoMongoDB(string key, string userId, IRedisCacheService redis, IUnitOfWork unitOfWork, IMonthlyStreamCountService monthlyStreamCountService, ITopTrackService topTrackService)
     {
 
         HashEntry[]? hashEntry = await redis.HashGetAllAsync(key);
@@ -164,6 +167,7 @@ public class BackgoundService : IBackgoundService
                 //update rồi giảm count trong redis để tránh update lại cái cũ cho lần sau
                 await unitOfWork.GetCollection<Track>().UpdateOneAsync(rh => rh.Id == trackId, updateDefinition);
                 await redis.HashDecrementAsync(key, trackId, playedCount);
+                await redis.SetExpirationAsync(key, TimeSpan.FromMinutes(3));
 
                 DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
                 DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
@@ -183,6 +187,7 @@ public class BackgoundService : IBackgoundService
                     new UpdateOptions { IsUpsert = true }
                 );
                 await monthlyStreamCountService.UpsertMonthlyStreamCountAsync(trackId, playedCount, HelperMethod.GetUtcPlus7TimeOffset().Month, HelperMethod.GetUtcPlus7TimeOffset().Year);
+                await topTrackService.UpsertTopTrackCountAsync(trackId, userId);
             }
         }
     }
