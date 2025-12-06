@@ -443,7 +443,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             {
                 UserId = paymentTransaction.UserId,
                 PaymentTransactionId = paymentTransaction.Id,
-                StripeInvoiceId = paymentTransaction.StripeInvoiceId ?? throw new NotFoundCustomException("Stripe invoice id is null"),
+                StripeInvoiceId = paymentTransaction.StripeInvoiceId,
                 Amount = amount,
                 Currency = CurrencyType.vnd.ToString(),
                 OneOffSnapshot = new OneOffSnapshot
