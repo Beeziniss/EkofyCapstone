@@ -12,6 +12,7 @@ using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe;
 using Stripe.Checkout;
@@ -676,6 +677,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             PackageOrder packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
                 .Find(x => x.Id == packageOrderId && x.CompletedAt != null)
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                    .Include(x => x.Id)
                     .Include(x => x.PaymentTransactionId)
                     .Include(x => x.ProviderId))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found package order.");
@@ -738,8 +740,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             Payout payoutResponse = await CreateInstantPayoutAsync(artistStripeAccountId, stripeAmountPackageOrder, $"Payout escrow for package order {packageOrder.Id}", metadata);
 
             // Tạo payout transaction
+            string payoutTransactionId = ObjectId.GenerateNewId().ToString();
             await _unitOfWork.GetCollection<PayoutTransaction>().InsertOneAsync(session, new PayoutTransaction
             {
+                Id = payoutTransactionId,
                 UserId = packageOrder.ProviderId,
                 StripeTransferId = transferResponse.Id,
                 StripePayoutId = payoutResponse.Id,
@@ -750,6 +754,16 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 Status = Enum.Parse<PayoutTransactionStatus>(payoutResponse.Status), // pending, in_transit
                 Method = payoutResponse.Method, // standard hoặc instant
             });
+
+            // Cập nhật payout transaction cho package order
+            UpdateResult updatePackageOrderResult = await _unitOfWork.GetCollection<PackageOrder>()
+                .UpdateOneAsync(session, x => x.Id == packageOrder.Id, Builders<PackageOrder>.Update
+                    .Set(x => x.PayoutTransactionId, payoutTransactionId)
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset()));
+            if (updatePackageOrderResult.ModifiedCount == 0)
+            {
+                _logger.LogError("Cannot update payout transaction id for package order {PackageOrderId} after escrow released.", packageOrder.Id);
+            }
 
             // Cập nhật Payout Service cho Platform
             UpdateResult updateResult = await _unitOfWork.GetCollection<PlatformRevenue>()
