@@ -413,8 +413,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(x => x.Id)
                     .Include(x => x.Duration)
-                    .Include(x => x.PlatformFeePercentage))
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found artist package for refund.");
+                    .Include(x => x.PlatformFeePercentage)
+                    .Include(x => x.ArtistPackageId))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found package order for refund.");
 
             // Lấy package
             ArtistPackage artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
