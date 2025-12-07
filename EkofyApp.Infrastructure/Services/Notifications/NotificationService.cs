@@ -38,7 +38,8 @@ public sealed class NotificationService(IUnitOfWork unitOfWork, IHubContext<Noti
             Notification = new FirebaseAdmin.Messaging.Notification
             {
                 Title = title,
-                Body = body
+                Body = body, 
+                ImageUrl = "https://res.cloudinary.com/dofnn7sbx/image/upload/v1764994045/Ekofy_Logo_-_White_xga7t2.png"
             },
             Android = new AndroidConfig
             {
@@ -63,7 +64,8 @@ public sealed class NotificationService(IUnitOfWork unitOfWork, IHubContext<Noti
             Notification = new FirebaseAdmin.Messaging.Notification
             {
                 Title = title,
-                Body = body
+                Body = body,
+                ImageUrl = "https://res.cloudinary.com/dofnn7sbx/image/upload/v1764994045/Ekofy_Logo_-_White_xga7t2.png"
             },
             Android = new AndroidConfig
             {
