@@ -62,4 +62,18 @@ public sealed class NotificationService(IUnitOfWork unitOfWork, IHubContext<Noti
 
         await FirebaseMessaging.DefaultInstance.SendAsync(message);
     }
+
+    public async Task<bool> MarkNotificationAsReadAsync(string notificationId)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        UpdateDefinition<Domain.Entities.Notification> update = Builders<Domain.Entities.Notification>.Update
+                                                .Set(n => n.IsRead, true)
+                                                .Set(n => n.ReadAt, now);
+        var result = await _unitOfWork.GetCollection<Domain.Entities.Notification>()
+                            .UpdateOneAsync(n => n.Id == notificationId, update);
+        // cập nhật cơ sở dữ liệu 
+        return result.ModifiedCount > 0; // Trả về true nếu thành công
+    }
+
 }
