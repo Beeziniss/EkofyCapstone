@@ -27,7 +27,7 @@ public sealed class User : Auditable, IEntityCustom
     public string? StripeCustomerId { get; set; } // Stripe Customer ID for payment processing
     public string? StripeAccountId { get; set; } // Stripe Account ID for artists
 
-    public string? FCMToken { get; set; } // Firebase Cloud Messaging token for push notifications
+    public List<string> FCMToken { get; set; } = []; // Firebase Cloud Messaging token for push notifications
 
     public DateTimeOffset? LastLoginAt { get; set; }
 
