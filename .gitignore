@@ -383,3 +383,4 @@ AudioFeatureExtractor/*.pyd
 # Nếu dùng VSCode/PyCharm
 AudioFeatureExtractor/.vscode/
 AudioFeatureExtractor/.idea/
+/PrivateKeys
