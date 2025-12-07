@@ -546,7 +546,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 },
             ],
             Customer = user.StripeCustomerId, // có thể truyền customerId nếu đã có
-            CustomerEmail = user.Email,
+            //CustomerEmail = user.Email,
             Mode = "subscription",
             //OriginContext = "web",
             SuccessUrl = createCheckoutSessionRequest.SuccessUrl,
