@@ -1,13 +1,17 @@
 ﻿using EkofyApp.Application.Models.Notifications;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
+using EkofyApp.Domain.Entities;
 using Microsoft.AspNetCore.SignalR;
+using MongoDB.Driver;
 using System.Collections.Concurrent;
 
 namespace EkofyApp.Infrastructure.Services.Notifications;
 
-public class NotificationHub : Hub
+public class NotificationHub(INotificationService notificationService) : Hub
 {
     // userId → list of connectionIds (hỗ trợ nhiều tab/device)
     private static readonly ConcurrentDictionary<string, HashSet<string>> _connections = new();
+    private readonly INotificationService _notificationService = notificationService;
 
     public override async Task OnConnectedAsync()
     {
@@ -76,4 +80,30 @@ public class NotificationHub : Hub
     //{
     //    return _connections.TryGetValue(userId, out var set) ? set.ToList() : [];
     //}
+
+
+    public async Task MarkNotificationAsRead(string notificationId)
+    {
+        string? userId = Context.User?.FindFirst("userId")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            await Clients.Caller.SendAsync("ReceiveException", "Session expired. Please login again.");
+            return;
+        }
+
+        // Gọi phương thức cập nhật trạng thái thông báo trong cơ sở dữ liệu
+        var success = await _notificationService.MarkNotificationAsReadAsync(notificationId);
+
+        if (success)
+        {
+            // Nếu thành công, có thể gửi thông báo lại cho các client khác nếu cần
+            await Clients.User(userId).SendAsync("NotificationRead", notificationId);
+        }
+        else
+        {
+            await Clients.Caller.SendAsync("ReceiveException", "Failed to mark notification as read.");
+        }
+    }
+
 }

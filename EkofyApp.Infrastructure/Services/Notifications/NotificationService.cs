@@ -23,18 +23,27 @@ public sealed class NotificationService(IUnitOfWork unitOfWork, IHubContext<Noti
         return _unitOfWork.GetCollection<Domain.Entities.Notification>().AsQueryable().Where(n => n.TargetId == userId);
     }
 
-    public async Task<bool> SendFcmToken(string userId, string token)
-    {
-        UpdateDefinition<User> update = Builders<User>.Update.AddToSet(u => u.FCMToken, token);
-        var result = await _unitOfWork.GetCollection<User>().UpdateOneAsync(u => u.Id == userId, update);
-        return result.ModifiedCount > 0;
-    } 
+    //public async Task<bool> SendFcmToken(string userId, string token)
+    //{
+    //    UpdateDefinition<User> update = Builders<User>.Update.AddToSet(u => u.FCMToken, token);
+    //    var result = await _unitOfWork.GetCollection<User>().UpdateOneAsync(u => u.Id == userId, update);
+    //    return result.ModifiedCount > 0;
+    //} 
 
-    public async Task SendFcmNotificationAsync(string fcmToken, string title, string body, string channelId, Dictionary<string, string>? data = null)
+    public async Task SendFcmNotificationAsync(string? userId, string title, string body, string channelId, Dictionary<string, string>? data = null)
     {
+        // nếu userId null thì gửi cho tất cả
+        string topic = "all_users";
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            topic = "user_" + userId;
+        }
+
+        // đóng gói message với title + body
         var message = new FirebaseAdmin.Messaging.Message()
         {
-            Token = fcmToken,
+            Topic = topic,
             Notification = new FirebaseAdmin.Messaging.Notification
             {
                 Title = title,
@@ -51,32 +60,20 @@ public sealed class NotificationService(IUnitOfWork unitOfWork, IHubContext<Noti
             Data = data ?? []
         };
 
-        string response = await FirebaseMessaging.DefaultInstance.SendAsync(message);
-        Log.Information($"Successfully sent message: {response}");
+        await FirebaseMessaging.DefaultInstance.SendAsync(message);
     }
 
-    public async Task SendMultipleMessageAsync(IReadOnlyList<string> fcmTokens, string title, string body, string channelId, Dictionary<string, string>? data = null)
+    public async Task<bool> MarkNotificationAsReadAsync(string notificationId)
     {
-        var messages = new MulticastMessage
-        {
-            Tokens = fcmTokens,
-            Notification = new FirebaseAdmin.Messaging.Notification
-            {
-                Title = title,
-                Body = body
-            },
-            Android = new AndroidConfig
-            {
-                Notification = new AndroidNotification
-                {
-                    ChannelId = channelId,
-                    Priority = NotificationPriority.HIGH
-                }
-            },
-            Data = data ?? []
-        };
-        var response = await FirebaseMessaging.DefaultInstance.SendEachForMulticastAsync(messages);
-        Log.Information($"Successfully sent {response.SuccessCount} messages out of devices");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        UpdateDefinition<Domain.Entities.Notification> update = Builders<Domain.Entities.Notification>.Update
+                                                .Set(n => n.IsRead, true)
+                                                .Set(n => n.ReadAt, now);
+        var result = await _unitOfWork.GetCollection<Domain.Entities.Notification>()
+                            .UpdateOneAsync(n => n.Id == notificationId, update);
+        // cập nhật cơ sở dữ liệu 
+        return result.ModifiedCount > 0; // Trả về true nếu thành công
     }
 
 }
