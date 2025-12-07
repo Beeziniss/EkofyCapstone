@@ -11,24 +11,17 @@ namespace EkofyApp.Api.GraphQL.Mutation.Notifications
 
         private readonly INotificationService _notificationService = notificationService;
 
-        [AllowAnonymous]
-        public async Task<bool> SendFcmTokenAsync(string userId, string token)
-        {
-            return await _notificationService.SendFcmToken(userId, token);
-        }
+        //[AllowAnonymous]
+        //public async Task<bool> SendFcmTokenAsync(string userId, string token)
+        //{
+        //    return await _notificationService.SendFcmToken(userId, token);
+        //}
 
 
         #region For testing purpose only
-        public async Task<bool> SendMultipleNotificationsAsync(IReadOnlyList<string> fcmTokens, string title, string body, string channelId)
+        public async Task<bool> SendSingleNotificationAsync(string? userId, string title, string body, string channelId, Dictionary<string, string>? data = null)
         {
-            await _notificationService.SendMultipleMessageAsync(fcmTokens, title, body, channelId);
-            return true;
-        }
-
-
-        public async Task<bool> SendSingleNotificationAsync(string fcmTokens, string title, string body, string channelId, Dictionary<string, string>? data = null)
-        {
-            await _notificationService.SendFcmNotificationAsync(fcmTokens, title, body, channelId, data);
+            await _notificationService.SendFcmNotificationAsync(userId, title, body, channelId, data);
             return true;
         }
         #endregion
