@@ -12,6 +12,7 @@
 		<PackageReference Include="AWSSDK.S3" Version="4.0.6.10" />
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="FingerprintPro.ServerSdk" Version="7.9.0" />
+		<PackageReference Include="FirebaseAdmin" Version="3.4.0" />
 		<PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
 		<PackageReference Include="Google.Protobuf" Version="3.32.0" />
 		<PackageReference Include="Grpc.Net.Client" Version="2.71.0" />

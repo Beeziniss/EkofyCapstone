@@ -59,6 +59,7 @@ using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Settings.AWS;
 using EkofyApp.Domain.Settings.Momo;
 using EkofyApp.Domain.Settings.Redis;
+using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services;
 using EkofyApp.Infrastructure.Services.Albums;
 using EkofyApp.Infrastructure.Services.ApprovalHistories;
@@ -99,7 +100,9 @@ using EkofyApp.Infrastructure.ThirdPartyServices.FFMPEG;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Momo;
 using EkofyApp.Infrastructure.ThirdPartyServices.Payment.Stripes;
 using EkofyApp.Infrastructure.ThirdPartyServices.Redis;
+using FirebaseAdmin;
 using FluentValidation;
+using Google.Apis.Auth.OAuth2;
 using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies;
@@ -160,6 +163,8 @@ public static class DependencyInjection
         services.AddEnumMemberSerializer();
 
         services.AddEmbedGenerator();
+
+        services.AddFirebaseAuth();
 
         //services.AddSwaggerGen();
     }
@@ -818,7 +823,7 @@ public static class DependencyInjection
                 },
                 Prefix = "backgroundjobs.hangfire",
                 CheckConnection = false,
-                
+
 
                 //CheckQueuedJobsStrategy = CheckQueuedJobsStrategy.TailNotificationsCollection
             })
@@ -839,5 +844,26 @@ public static class DependencyInjection
     private static void AddEmbedGenerator(this IServiceCollection services)
     {
         services.AddEmbeddingGenerator(new OllamaEmbeddingGenerator(Environment.GetEnvironmentVariable("OLLAMA_API_URL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_API_URL is not set in the environment"), Environment.GetEnvironmentVariable("OLLAMA_MODEL") ?? throw new UnconfiguredEnvironmentCustomException("OLLAMA_MODEL is not set in the environment")));
+    }
+
+    private static void AddFirebaseAuth(this IServiceCollection services)
+    {
+        string credentialPath = "";
+
+        if (OperatingSystem.IsWindows())
+        {
+            credentialPath = HelperMethod.ResolvePath(PathTag.Base, "PrivateKeys");
+            credentialPath = Path.GetFullPath(Path.Combine(credentialPath, "ekofy-firebase-admin-sdk.json"));
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            credentialPath = Path.GetFullPath(Path.Combine("/app/PrivateKeys", "ekofy-firebase-admin-sdk.json"));
+        }
+
+        FirebaseApp.Create(new AppOptions()
+        {
+            Credential = CredentialFactory.FromFile(credentialPath, JsonCredentialParameters.ServiceAccountCredentialType)
+        });
+        services.AddSingleton(FirebaseApp.DefaultInstance);
     }
 }
