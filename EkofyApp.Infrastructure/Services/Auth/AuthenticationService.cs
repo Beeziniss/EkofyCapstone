@@ -612,6 +612,12 @@ public sealed class AuthenticationService(
                         Email = email.Trim().ToLowerInvariant(),
                         AvatarImage = avatar,
                     });
+
+                    // Tạo mới UserSubscription với gói Free
+                    await _userSubscriptionService.CreateUserSubscriptionAsync(session, userId, string.Empty, HelperMethod.GetUtcPlus7TimeOffset());
+
+                    // Xây dựng quyền lợi mặc định cho Listener (gói Free)
+                    await _effectiveEntitlementService.BuildFreeTierAsync(session, userId, UserRole.Listener);
                 }
                 else // Kiểm tra user có liên kết google account chưa
                 {
