@@ -102,10 +102,11 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 .Push(po => po.Deliveries, newDelivery);
 
 
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
             DateTimeOffset deadline = packageOrder.StartedAt!.Value.AddDays(packageOrder.Duration) + packageOrder.FreezedTime;
 
             // cho 1 job chạy khi submit thành công
-            string jobId = BackgroundJob.Schedule<PackageOrderService>(service => service.ApproveDeliveryAutomatically(request.PackageOrderId, deadline), HelperMethod.GetUtcPlus7TimeOffset().AddMinutes(1));
+            string jobId = BackgroundJob.Schedule<PackageOrderService>(service => service.ApproveDeliveryAutomatically(request.PackageOrderId, deadline, now.AddDays(3)), now.AddDays(3));
 
             update = update.Set(po => po.ApprovedAutoJobId, jobId);
 
@@ -268,7 +269,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
                 var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.InProgress)
                                                           .Set(po => po.FreezedTime, allFreezedTime)
-                                                          .Set(update => update.OverdueJobId, jobId);
+                                                          .Set(update => update.OverdueJobId, jobId)
+                                                          .Set(po => po.UpdatedAt, now);
 
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
@@ -446,20 +448,21 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         #endregion
 
         #region FOR BACKGROUND JOB
-        // Ở ĐÂY CHỈ THỰC HIỆN BACKGROUND JOB VÀO MỖI 12H SÁNG VÀ TRƯA ĐỂ TRÁNH CẬP NHẬT NHIỀU LÊN DB
-
         // Nếu sau 3 NGÀY sau khi artist submit file mà requestor chưa approve hay chuyển trạng thái thì sẽ tự động Approve và chuyển tiền
-        public async Task ApproveDeliveryAutomatically(string packageOrderId, DateTimeOffset deadline)
+        public async Task ApproveDeliveryAutomatically(string packageOrderId, DateTimeOffset deadline, DateTimeOffset expireDelivery)
         {
             DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
             if (deadline <= now)
             {
-                var updateWhenExpired = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Completed)
-                                                          .Set(po => po.CompletedAt, now);
+                var updateWhenExpired = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed)
+                                                          .Set(po => po.DisputedAt, now)
+                                                          .Set(po => po.UpdatedAt, now);
 
                 await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(p => p.Id == packageOrderId, updateWhenExpired);
                 return;
             }
+
+            if (expireDelivery >= now) return;
 
             var package = await _unitOfWork.GetCollection<PackageOrder>()
                                             .Find(po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress)
@@ -468,11 +471,10 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                             .FirstOrDefaultAsync();
 
             if (package == null) return;
-
-            var delivery = package.Deliveries.LastOrDefault(d =>
+            
+            PackageOrderDelivery? delivery = package.Deliveries.LastOrDefault(d =>
                                                             d.RequestedAt == null &&
-                                                            d.ClientFeedback == null &&
-                                                            (now - d.DeliveredAt) > TimeSpan.FromMinutes(1)
+                                                            d.ClientFeedback == null
                                                         );
 
             if (delivery == null) return;
@@ -485,7 +487,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             );
             var update = Builders<PackageOrder>.Update
                 .Set("Deliveries.$.ClientFeedback", "This request working is closed and approved automatically by the system! (Because the requestor didn't approve over 3 days).")
-                .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                .Set(po => po.UpdatedAt, now)
+                .Set(po => po.CompletedAt, now)
                 .Set(po => po.Status, PackageOrderStatus.Completed);
             // TODO: chuyển tiền thẳng hết luôn!! ******************************************************************************
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(filter, update);
@@ -509,6 +512,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             var update = Builders<PackageOrder>.Update
                                                 .Set(po => po.Status, PackageOrderStatus.Disputed)
+                                                .Set(po => po.UpdatedAt, now)
                                                 .Set(po => po.DisputedAt, now);
             await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(filter, update);
         }
