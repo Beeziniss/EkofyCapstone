@@ -73,9 +73,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         string firstName = string.Join(" ", names.Take(names.Length - 1));
 
         // Chuẩn hóa số điện thoại Singapore
-        string singaporePhone = user.PhoneNumber!.StartsWith("0")
-            ? string.Concat("+1", user.PhoneNumber.AsSpan(2))
-            : "+1" + user.PhoneNumber;
+        string unitedStatePhone = user.PhoneNumber!.StartsWith("0")
+            ? string.Concat("+1", user.PhoneNumber.AsSpan(1))
+            : "+10" + user.PhoneNumber;
 
         Artist artist = await _unitOfWork.GetCollection<Artist>()
             .Find(x => x.UserId == userId)
@@ -112,7 +112,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 FirstName = firstName,
                 LastName = lastName,
                 Email = user.Email,
-                Phone = singaporePhone,
+                Phone = unitedStatePhone,
                 IdNumber = "000000000", // Dùng số này sẽ tự pass KYC
                 Dob = new DobOptions
                 {
@@ -143,7 +143,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                     {
                         Front = "file_identity_document_success" // Test token để pass
                     },
-                    // If you need to set AdditionalDocument, do so here
+                    // If need to set AdditionalDocument, do so here
                     // AdditionalDocument = new AccountIndividualVerificationAdditionalDocumentOptions { ... }
                 }
             },
@@ -172,40 +172,28 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         });
 
         // Thêm tài khoản ngân hàng
-        //AccountExternalAccountCreateOptions bankAccountOptions = new()
-        //{
-        //    ExternalAccount = new AccountExternalAccountBankAccountOptions
-        //    {
-        //        Country = "SG",
-        //        Currency = CurrencyType.sgd.ToString(),
-        //        AccountHolderName = user.FullName,
-        //        AccountHolderType = "individual",
-        //        RoutingNumber = "1100-000", // 8 chữ số
-        //        AccountNumber = "000123456" // 1-17 chữ số
-        //    }
-        //};
-
-        //var tokenOptions = new TokenCreateOptions
-        //{
-        //    Card = new TokenCardOptions
-        //    {
-        //        Number = "4000056655665556", // Debit card test của Stripe (Visa)
-        //        ExpMonth = "12",
-        //        ExpYear = "2027",
-        //        Cvc = "123",
-        //    }
-        //};
-
-        //var tokenService = new TokenService();
-        //var token = await tokenService.CreateAsync(tokenOptions);
-
-        var debitAccountOptions = new AccountExternalAccountCreateOptions
+        AccountExternalAccountCreateOptions bankAccountOptions = new()
         {
-            ExternalAccount = "tok_visa_debit" // Use the token's Id (string) instead of the Token object
+            ExternalAccount = new AccountExternalAccountBankAccountOptions
+            {
+                Country = "US",
+                Currency = CurrencyType.usd.ToString(),
+                AccountHolderName = user.FullName,
+                AccountHolderType = "individual",
+                RoutingNumber = "110000000", // 9 chữ số
+                AccountNumber = "000123456" // 1-17 chữ số
+            }
+        };
+
+        // Thêm thẻ ghi nợ
+        AccountExternalAccountCreateOptions debitAccountOptions = new()
+        {
+            ExternalAccount = "tok_visa_debit",
+            DefaultForCurrency = true
         };
 
         AccountExternalAccountService externalAccountService = new();
-        //await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
+        await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
         await externalAccountService.CreateAsync(account.Id, debitAccountOptions);
 
         return account.Id;

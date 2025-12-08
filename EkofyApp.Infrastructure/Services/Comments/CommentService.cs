@@ -199,7 +199,7 @@ public sealed class CommentService(IUnitOfWork unitOfWork, IHttpContextAccessor 
                 return;
             }
 
-            await unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(session,
+            await _unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(session,
                 x => x.TrackId == trackId &&
                      x.CreatedAt >= startOfDay &&
                      x.CreatedAt < endOfDay,
