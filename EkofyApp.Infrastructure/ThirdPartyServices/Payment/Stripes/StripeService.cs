@@ -74,8 +74,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
 
         // Chuẩn hóa số điện thoại Singapore
         string singaporePhone = user.PhoneNumber!.StartsWith("0")
-            ? string.Concat("+65", user.PhoneNumber.AsSpan(2))
-            : "+65" + user.PhoneNumber;
+            ? string.Concat("+1", user.PhoneNumber.AsSpan(2))
+            : "+1" + user.PhoneNumber;
 
         Artist artist = await _unitOfWork.GetCollection<Artist>()
             .Find(x => x.UserId == userId)
@@ -87,9 +87,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         Account account = accountService.Create(new AccountCreateOptions
         {
             Type = "express",  // Express phổ biến nhất
-            Country = "SG",   // Sandbox test US/EU (VN không hỗ trợ)
+            Country = "US",   // Sandbox test US/EU (VN không hỗ trợ)
             Email = user.Email,
-            DefaultCurrency = CurrencyType.sgd.ToString(),
+            DefaultCurrency = CurrencyType.usd.ToString(),
             BusinessType = "individual",
             //TosAcceptance = new AccountTosAcceptanceOptions
             //{
@@ -123,9 +123,10 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 Address = new AddressOptions
                 {
                     Line1 = "address_full_match",
-                    City = "Singapore",
-                    Country = "SG",
-                    PostalCode = "238838"
+                    City = "San Francisco",
+                    State = "CA",
+                    Country = "US",
+                    PostalCode = "94102"
                 },
                 Relationship = new AccountIndividualRelationshipOptions
                 {
@@ -170,22 +171,42 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             }
         });
 
-        // Thêm tài khoản ngân hàng Việt Nam
-        AccountExternalAccountCreateOptions bankAccountOptions = new()
+        // Thêm tài khoản ngân hàng
+        //AccountExternalAccountCreateOptions bankAccountOptions = new()
+        //{
+        //    ExternalAccount = new AccountExternalAccountBankAccountOptions
+        //    {
+        //        Country = "SG",
+        //        Currency = CurrencyType.sgd.ToString(),
+        //        AccountHolderName = user.FullName,
+        //        AccountHolderType = "individual",
+        //        RoutingNumber = "1100-000", // 8 chữ số
+        //        AccountNumber = "000123456" // 1-17 chữ số
+        //    }
+        //};
+
+        //var tokenOptions = new TokenCreateOptions
+        //{
+        //    Card = new TokenCardOptions
+        //    {
+        //        Number = "4000056655665556", // Debit card test của Stripe (Visa)
+        //        ExpMonth = "12",
+        //        ExpYear = "2027",
+        //        Cvc = "123",
+        //    }
+        //};
+
+        //var tokenService = new TokenService();
+        //var token = await tokenService.CreateAsync(tokenOptions);
+
+        var debitAccountOptions = new AccountExternalAccountCreateOptions
         {
-            ExternalAccount = new AccountExternalAccountBankAccountOptions
-            {
-                Country = "SG",
-                Currency = CurrencyType.sgd.ToString(),
-                AccountHolderName = user.FullName,
-                AccountHolderType = "individual",
-                RoutingNumber = "1100-000", // 8 chữ số
-                AccountNumber = "000123456" // 1-17 chữ số
-            }
+            ExternalAccount = "tok_visa_debit" // Use the token's Id (string) instead of the Token object
         };
 
         AccountExternalAccountService externalAccountService = new();
-        await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
+        //await externalAccountService.CreateAsync(account.Id, bankAccountOptions);
+        await externalAccountService.CreateAsync(account.Id, debitAccountOptions);
 
         return account.Id;
     }
@@ -718,7 +739,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .Project(x => x.StripeAccountId)
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found artist's Stripe Account ID.");
 
-            long stripeAmountPackageOrder = HelperCurrencyConverter.ConvertVndDecimalToStripeAmountSgdLong(artistAmount);
+            long stripeAmountPackageOrder = HelperCurrencyConverter.ConvertVndDecimalToStripeAmountUsdLong(artistAmount);
             TransferResponse transferResponse = TransferToArtist(artistStripeAccountId, stripeAmountPackageOrder, $"Transfer escrow for package order {packageOrder.Id}"); // chuyển tiền
 
             // Payout cho Artist
@@ -800,7 +821,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         Transfer transfer = transferService.Create(new TransferCreateOptions
         {
             Amount = amount,
-            Currency = CurrencyType.sgd.ToString(),
+            Currency = CurrencyType.usd.ToString(),
             Destination = artistAccountId,
 
             Description = description,
@@ -827,7 +848,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             transferService.Create(new TransferCreateOptions
             {
                 Amount = amount,
-                Currency = CurrencyType.sgd.ToString(),
+                Currency = CurrencyType.usd.ToString(),
                 Destination = artistAccountId,
                 TransferGroup = groupId,
                 Description = "Royalty payout for streaming"
@@ -928,7 +949,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     /// <summary>
     /// Tạo payout thường (1-5 ngày làm việc) cho connected account
     /// </summary>
-    public async Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "sgd")
+    public async Task<Payout> CreateStandardPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "usd")
     {
         string alternativeDescription = $"Royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
 
@@ -955,7 +976,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     /// <summary>
     /// Tạo instant payout (ngay lập tức, có phí cao hơn)
     /// </summary>
-    public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "sgd")
+    public async Task<Payout> CreateInstantPayoutAsync(string connectedAccountId, long amount, string? description = null, Dictionary<string, string>? metadata = null, string currency = "usd")
     {
         string alternativeDescription = $"Instant royalty payout - {HelperMethod.GetUtcPlus7TimeOffset():MM-yyyy}";
 

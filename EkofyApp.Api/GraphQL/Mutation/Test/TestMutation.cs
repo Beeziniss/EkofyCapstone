@@ -11,6 +11,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Stripe;
 using System.Threading.Tasks;
 
 namespace EkofyApp.Api.GraphQL.Mutation.Test;
@@ -19,6 +20,18 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test;
 [MutationType]
 public sealed class TestMutation
 {
+    public async Task<bool> TestInstantPayout([Service] IStripeService stripeService, string accountId, long amount)
+    {
+        await stripeService.CreateInstantPayoutAsync(accountId, amount, "Test Instant Payout", null, "usd");
+        return true;
+    }
+
+    public async Task<bool> TestTopup([Service] IStripeService stripeService, long amount)
+    {
+        await stripeService.CreateTopupAsync(amount);
+        return true;
+    }
+
     public async Task<bool> TestDateComparing([Service] IUnitOfWork unitOfWork)
     {
         DateTimeOffset date = await unitOfWork.GetCollection<Track>().Find(Builders<Track>.Filter.Empty)
