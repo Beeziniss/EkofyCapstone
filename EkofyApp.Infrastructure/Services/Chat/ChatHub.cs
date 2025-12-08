@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.Chat;
 using EkofyApp.Application.Models.Notifications;
+using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -246,38 +247,43 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
 
             await _unitOfWork.GetCollection<Message>().InsertOneAsync(message);
 
-            // Gửi tới tất cả connection của người nhận
-            if (OnlineUsers.TryGetValue(chatMessageRequest.ReceiverId, out HashSet<string>? receiverConnections))
+            dynamic user;
+            string role = Context.User?.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            if (role == UserRole.Listener.ToString())
             {
-                await Clients.Clients(receiverConnections.ToList()).SendAsync("ReceiveMessage", message);
+                user = await _unitOfWork.GetCollection<Listener>()
+                    .Find(l => l.UserId == chatMessageRequest.SenderId)
+                    .Project(l => new
+                    {
+                        Name = l.DisplayName,
+                        Avatar = l.AvatarImage
+                    })
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {chatMessageRequest.SenderId}");
             }
             else
             {
-                dynamic user;
-                string role = Context.User?.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
-                if (role == UserRole.Listener.ToString())
-                {
-                    user = await _unitOfWork.GetCollection<Listener>()
-                        .Find(l => l.UserId == chatMessageRequest.SenderId)
-                        .Project(l => new
-                        {
-                            Name = l.DisplayName,
-                            Avatar = l.AvatarImage
-                        })
-                        .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {chatMessageRequest.SenderId}");
-                }
-                else
-                {
-                    user = await _unitOfWork.GetCollection<Artist>()
-                        .Find(a => a.UserId == chatMessageRequest.SenderId)
-                        .Project(a => new
-                        {
-                            Name = a.StageName,
-                            Avatar = a.AvatarImage
-                        })
-                        .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {chatMessageRequest.SenderId}");
-                }
+                user = await _unitOfWork.GetCollection<Artist>()
+                    .Find(a => a.UserId == chatMessageRequest.SenderId)
+                    .Project(a => new
+                    {
+                        Name = a.StageName,
+                        Avatar = a.AvatarImage
+                    })
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found user {chatMessageRequest.SenderId}");
+            }
 
+            // Gửi tới tất cả connection của người nhận
+            if (OnlineUsers.TryGetValue(chatMessageRequest.ReceiverId, out HashSet<string>? receiverConnections))
+            {
+                SenderProfile senderProfile = new()
+                {
+                    Nickname = user.Name,
+                    Avatar = user.Avatar,
+                };
+                await Clients.Clients(receiverConnections.ToList()).SendAsync("ReceiveMessage", message, senderProfile);
+            }
+            else
+            {
                 // Người nhận không online, xử lý thông báo push ở đây nếu cần
                 await _notificationHubContext.Clients.User(chatMessageRequest.ReceiverId).SendAsync("ReceiveNotification", new NotificationResponse
                 {
