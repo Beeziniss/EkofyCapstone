@@ -181,7 +181,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 AccountHolderName = user.FullName,
                 AccountHolderType = "individual",
                 RoutingNumber = "110000000", // 9 chữ số
-                AccountNumber = "000123456" // 1-17 chữ số
+                AccountNumber = "000123456789" // 1-17 chữ số
             }
         };
 
