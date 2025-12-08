@@ -74,8 +74,8 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
 
         // Chuẩn hóa số điện thoại Singapore
         string unitedStatePhone = user.PhoneNumber!.StartsWith("0")
-            ? string.Concat("+1", user.PhoneNumber.AsSpan(1))
-            : "+10" + user.PhoneNumber;
+            ? string.Concat("+1", user.PhoneNumber.AsSpan(1)) + "0"
+            : "+1" + user.PhoneNumber + "0";
 
         Artist artist = await _unitOfWork.GetCollection<Artist>()
             .Find(x => x.UserId == userId)
@@ -112,7 +112,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 FirstName = firstName,
                 LastName = lastName,
                 Email = user.Email,
-                Phone = unitedStatePhone,
+                Phone = "+14155552671",
                 IdNumber = "000000000", // Dùng số này sẽ tự pass KYC
                 Dob = new DobOptions
                 {
