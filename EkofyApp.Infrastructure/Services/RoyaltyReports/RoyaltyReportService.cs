@@ -272,18 +272,18 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 
                 // Tính tổng amount cho user này
                 decimal totalVndAmount = userSplits.Sum(x => x.Split.Amount);
-                decimal totalSgdAmount = HelperCurrencyConverter.ConvertVndToSgd(totalVndAmount);
+                decimal totalUsdAmount = HelperCurrencyConverter.ConvertVndToUsd(totalVndAmount);
 
                 try
                 {
-                    long stripeTotalAmountLong = HelperCurrencyConverter.ConvertDecimalToStripeAmount(totalSgdAmount, CurrencyType.sgd.ToString());
+                    long stripeTotalAmountLong = HelperCurrencyConverter.ConvertDecimalToStripeAmount(totalUsdAmount, CurrencyType.usd.ToString());
 
                     // Thực hiện transfer trước, sau đó payout
                     TransferService transferService = new();
                     Transfer transferResponse = transferService.Create(new TransferCreateOptions
                     {
                         Amount = stripeTotalAmountLong,
-                        Currency = CurrencyType.sgd.ToString(), // Sử dụng SGD cho sandbox
+                        Currency = CurrencyType.usd.ToString(), // Sử dụng USD cho sandbox
                         Destination = artistStripeAccountId,
                         TransferGroup = $"royalty-{month}-{year}",
                         Description = $"Royalty transfer for {month}/{year}"
@@ -298,13 +298,13 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
 
                     if (availableBalance < stripeTotalAmountLong)
                     {
-                        _logger.LogError($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {totalSgdAmount}");
+                        _logger.LogError($"Insufficient balance for userId={userId}. Available: {availableBalance}, Required: {totalUsdAmount}");
 
                         continue;
                     }
 
                     // Thực hiện payout thực sự
-                    Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong, CurrencyType.sgd.ToString());
+                    Payout payoutResponse = await _stripeService.CreateInstantPayoutAsync(artistStripeAccountId, stripeTotalAmountLong, CurrencyType.usd.ToString());
 
                     // Cập nhật royalty earnings cho Artist
                     UpdateResult updateArtistRoyaltyResult = await _unitOfWork.GetCollection<Artist>()
