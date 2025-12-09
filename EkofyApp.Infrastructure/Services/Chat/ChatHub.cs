@@ -297,7 +297,7 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                     TargetId = chatMessageRequest.ReceiverId,
                     Content = $"You have a new message from {user.Name}.",
                     Action = NotificationActionType.Message,
-                    Url = chatMessageRequest.Url,
+                    Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/inbox/{chatMessageRequest.ConversationId}",
                 });
             }
 
