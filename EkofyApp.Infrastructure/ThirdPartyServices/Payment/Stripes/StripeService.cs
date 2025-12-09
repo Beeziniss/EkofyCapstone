@@ -236,12 +236,16 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
             .FirstOrDefaultAsync();
 
         CustomerService customerService = new();
-        return customerService.Create(new CustomerCreateOptions
+        Customer stripeCustomer = customerService.Create(new CustomerCreateOptions
         {
             Email = user.Email,
             Name = user.FullName,
             //PaymentMethod = "pm_card_visa", // test tạm
         });
+
+        await _unitOfWork.GetCollection<User>().UpdateOneAsync(x => x.Id == userId, Builders<User>.Update.Set(x => x.StripeCustomerId, stripeCustomer.Id));
+
+        return stripeCustomer;
     }
 
     public async Task<bool> IsCustomerIdExisted()
