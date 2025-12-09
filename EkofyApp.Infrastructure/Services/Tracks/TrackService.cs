@@ -844,11 +844,7 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
                 ApprovalPriority = newPriority
             };
 
-            // Update the request in Redis (maintain the same TTL)
-            TimeSpan? currentTtl = await _redisCacheService.GetTTLAsync($"upload:{uploadId}:requestUpload");
-            TimeSpan ttlToSet = currentTtl ?? TimeSpan.FromDays(7); // Default 7 days if no TTL found
-
-            await _redisCacheService.SetGenericAsync($"upload:{uploadId}:requestUpload", updatedRequest, ttlToSet);
+            await _redisCacheService.SetGenericAsync($"upload:{uploadId}:requestUpload", updatedRequest, null);
         }
         catch (Exception ex)
         {
