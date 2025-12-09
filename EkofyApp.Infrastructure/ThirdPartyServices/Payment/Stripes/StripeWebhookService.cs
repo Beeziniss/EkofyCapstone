@@ -535,7 +535,6 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
     {
         try
         {
-
             Event stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, _stripeSetting.ExpressConnectedAccountSigningSecret);
 
             if (stripeEvent.Type == EventTypes.AccountUpdated)
