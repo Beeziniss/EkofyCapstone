@@ -240,6 +240,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         {
             Email = user.Email,
             Name = user.FullName,
+            IndividualName = user.FullName,
             //PaymentMethod = "pm_card_visa", // test tạm
         });
 
