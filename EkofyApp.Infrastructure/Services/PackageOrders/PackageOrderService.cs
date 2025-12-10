@@ -99,7 +99,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             // Update the package order with the new delivery
             var update = Builders<PackageOrder>.Update
-                .Push(po => po.Deliveries, newDelivery);
+                .Push(po => po.Deliveries, newDelivery)
+                .Set(po => po.RevisionCount, packageOrder.RevisionCount++);
 
 
             DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
