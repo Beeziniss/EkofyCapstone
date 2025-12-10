@@ -99,7 +99,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             // Update the package order with the new delivery
             var update = Builders<PackageOrder>.Update
-                .Push(po => po.Deliveries, newDelivery);
+                .Push(po => po.Deliveries, newDelivery)
+                .Set(po => po.RevisionCount, packageOrder.RevisionCount++);
 
 
             DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
@@ -232,9 +233,9 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                ?? throw new BadRequestCustomException("You can not do any action for this request due to in progress or complete!");
 
             //check ở đây xem là đã vô làm việc chưa? Nếu chưa thì refund 100%
-            if (orderPackage.Status == PackageOrderStatus.Paid && request.Status == PackageOrderStatus.Cancelled)
+            if (orderPackage.Status == PackageOrderStatus.Paid && request.Status == PackageOrderStatus.Disputed)
             {
-                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Cancelled)
+                var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed)
                                                           .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
@@ -284,8 +285,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             // 1 là cho refund và thực hiện refund
             var orderPackage = await _unitOfWork.GetCollection<PackageOrder>()
                                           .Find(po => po.Id == request.Id &&
-                                                      (po.Status == PackageOrderStatus.Disputed ||
-                                                       po.Status == PackageOrderStatus.Cancelled))
+                                                      (po.Status == PackageOrderStatus.Disputed))
                                           .Project<PackageOrder>(Builders<PackageOrder>.Projection
                                             .Include(po => po.Status)
                                             .Include(po => po.PaymentTransactionId))
