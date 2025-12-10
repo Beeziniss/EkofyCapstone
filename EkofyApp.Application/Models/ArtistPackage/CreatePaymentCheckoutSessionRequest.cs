@@ -18,7 +18,4 @@ public sealed record class CreatePaymentCheckoutSessionRequest
     public string? ConversationId { get; init; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public int Duration { get; set; }
-
-    // For testing mobile
-    public bool? IsMobile { get; set; } = false;
 }
