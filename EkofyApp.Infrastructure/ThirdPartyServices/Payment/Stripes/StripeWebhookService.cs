@@ -573,6 +573,12 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 {
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
 
+                    // For testing Mobile
+                    if (Convert.ToBoolean(checkoutSession.Metadata["is_mobile"]))
+                    {
+                        return;
+                    }
+
                     // Cập nhật PaymentTransaction
                     UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
                         .Set(t => t.StripeSubscriptionId, checkoutSession.SubscriptionId)
@@ -796,6 +802,12 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                 else if (stripeEvent.Type == EventTypes.CheckoutSessionExpired)
                 {
                     CheckoutOption.Session checkoutSession = stripeEvent.Data.Object as CheckoutOption.Session ?? throw new ArgumentNullCustomException("Checkout session is NULL");
+
+                    // For testing Mobile
+                    if (Convert.ToBoolean(checkoutSession.Metadata["is_mobile"]))
+                    {
+                        return;
+                    }
 
                     // Cập nhật PaymentTransaction
                     UpdateDefinition<PaymentTransaction> update = Builders<PaymentTransaction>.Update
