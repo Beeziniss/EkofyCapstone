@@ -14,5 +14,11 @@ public sealed class ReportMutationExtension : ObjectTypeExtension<ReportMutation
 
         descriptor.Field(t => t.ProcessReportAsync(default!))
             .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
+
+        descriptor.Field(t => t.RestoreUserAsync(default!))
+            .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
+
+        descriptor.Field(t => t.RestoreContentAsync(default!))
+            .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
     }
 }
