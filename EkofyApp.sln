@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EkofyApp.Api", "EkofyApp.Api\EkofyApp.Api.csproj", "{C9299673-BAB7-4ABC-9172-FD3C3CFC0C3B}"
 EndProject
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EkofyApp.Application", "EkofyApp.Application\EkofyApp.Application.csproj", "{95A4F950-712D-483F-9D66-51BC2E50F7FD}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "AudioFeatureExtractor", "AudioFeatureExtractor\AudioFeatureExtractor.pyproj", "{52ED6D1A-D307-463A-B82C-D590E3115E89}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EkofyApp.Tests", "EkofyApp.Tests\EkofyApp.Tests.csproj", "{B57F249A-A03E-DC35-9078-DBDCEED644D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -37,6 +39,10 @@ Global
 		{95A4F950-712D-483F-9D66-51BC2E50F7FD}.Release|Any CPU.Build.0 = Release|Any CPU
 		{52ED6D1A-D307-463A-B82C-D590E3115E89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{52ED6D1A-D307-463A-B82C-D590E3115E89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B57F249A-A03E-DC35-9078-DBDCEED644D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B57F249A-A03E-DC35-9078-DBDCEED644D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B57F249A-A03E-DC35-9078-DBDCEED644D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B57F249A-A03E-DC35-9078-DBDCEED644D5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

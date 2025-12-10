@@ -1,0 +1,16 @@
+global using Xunit;
+global using Moq;
+global using FluentAssertions;
+global using EkofyApp.Domain.Entities;
+global using EkofyApp.Domain.Exceptions;
+global using System.Security.Claims;
+global using MongoDB.Bson;
+global using Microsoft.Extensions.Logging;
+global using EkofyApp.Domain.Enums;
+global using EkofyApp.Domain.Enums.Users;
+global using EkofyApp.Domain.Enums.Subcriptions;
+global using EkofyApp.Domain.EmbeddedDocuments;
+global using EkofyApp.Application.ServiceInterfaces;
+global using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+global using Microsoft.AspNetCore.Http;
+global using MongoDB.Driver;

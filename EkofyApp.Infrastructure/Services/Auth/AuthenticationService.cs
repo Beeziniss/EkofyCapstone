@@ -39,7 +39,8 @@ public sealed class AuthenticationService(
     IJsonWebToken jsonWebToken,
     IMapper mapper,
     IHttpContextAccessor httpContextAccessor,
-    IRedisCacheService redisCacheService) : IAuthenticationService
+    IRedisCacheService redisCacheService,
+    IBackgoundService backgoundService) : IAuthenticationService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
@@ -48,6 +49,7 @@ public sealed class AuthenticationService(
     private readonly IMapper _mapper = mapper;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IRedisCacheService _redisCacheService = redisCacheService;
+    private readonly IBackgoundService _backgoundService = backgoundService;
 
     public async Task<CurrentUserProfile> GetCurrentUserProfileAsync()
     {
@@ -110,10 +112,9 @@ public sealed class AuthenticationService(
 
     private async Task<bool> IsEmailExistsAsync(string email)
     {
-        return await _unitOfWork.GetCollection<User>()
-            .Find(u => u.Email == email)
-            .Project(u => u.Email)
-            .AnyAsync();
+        var count = await _unitOfWork.GetCollection<User>()
+            .CountDocumentsAsync(u => u.Email == email);
+        return count > 0;
     }
 
     public async Task RegisterListenerAsync(ListenerRegisterRequest registerRequest)
@@ -160,12 +161,12 @@ public sealed class AuthenticationService(
 
         // Gửi mã OTP để xác thực email
         string otp = await GenerateAndSetOtpAsync(pendingRegistration.Email);
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+        _backgoundService.SendEmailJob(
             EmailTemplateType.VerifyOtp,
             pendingRegistration.Email,
             pendingRegistration.FullName,
             otp
-        ));
+        );
     }
 
     public async Task<AuthListenerTokenResponse> LoginListenerAsync(LoginRequest loginRequest)
@@ -321,12 +322,12 @@ public sealed class AuthenticationService(
         await _redisCacheService.SetGenericAsync(pendingKey, pendingRegistration, TimeSpan.FromDays(7));
 
         // Gửi thông báo email
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+        _backgoundService.SendEmailJob(
             EmailTemplateType.RegisterNotification,
             pendingRegistration.Email,
             pendingRegistration.FullName,
             pendingRegistration.Email
-        ));
+        );
     }
 
     public async Task<AuthArtistTokenResponse> LoginArtistAsync(LoginRequest loginRequest)
@@ -915,12 +916,12 @@ public sealed class AuthenticationService(
 
         // Gửi lại mã OTP
         string otp = await GenerateAndSetOtpAsync(normalizedEmail);
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+        _backgoundService.SendEmailJob(
                 EmailTemplateType.VerifyOtp,
                 normalizedEmail,
                 fullName,
                 otp
-        ));
+        );
     }
 
     public async Task ForgotPasswordAsync(Application.Models.Auth.ForgotPasswordRequest forgotPasswordRequest)
@@ -939,12 +940,12 @@ public sealed class AuthenticationService(
         string otpCode = await GenerateResetPasswordOtpAsync(normalizedEmail);
 
         // Gửi email với OTP reset password
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(
+        _backgoundService.SendEmailJob(
             EmailTemplateType.ResetPasswordOtp,
             user.Email,
             user.FullName,
             otpCode
-        ));
+        );
     }
 
     public async Task ResetPasswordAsync(Application.Models.Auth.ResetPasswordRequest resetPasswordRequest)

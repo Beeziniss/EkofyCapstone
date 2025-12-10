@@ -834,6 +834,8 @@ public static class DependencyInjection
 
         // Background Jobs Services
         service.AddSingleton<IBackgoundService, BackgoundService>();
+        service.AddScoped<IBackgroundJobClient>(provider => 
+            new BackgroundJobClient(JobStorage.Current ?? throw new InvalidOperationException("JobStorage not initialized")));
     }
 
     private static void AddEmbedGenerator(this IServiceCollection services)

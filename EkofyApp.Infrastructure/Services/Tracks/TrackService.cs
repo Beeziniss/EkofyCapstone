@@ -82,7 +82,16 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
 
     public IQueryable<Track> GetTracks()
     {
-        return _unitOfWork.GetCollection<Track>().AsQueryable();
+        var collection = _unitOfWork.GetCollection<Track>();
+        
+        // In test environments, if the collection implements IQueryable directly, 
+        // return it as-is to avoid MongoDB LINQ provider issues
+        if (collection is IQueryable<Track> queryableCollection)
+        {
+            return queryableCollection;
+        }
+        
+        return collection.AsQueryable();
     }
 
     public IQueryable<Track> GetFavoriteTracks()

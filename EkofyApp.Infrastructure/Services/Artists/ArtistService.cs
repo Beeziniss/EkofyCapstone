@@ -21,7 +21,7 @@ using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.Artists;
 
-public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IApprovalHistoryService approvalHistoryService) : IArtistService
+public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IUserSubscriptionService userSubscriptionService, IEffectiveEntitlementService effectiveEntitlementService, IApprovalHistoryService approvalHistoryService, IBackgroundJobClient backgroundJobClient) : IArtistService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
@@ -29,6 +29,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
     private readonly IUserSubscriptionService _userSubscriptionService = userSubscriptionService;
     private readonly IEffectiveEntitlementService _effectiveEntitlementService = effectiveEntitlementService;
     private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
+    private readonly IBackgroundJobClient _backgroundJobClient = backgroundJobClient;
 
     public IQueryable<Artist> GetArtistsQueryable()
     {
@@ -386,7 +387,7 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             await _approvalHistoryService.CreateApprovalHistoryAsync(approvalHistoryRequest);
 
             // Send approval email to user
-            BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, user.Email, user.FullName, user.Email));
+            _backgroundJobClient.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterApprove, user.Email, user.FullName, user.Email));
         });
     }
 
@@ -427,54 +428,69 @@ public sealed class ArtistService(IUnitOfWork unitOfWork, IHttpContextAccessor h
         await _approvalHistoryService.CreateApprovalHistoryAsync(approvalHistoryRequest);
 
         // Send rejection email to user
-        BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterReject, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email, approvalRequest.RejectionReason ?? string.Empty));
+        _backgroundJobClient.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.RegisterReject, approvalRequest.Email, approvalRequest.FullName, approvalRequest.Email, approvalRequest.RejectionReason ?? string.Empty));
     }
 
     public async Task<ArtistRevenueResponse> ComputeArtistRevenueByArtistIdAsync(string artistId)
     {
-        string userId = await _unitOfWork.GetCollection<Artist>()
+        // Get the artist first and then extract UserId - this is more testable
+        Artist? artist = await _unitOfWork.GetCollection<Artist>()
             .Find(x => x.Id == artistId)
-            .Project(x => x.UserId)
-            .FirstOrDefaultAsync() ?? throw new KeyNotFoundException($"User with ArtistId {artistId} not found.");
+            .FirstOrDefaultAsync();
 
-        // Tính tổng royalty earnings cho artist
-        IEnumerable<decimal> royaltyEarnings = await _unitOfWork.GetCollection<RoyaltyReport>()
+        if (artist == null)
+        {
+            throw new KeyNotFoundException($"User with ArtistId {artistId} not found.");
+        }
+
+        string userId = artist.UserId;
+
+        // Get royalty reports and calculate earnings
+        List<RoyaltyReport> royaltyReports = await _unitOfWork.GetCollection<RoyaltyReport>()
             .Find(x => x.RoyaltySplits.Any(rs => rs.UserId == userId))
-            .Project(x => x.RoyaltySplits.Where(rs => rs.UserId == userId).Sum(rs => rs.Amount))
             .ToListAsync();
 
-        decimal totalRoyaltyEarnings = royaltyEarnings.Sum();
+        decimal totalRoyaltyEarnings = royaltyReports
+            .SelectMany(r => r.RoyaltySplits.Where(rs => rs.UserId == userId))
+            .Sum(rs => rs.Amount);
 
-        // Tính tổng service revenue cho artist
-        IEnumerable<string> packageOrderTransactionIds = await _unitOfWork.GetCollection<PackageOrder>()
+        // Get package order transaction IDs
+        List<PackageOrder> packageOrders = await _unitOfWork.GetCollection<PackageOrder>()
             .Find(x => x.ProviderId == userId)
-            .Project(x => x.PaymentTransactionId)
             .ToListAsync();
 
-        IEnumerable<decimal> serviceRevenues = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
-            .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && packageOrderTransactionIds.Contains(x.PaymentTransactionId))
-            .Project(x => x.Amount)
+        List<string> packageOrderTransactionIds = packageOrders
+            .Select(x => x.PaymentTransactionId)
+            .ToList();
+
+        // Get service revenues
+        List<Domain.Entities.Invoice> invoices = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
+            .Find(x => x.OneOffSnapshot != null && 
+                      x.OneOffSnapshot.OneOffType == OneOffType.Payment && 
+                      x.SubscriptionSnapshot == null && 
+                      packageOrderTransactionIds.Contains(x.PaymentTransactionId))
             .ToListAsync();
 
-        decimal totalServiceRevenue = serviceRevenues.Sum();
+        decimal totalServiceRevenue = invoices.Sum(x => x.Amount);
 
         // Tính tổng Service Earnings (artist thật sự nhận được)
         // Từ PackageOrder → join sang PayoutTransaction
-        IEnumerable<PackageOrder> completedOrders = await _unitOfWork.GetCollection<PackageOrder>()
+        List<PackageOrder> completedOrders = await _unitOfWork.GetCollection<PackageOrder>()
             .Find(x => x.ProviderId == userId &&
                        x.Status == PackageOrderStatus.Completed &&
                        x.PayoutTransactionId != null)
             .ToListAsync();
 
-        IEnumerable<string> payoutIds = completedOrders
+        List<string> payoutIds = completedOrders
             .Select(x => x.PayoutTransactionId!)
             .Distinct()
             .ToList();
 
-        Dictionary<string, PayoutTransaction> payoutDict = await _unitOfWork.GetCollection<PayoutTransaction>()
+        List<PayoutTransaction> payouts = await _unitOfWork.GetCollection<PayoutTransaction>()
             .Find(p => payoutIds.Contains(p.Id) && p.Status == PayoutTransactionStatus.paid)
-            .ToListAsync()
-            .ContinueWith(t => t.Result.ToDictionary(p => p.Id, p => p));
+            .ToListAsync();
+
+        Dictionary<string, PayoutTransaction> payoutDict = payouts.ToDictionary(p => p.Id, p => p);
 
         decimal totalServiceEarnings = 0m;
 
