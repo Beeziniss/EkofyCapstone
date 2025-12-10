@@ -20,5 +20,5 @@ public sealed record class CreatePaymentCheckoutSessionRequest
     public int Duration { get; set; }
 
     // For testing mobile
-    public bool IsMobile { get; set; } = false;
+    public bool? IsMobile { get; set; } = false;
 }
