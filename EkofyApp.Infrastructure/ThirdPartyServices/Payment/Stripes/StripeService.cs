@@ -269,6 +269,73 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     // Tạo Checkout Session (link) cho thanh toán 1 lần
     public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreatePaymentCheckoutSessionRequest createPaymentCheckoutSessionRequest)
     {
+        if (createPaymentCheckoutSessionRequest.IsMobile)
+        {
+            CheckoutOption.SessionCreateOptions optionTest = new()
+            {
+                PaymentMethodTypes = ["card", "link"],
+                LineItems =
+            [
+                new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = "vnd",
+                        UnitAmountDecimal = 60000m,
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = "Testing for Mobile",
+                            Description = "Testing for Mobile",
+                        }
+                    },
+                    Quantity = 1,
+                },
+            ],
+                Customer = null, // có thể truyền customerId nếu đã có
+                                                  //CustomerEmail = user.Email,
+                Mode = "payment",
+                SuccessUrl = createPaymentCheckoutSessionRequest.SuccessUrl,
+                CancelUrl = createPaymentCheckoutSessionRequest.CancelUrl,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30), // Đóng vai trò như duration của session nên không cần quan tâm múi giờ
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    ReceiptEmail = null, // Gửi biên lai về email của customer
+                    SetupFutureUsage = null, // Lưu thẻ để thanh toán các lần sau
+                },
+                Metadata = new Dictionary<string, string>
+            {
+                { "is_mobile", "true" },
+            },
+                //InvoiceCreation = new SessionInvoiceCreationOptions
+                //{
+                //    Enabled = true // Tạo hóa đơn cho thanh toán
+                //},
+                //Discounts = couponIds.Select(x => new SessionDiscountOptions
+                //{
+                //    Coupon = x
+                //}).ToList(),
+            };
+
+            CheckoutOption.SessionService serviceTest = new();
+            CheckoutOption.Session checkoutSessionTest = serviceTest.Create(optionTest);
+            if (string.IsNullOrEmpty(checkoutSessionTest.Url))
+            {
+                throw new NotFoundCustomException("Error while generating URL for checkout session");
+            }
+
+            return new()
+            {
+                Id = checkoutSessionTest.Id,
+                Url = checkoutSessionTest.Url,
+                SuccessUrl = checkoutSessionTest.SuccessUrl,
+                CancelUrl = checkoutSessionTest.CancelUrl,
+                Status = checkoutSessionTest.Status,
+                Mode = checkoutSessionTest.Mode,
+                Created = checkoutSessionTest.Created,
+                Expired = checkoutSessionTest.ExpiresAt,
+            };
+        }
+
         string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
         User user = _unitOfWork.GetCollection<User>()
