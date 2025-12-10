@@ -690,7 +690,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         {
             // Tìm payment transaction trong package order chưa giải ngân
             PackageOrder packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
-                .Find(x => x.Id == packageOrderId && (x.Status == PackageOrderStatus.Completed || x.Status == PackageOrderStatus.Disputed))
+                .Find(x => x.Id == packageOrderId)
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(x => x.Id)
                     .Include(x => x.PaymentTransactionId)
