@@ -269,7 +269,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
     // Tạo Checkout Session (link) cho thanh toán 1 lần
     public async Task<CheckoutSessionResponse> CreatePaymentCheckoutSessionAsync(CreatePaymentCheckoutSessionRequest createPaymentCheckoutSessionRequest)
     {
-        if (createPaymentCheckoutSessionRequest.IsMobile)
+        if (createPaymentCheckoutSessionRequest.IsMobile.HasValue && createPaymentCheckoutSessionRequest.IsMobile.Value)
         {
             CheckoutOption.SessionCreateOptions optionTest = new()
             {
