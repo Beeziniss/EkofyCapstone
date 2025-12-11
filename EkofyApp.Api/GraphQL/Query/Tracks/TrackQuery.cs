@@ -33,7 +33,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
 
     //[AuthorizeRoles(HelperRoleBase.FullRoles)]
     [AllowAnonymous]
-    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseOffsetPaging(IncludeTotalCount = true, MaxPageSize = 1000, RequirePagingBoundaries = true)]
     [UseProjection]
     [UseFiltering]
     [UseSorting<Track>]
