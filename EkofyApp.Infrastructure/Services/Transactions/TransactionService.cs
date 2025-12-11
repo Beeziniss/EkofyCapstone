@@ -140,8 +140,22 @@ public sealed class TransactionService(IUnitOfWork unitOfWork) : ITransactionSer
         return _unitOfWork.GetCollection<PaymentTransaction>().AsQueryable();
     }
 
-    public IQueryable<RefundTransaction> GetRefundTransactions()
+    public IQueryable<RefundTransaction> GetRefundTransactions(string? userId)
     {
+        if(!string.IsNullOrEmpty(userId))
+        {
+            // Get PaymentTransaction IDs that belong to the specified user
+            IEnumerable<string?> paymentTransactionIds = _unitOfWork.GetCollection<PaymentTransaction>()
+                .Find(pt => pt.UserId == userId && pt.StripePaymentId != null)
+                .Project(x => x.StripePaymentId)
+                .ToEnumerable();
+
+            // Return RefundTransactions filtered by StripePaymentId
+            return _unitOfWork.GetCollection<RefundTransaction>()
+                .AsQueryable()
+                .Where(rt => paymentTransactionIds.Contains(rt.StripePaymentId));
+        }
+
         return _unitOfWork.GetCollection<RefundTransaction>().AsQueryable();
     }
 
