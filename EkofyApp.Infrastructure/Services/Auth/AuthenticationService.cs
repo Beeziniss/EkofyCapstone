@@ -116,6 +116,36 @@ public sealed class AuthenticationService(
             .AnyAsync();
     }
 
+    private async Task<bool> IsIdentityCardNumberExistsAsync(string identityCardNumber)
+    {
+        // Kiểm tra trong database (Artist entities đã được duyệt)
+        bool existsInDatabase = await _unitOfWork.GetCollection<Artist>()
+            .Find(a => a.IdentityCard.Number == identityCardNumber)
+            .Project(a => a.IdentityCard.Number)
+            .AnyAsync();
+
+        if (existsInDatabase)
+        {
+            return true;
+        }
+
+        // Kiểm tra trong Redis (pending registrations)
+        string redisKey = "artist:*:pendingRegistration";
+        string[] pendingKeys = _redisCacheService.GetAllKeysByPattern(redisKey);
+
+        foreach (string key in pendingKeys)
+        {
+            if (_redisCacheService.TryGetGeneric<PendingArtistRegistrationRequest>(key, out var pendingReg)
+                && pendingReg != null
+                && pendingReg.IdentityCard.Number.Equals(identityCardNumber, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public async Task RegisterListenerAsync(ListenerRegisterRequest registerRequest)
     {
         // Kiểm tra xem email tồn tại trong database
@@ -252,6 +282,12 @@ public sealed class AuthenticationService(
         if (await IsEmailExistsAsync(registerRequest.Email.Trim().ToLowerInvariant()))
         {
             throw new ConflictCustomException("Email already exists.");
+        }
+
+        // Kiểm tra xem Identity Card number đã tồn tại chưa
+        if (await IsIdentityCardNumberExistsAsync(registerRequest.IdentityCard.Number))
+        {
+            throw new ConflictCustomException("Identity Card number already exists.");
         }
 
         // Kiểm tra xem email đã có đơn đăng ký pending chưa

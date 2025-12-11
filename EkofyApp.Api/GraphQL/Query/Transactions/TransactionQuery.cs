@@ -66,8 +66,8 @@ public sealed class TransactionQuery(ITransactionService transactionService)
     [UseProjection]
     [UseFiltering]
     [UseSorting<RefundTransaction>]
-    public IQueryable<RefundTransaction> GetRefundTransactions()
+    public IQueryable<RefundTransaction> GetRefundTransactions(string? userId)
     {
-        return _transactionService.GetRefundTransactions();
+        return _transactionService.GetRefundTransactions(userId);
     }
 }
