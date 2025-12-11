@@ -22,7 +22,7 @@ public class TrackQuery(ITrackService trackService, IRedisCacheService redisCach
     private readonly IAmazonCloudFrontService _amazonCloudFrontService = amazonCloudFrontService;
 
     [AuthorizeRoles(HelperRoleBase.FullRoles)]
-    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseOffsetPaging(IncludeTotalCount = true, MaxPageSize = 1000, RequirePagingBoundaries = true)]
     [UseProjection]
     [UseFiltering]
     [UseSorting<TrackDailyMetric>]
