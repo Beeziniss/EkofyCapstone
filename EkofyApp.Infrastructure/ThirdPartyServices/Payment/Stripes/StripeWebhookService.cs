@@ -13,6 +13,7 @@ using EkofyApp.Domain.Settings;
 using EkofyApp.Domain.Utils;
 using Hangfire;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
@@ -633,6 +634,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     }
                     else
                     {
+                        string packageOrderId = new ObjectId().ToString();
                         ArtistPackage artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
                             .Find(x => x.Id == checkoutSession.Metadata["package_id"])
                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any artist package {checkoutSession.Metadata["package_id"]}");
@@ -679,6 +681,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                         decimal platformFeePercentage = Convert.ToDecimal(checkoutSession.Metadata["platform_fee_percentage"]);
                         await _unitOfWork.GetCollection<PackageOrder>().InsertOneAsync(session, new PackageOrder
                         {
+                            Id = packageOrderId,
                             ClientId = transaction.UserId,
                             ProviderId = userArtistId,
                             ArtistPackageId = checkoutSession.Metadata["package_id"],
@@ -741,7 +744,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
 
                         // Cập nhật trạng thái request thành Closed
                         UpdateResult updateRequest = await _unitOfWork.GetCollection<Request>()
-                        .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Status == RequestStatus.Confirmed, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed));
+                        .UpdateOneAsync(session, x => x.Id == checkoutSession.Metadata["request_id"] && x.Status == RequestStatus.Confirmed, Builders<Request>.Update.Set(x => x.Status, RequestStatus.Closed).Set(x => x.OrderId, packageOrderId));
                         if (updateRequest.ModifiedCount == 0)
                         {
                             throw new UnprocessableEntityCustomException("Cannot update request hub status to closed");

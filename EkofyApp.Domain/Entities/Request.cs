@@ -16,6 +16,8 @@ namespace EkofyApp.Domain.Entities
         public string? ArtistId { get; set; } = null!;
         [BsonRepresentation(BsonType.ObjectId)]
         public string? PackageId { get; set; }
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? OrderId { get; set; }
         public string? Title { get; set; }
         public string? TitleUnsigned { get; set; }
         public string? Summary { get; set; }
