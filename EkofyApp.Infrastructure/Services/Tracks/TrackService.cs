@@ -12,6 +12,7 @@ using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.Artists;
 using EkofyApp.Application.ServiceInterfaces.Categories;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
 using EkofyApp.Application.ServiceInterfaces.Recordings;
 using EkofyApp.Application.ServiceInterfaces.Tracks;
@@ -39,7 +40,7 @@ using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Tracks;
 
-public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, IUserService userService, IFfmpegService ffmpegService, IWorkService workService, IRecordingService recordingService, ICategoryService categoryService, IAudioAnalysisService audioAnalysisService, IAmazonS3Service amazonS3Service, IApprovalHistoryService approvalHistoryService, IEmySoundService emySoundService, IArtistService artistService, ITrackUploadNotifier trackUploadNotifier, IHubContext<NotificationHub> hubContext, ILogger<TrackService> logger) : ITrackService
+public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpContextAccessor httpContextAccessor, IRedisCacheService redisCacheService, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator, IRecommendationService recommendationService, IUserService userService, IFfmpegService ffmpegService, IWorkService workService, IRecordingService recordingService, ICategoryService categoryService, IAudioAnalysisService audioAnalysisService, IAmazonS3Service amazonS3Service, IApprovalHistoryService approvalHistoryService, IEmySoundService emySoundService, IArtistService artistService, ITrackUploadNotifier trackUploadNotifier, IHubContext<NotificationHub> hubContext, ILogger<TrackService> logger, IPopularityMetricService popularityMetricService) : ITrackService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
@@ -60,24 +61,60 @@ public sealed class TrackService(IUnitOfWork unitOfWork, IMapper mapper, IHttpCo
     private readonly ITrackUploadNotifier _trackUploadNotifier = trackUploadNotifier;
     private readonly IHubContext<NotificationHub> _hubContext = hubContext;
     private readonly ILogger<TrackService> _logger = logger;
+    private readonly IPopularityMetricService _popularityMetricService = popularityMetricService;
 
     public async Task SeedMonthlyStreamCountByTrackIdAsync(string trackId, long streamCount, int month, int year)
     {
-        UpdateResult updateTrackResult = await _unitOfWork.GetCollection<Track>()
-            .UpdateOneAsync(x => x.Id == trackId, Builders<Track>.Update.Set(x => x.StreamCount, streamCount));
-
-        if (updateTrackResult.ModifiedCount == 0)
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            throw new UnprocessableEntityCustomException("Cannot seed stream count.");
-        }
+            UpdateResult updateTrackResult = await _unitOfWork.GetCollection<Track>()
+            .UpdateOneAsync(session, x => x.Id == trackId, Builders<Track>.Update.Inc(x => x.StreamCount, streamCount));
 
-        await _unitOfWork.GetCollection<MonthlyStreamCount>().InsertOneAsync(new MonthlyStreamCount
-        {
-            TrackId = trackId,
-            StreamCount = streamCount,
-            Month = month,
-            Year = year,
+            // 30/11 lúc 00:00 (UTC+7)
+            //DateTimeOffset targetDate = new(
+            //    2025, 11, 30,
+            //    0, 0, 0,
+            //    TimeSpan.FromHours(7)
+            //);
+            DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
+            DateTimeOffset startOfDay = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
+            DateTimeOffset endOfDay = startOfDay.AddDays(1);
+
+            // Cập nhật daily metrics
+            await _unitOfWork.GetCollection<TrackDailyMetric>().UpdateOneAsync(session,
+                x => x.TrackId == trackId &&
+                     x.CreatedAt >= startOfDay &&
+                     x.CreatedAt < endOfDay,
+                Builders<TrackDailyMetric>.Update
+                    .Inc(x => x.StreamCount, streamCount)
+                    .Set(x => x.UpdatedAt, now)
+                    .SetOnInsert(x => x.CreatedAt, now)
+                    .SetOnInsert(x => x.FavoriteCount, 0)
+                    .SetOnInsert(x => x.DownloadCount, 0)
+                    .SetOnInsert(x => x.CommentCount, 0),
+                new UpdateOptions { IsUpsert = true }
+            );
+
+            
+
+            //if (updateTrackResult.ModifiedCount == 0)
+            //{
+            //    throw new UnprocessableEntityCustomException("Cannot seed stream count.");
+            //}
+
+            await _unitOfWork.GetCollection<MonthlyStreamCount>().InsertOneAsync(session, new MonthlyStreamCount
+            {
+                TrackId = trackId,
+                StreamCount = streamCount,
+                Month = month,
+                Year = year,
+            });
+
+            
         });
+
+        // Popularity score
+        await _popularityMetricService.ProcessTrackStreamingMetricAsync(trackId, PopularityActionType.Streaming);
     }
 
     public IQueryable<Track> GetTracks()

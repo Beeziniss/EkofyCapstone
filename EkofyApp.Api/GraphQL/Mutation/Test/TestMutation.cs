@@ -67,6 +67,12 @@ public sealed class TestMutation
         return true;
     }
 
+    public async Task<bool> TestCalculateRoyaltyForTracksAsync(int month, int year, [Service] IRoyaltyReportService royaltyReportService)
+    {
+        await royaltyReportService.CalculateRoyaltyForTracksAsync(month, year);
+        return true;
+    }
+
     public async Task<bool> TestGenrateMonthlyRoyaltyReportsAynsc(int month, int year, [Service] IRoyaltyReportService royaltyReportService)
     {
         await royaltyReportService.GenerateMonthlyRoyaltyReportsAsync(month, year);

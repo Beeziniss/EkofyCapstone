@@ -14,6 +14,7 @@ using MongoDB.Driver;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.RoyaltyReports;
+
 public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheService redisCacheService, IStripeService stripeService, ILogger<RoyaltyReportService> logger) : IRoyaltyReportService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -70,7 +71,14 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
             List<MonthlyStreamCountProjection> monthlyStreamCountProjections = await _unitOfWork.GetCollection<MonthlyStreamCount>()
                     .Aggregate()
                     .Match(x => x.Month == month && x.Year == year && x.ProcessedAt == null)
-                    .Lookup<MonthlyStreamCount, Recording, MonthlyStreamCountProjection>(
+                    .Lookup<MonthlyStreamCount, Track, MonthlyStreamCountProjection>(
+                        _unitOfWork.GetCollection<Track>(),
+                        x => x.TrackId,
+                        x => x.Id,
+                        x => x.TrackProjection)
+                    .Unwind<MonthlyStreamCountProjection, MonthlyStreamCountProjection>(x => x.TrackProjection, new AggregateUnwindOptions<MonthlyStreamCountProjection> { PreserveNullAndEmptyArrays = false })
+                    .Match(x => x.TrackProjection!.Restriction.Type == RestrictionType.None)
+                    .Lookup<MonthlyStreamCountProjection, Recording, MonthlyStreamCountProjection>(
                         _unitOfWork.GetCollection<Recording>(),
                         x => x.TrackId,
                         x => x.TrackId,
@@ -400,5 +408,36 @@ public sealed class RoyaltyReportService(IUnitOfWork unitOfWork, IRedisCacheServ
                 throw new UnprocessableEntityCustomException($"Failed to update MonthlyStreamCount as processed.");
             }
         });
+    }
+
+    public async Task CalculateRoyaltyForTracksAsync(int month, int year, CancellationToken ct = default)
+    {
+        // Lấy tất cả các track có stream trong tháng
+        IEnumerable<Track> tracks = await _unitOfWork.GetCollection<Track>()
+            .Find(_ => true)
+            .Project<Track>(Builders<Track>.Projection
+                .Include(x => x.Id)
+                .Include(x => x.StreamCount))
+            .ToListAsync(ct);
+
+        // Tính toán và cập nhật doanh thu bản quyền cho từng track
+        List<MonthlyStreamCount> monthlyStreamCounts = [];
+        foreach (Track track in tracks)
+        {
+            monthlyStreamCounts.Add(new MonthlyStreamCount
+            {
+                TrackId = track.Id,
+                StreamCount = track.StreamCount,
+                Month = month,
+                Year = year,
+            });
+        }
+
+        if (monthlyStreamCounts.Count == 0)
+        {
+            throw new NotFoundCustomException($"No tracks found with streams for month={month}, year={year}.");
+        }
+
+        await _unitOfWork.GetCollection<MonthlyStreamCount>().InsertManyAsync(monthlyStreamCounts, cancellationToken: ct);
     }
 }

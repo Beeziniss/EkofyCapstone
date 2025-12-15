@@ -13,6 +13,9 @@
             descriptor.Field(x => x.SeedMonthlyStreamCountByTrackIdAsync(default!, default!, default!, default!, default!))
                 .AllowAnonymous();
 
+            descriptor.Field(x => x.TestCalculateRoyaltyForTracksAsync(default!, default!, default!))
+                .AllowAnonymous();
+
             descriptor.Field(x => x.TestGenrateMonthlyRoyaltyReportsAynsc(default!, default!, default!))
                 .AllowAnonymous();
 
