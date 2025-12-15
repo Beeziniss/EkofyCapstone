@@ -1,5 +1,4 @@
-﻿using EkofyApp.Domain.Enums;
-using EkofyApp.Domain.Utils;
+﻿using EkofyApp.Domain.Utils;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -22,6 +21,7 @@ public sealed class MonthlyStreamCountProjection
     public DateTimeOffset CreatedAt { get; set; } = HelperMethod.GetUtcPlus7TimeOffset(); // Thời gian tạo bản ghi
     public DateTimeOffset? ProcessedAt { get; set; } // Thời gian xử lý cuối cùng
 
+    public TrackProjection? TrackProjection { get; set; } = default!;
     public RecordingProjection? RecordingProjection { get; set; } = default!;
     public WorkProjection? WorkProjection { get; set; } = default!;
 }

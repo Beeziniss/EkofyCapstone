@@ -6,5 +6,6 @@ namespace EkofyApp.Application.Models.PackageOrders
     {
         public string Id { get; init; } = default!;
         public PackageOrderStatus Status { get; init; }
+        public string? Reason { get; init; }
     }
 }

@@ -100,7 +100,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             // Update the package order with the new delivery
             var update = Builders<PackageOrder>.Update
                 .Push(po => po.Deliveries, newDelivery)
-                .Set(po => po.RevisionCount, packageOrder.RevisionCount++);
+                .Inc(po => po.RevisionCount, 1);
 
 
             DateTimeOffset now = HelperMethod.GetUtcPlus7TimeOffset();
@@ -236,6 +236,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             if (orderPackage.Status == PackageOrderStatus.Paid && request.Status == PackageOrderStatus.Disputed)
             {
                 var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed)
+                                                          .Set(po => po.DisputedReason, request.Reason)
                                                           .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;
@@ -246,6 +247,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             if (orderPackage.Status == PackageOrderStatus.InProgress && request.Status == PackageOrderStatus.Disputed)
             {
                 var update = Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Disputed)
+                                                          .Set(po => po.DisputedReason, request.Reason)
                                                           .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
                 return result.ModifiedCount > 0;

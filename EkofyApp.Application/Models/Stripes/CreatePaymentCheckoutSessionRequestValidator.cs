@@ -1,5 +1,4 @@
 ﻿using EkofyApp.Application.Models.ArtistPackage;
-using EkofyApp.Domain.Utils;
 using FluentValidation;
 
 namespace EkofyApp.Application.Models.Stripes;
@@ -11,7 +10,7 @@ public sealed class CreatePaymentCheckoutSessionRequestValidator : AbstractValid
             .NotEmpty().WithMessage("Package ID is required.");
 
         RuleFor(x => x.RequestId)
-            .NotEmpty().WithMessage("Requests Hub ID is required.");
+            .NotEmpty().WithMessage("Request ID is required.");
 
         RuleFor(x => x.SuccessUrl)
             .NotEmpty().WithMessage("Success URL is required.")
