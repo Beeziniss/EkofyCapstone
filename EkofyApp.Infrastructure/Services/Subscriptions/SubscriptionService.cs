@@ -1,19 +1,23 @@
 ﻿using EkofyApp.Application.Models.Stripes;
 using EkofyApp.Application.Models.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Subcriptions;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Stripe;
 
 namespace EkofyApp.Infrastructure.Services.Subscriptions;
+
 public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<SubscriptionService> logger) : ISubscriptionService
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -93,6 +97,43 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
             if (activateResult.ModifiedCount == 0)
             {
                 throw new UnprocessableEntityCustomException("Cannot activate this subscription.");
+            }
+
+            // Gửi email thông báo tới người dùng về chính sách mới
+            UserRole userRole = subscriptionToActivate.Tier == SubscriptionTier.Premium ? UserRole.Listener : UserRole.Artist;
+
+            string content = $@"
+                <p>We would like to inform you of an upcoming <strong>update to the pricing of your subscription plan</strong>.
+                This adjustment helps us continue improving our services and delivering a better experience.</p>
+
+                <ul style=""padding-left: 20px; margin: 0;"">
+                  <li>
+                    <strong>Subscription Tier:</strong> {subscriptionToActivate.Tier}
+                  </li>
+                  <li>
+                    <strong>Present Price:</strong> {subscriptionToActivate.Amount:N0} VND/month
+                  </li>
+                </ul>
+
+                <p style=""margin-top: 12px;"">
+                The new pricing will be applied automatically starting from the effective date.
+                If you prefer not to continue your subscription at the updated price, you may cancel before this date.
+                </p>
+
+                <p>
+                Thank you for your continued support and for being part of our community.
+                </p>
+                ";
+
+            foreach (User? user in await _unitOfWork.GetCollection<User>()
+                .Find(x => x.Role == userRole)
+                .Project<User>(Builders<User>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.Email)
+                    .Include(x => x.FullName))
+                .ToListAsync())
+            {
+                BackgroundJob.Enqueue<IBackgoundService>(x => x.SendEmailJob(EmailTemplateType.UpdatePolicy, user.Email, user.FullName, user.Email, content));
             }
         });
     }
