@@ -40,9 +40,9 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
             return true;
         }
 
-        public async Task<bool> RefundPartiallyAsync(PackageOrderRefundRequest request)
+        public async Task<bool> RefundAndEscrowAsync(PackageOrderRefundRequest request)
         {
-            await _packageOrderService.RefundPartiallyAndEscrowAsync(request);
+            await _packageOrderService.RefundAndEscrowAsync(request);
             return true;
         }
 

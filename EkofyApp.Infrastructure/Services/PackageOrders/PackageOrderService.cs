@@ -282,7 +282,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         }
 
         // FOR MOD
-        public async Task<bool> RefundPartiallyAndEscrowAsync(PackageOrderRefundRequest request)
+        public async Task<bool> RefundAndEscrowAsync(PackageOrderRefundRequest request)
         {
             // 1 là cho refund và thực hiện refund
             var orderPackage = await _unitOfWork.GetCollection<PackageOrder>()
@@ -304,34 +304,53 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                       .FirstOrDefaultAsync()
                         ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
 
-            await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount * request.RequestorPercentageAmount / 100m, RefundReasonType.requested_by_customer);
+            UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update.Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-
-
-            //Giải ngân do công việc đã đóng và đã refund *******************************************************************
-            BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, transaction.Amount * request.ArtistPercentageAmount / 100m));
-
-            // Cập nhật service revenue cho Platform
-            UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update
-                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                        .Inc(x => x.RefundAmount, (transaction.Amount * request.RequestorPercentageAmount / 100m))
-                        .Inc(x => x.ServicePayoutAmount, transaction.Amount * request.ArtistPercentageAmount / 100m);
-            UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
-                .UpdateOneAsync(_ => true, updatePlatformRevenue);
-            if (updatePlatformRevenueResult.ModifiedCount == 0)
+            if (request.RequestorPercentageAmount == 0m)
             {
-                Log.Error("Cannot update platform revenue after checkout session completed.");
+                await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount, RefundReasonType.requested_by_customer);
+
+                updatePlatformRevenue = updatePlatformRevenue
+                       .Inc(x => x.RefundAmount, transaction.Amount);
+
+                UpdateResult updatePlatformRevenueResultZeroPercentage = await _unitOfWork.GetCollection<PlatformRevenue>()
+                .UpdateOneAsync(_ => true, updatePlatformRevenue);
+                if (updatePlatformRevenueResultZeroPercentage.ModifiedCount == 0)
+                {
+                    Log.Error("Cannot update platform revenue after checkout session completed.");
+                }
             }
 
-            // Cập nhật service cho Artist
-            UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
-                        .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                        .Inc(x => x.ServiceEarnings, transaction.Amount * request.ArtistPercentageAmount / 100m);
-            UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
-                .UpdateOneAsync(x => x.UserId == orderPackage.ProviderId, updateArtistRevenue);
-            if (updateArtistRevenueResult.ModifiedCount == 0)
+            else 
             {
-                Log.Error("Cannot update artist revenue after checkout session completed.");
+                await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount * request.RequestorPercentageAmount / 100m, RefundReasonType.requested_by_customer);
+
+
+
+                //Giải ngân do công việc đã đóng và đã refund *******************************************************************
+                BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, transaction.Amount * request.ArtistPercentageAmount / 100m));
+
+                // Cập nhật service revenue cho Platform
+                updatePlatformRevenue = updatePlatformRevenue
+                           .Inc(x => x.RefundAmount, (transaction.Amount * request.RequestorPercentageAmount / 100m))
+                           .Inc(x => x.ServicePayoutAmount, transaction.Amount * request.ArtistPercentageAmount / 100m);
+                UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                    .UpdateOneAsync(_ => true, updatePlatformRevenue);
+                if (updatePlatformRevenueResult.ModifiedCount == 0)
+                {
+                    Log.Error("Cannot update platform revenue after checkout session completed.");
+                }
+
+                // Cập nhật service cho Artist
+                UpdateDefinition<Artist> updateArtistRevenue = Builders<Artist>.Update
+                            .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
+                            .Inc(x => x.ServiceEarnings, transaction.Amount * request.ArtistPercentageAmount / 100m);
+                UpdateResult updateArtistRevenueResult = await _unitOfWork.GetCollection<Artist>()
+                    .UpdateOneAsync(x => x.UserId == orderPackage.ProviderId, updateArtistRevenue);
+                if (updateArtistRevenueResult.ModifiedCount == 0)
+                {
+                    Log.Error("Cannot update artist revenue after checkout session completed.");
+                }
             }
 
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund));
