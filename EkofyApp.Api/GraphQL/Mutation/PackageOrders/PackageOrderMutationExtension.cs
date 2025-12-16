@@ -9,7 +9,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.PackageOrders
         {
             descriptor.Field(f => f.SendRedoRequestAsync(default!))
                 .Authorize(HelperRoleBase.ListenerRolesArray);
-            descriptor.Field(x => x.RefundPartiallyAsync(default!))
+            descriptor.Field(x => x.RefundAndEscrowAsync(default!))
                 .Authorize(HelperRoleBase.ModeratorAdminRolesArray);
             descriptor.Field(x => x.SubmitDeliveryAsync(default!))
                 .Authorize(HelperRoleBase.ArtistRolesArray);
