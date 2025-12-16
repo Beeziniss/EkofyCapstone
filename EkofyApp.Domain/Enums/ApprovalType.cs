@@ -10,5 +10,7 @@ public enum ApprovalType
     [EnumMember(Value = "RecordingUpload")]
     RecordingUpload,
     [EnumMember(Value = "ArtistRegistration")]
-    ArtistRegistration
+    ArtistRegistration,
+    [EnumMember(Value = "DisputeResolution")]
+    DisputeResolution
 }
