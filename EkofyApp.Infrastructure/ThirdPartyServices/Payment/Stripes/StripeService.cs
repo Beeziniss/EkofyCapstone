@@ -694,7 +694,9 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(x => x.Id)
                     .Include(x => x.PaymentTransactionId)
-                    .Include(x => x.ProviderId))
+                    .Include(x => x.ProviderId)
+                    .Include(x => x.Status)
+                    .Include(x => x.DisputedReason))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found package order.");
 
             decimal amountPackageOrder;
