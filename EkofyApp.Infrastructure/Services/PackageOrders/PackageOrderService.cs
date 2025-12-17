@@ -345,7 +345,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update.Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            if (request.RequestorPercentageAmount == 0m)
+            //nếu artist percentage là 0 thì refund hết cho listener
+            if (request.ArtistPercentageAmount == 0m)
             {
                 await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount, RefundReasonType.requested_by_customer);
 
@@ -361,9 +362,13 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             }
             else 
             {
-                await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount * request.RequestorPercentageAmount / 100m, RefundReasonType.requested_by_customer);
+                //nếu requestor percent > 0 thì mới refund
+                if (request.RequestorPercentageAmount > 0m)
+                {
+                    await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount * request.RequestorPercentageAmount / 100m, RefundReasonType.requested_by_customer);
+                }
 
-                //Giải ngân do công việc đã đóng và đã refund *******************************************************************
+                //Giải ngân do công việc đã đóng và đã refund (nếu có) **
                 BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, transaction.Amount * request.ArtistPercentageAmount / 100m));
 
                 // Cập nhật service revenue cho Platform
