@@ -1,14 +1,18 @@
 ﻿using EkofyApp.Application.Models.AudioFingerprints;
+using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.EmySound;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
+using MongoDB.Driver;
 using Refit;
 using System.Text.Json;
 
 namespace EkofyApp.Infrastructure.ThirdPartyServices.EmySound;
-public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
+public sealed class EmySoundService(IEmySoundApi emySoundApi, IUnitOfWork unitOfWork) : IEmySoundService
 {
     private readonly IEmySoundApi _emySoundApi = emySoundApi;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
     public async Task<string> UploadTrackFingerprintAsync(Stream stream, string trackId, string trackName, string artistName, string artistId)
     {
@@ -19,7 +23,9 @@ public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
 
     public async Task<IEnumerable<QueryAudioFingerprintResponse>> CheckTrackFingerprintAsync(byte[] fileBytes, string fileName, string contentType)
     {
-        double minConfidence = 0.8;
+        double minConfidence = await _unitOfWork.GetCollection<FingerprintConfidencePolicy>().Find(_ => true).FirstOrDefaultAsync() is FingerprintConfidencePolicy policy
+            ? policy.RejectThreshold
+            : 0.8;
         double minCoverage = 0.6;
 
         using MemoryStream firstStream = new(fileBytes);
@@ -31,7 +37,9 @@ public sealed class EmySoundService(IEmySoundApi emySoundApi) : IEmySoundService
 
         if (JsonDocument.Parse(body).RootElement.GetArrayLength() == 0)
         {
-            minConfidence = 0.7;
+            minConfidence = await _unitOfWork.GetCollection<FingerprintConfidencePolicy>().Find(_ => true).FirstOrDefaultAsync() is FingerprintConfidencePolicy secondPolicy
+            ? secondPolicy.RejectThreshold - 0.1
+            : 0.7;
             minCoverage = 0.4;
 
             using MemoryStream secondStream = new(fileBytes);

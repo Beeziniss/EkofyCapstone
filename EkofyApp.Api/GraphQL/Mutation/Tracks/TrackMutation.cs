@@ -16,6 +16,7 @@ using EkofyApp.Application.ThirdPartyServiceInterfaces.AWS;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.EmySound;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.FFMPEG;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Redis;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
@@ -28,7 +29,7 @@ namespace EkofyApp.Api.GraphQL.Mutation.Tracks;
 
 [ExtendObjectType(typeof(MutationInitialization))]
 [MutationType]
-public sealed class TrackMutation(ITrackService trackService, IArtistService artistService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IUserService userService, IHttpContextAccessor httpContextAccessor)
+public sealed class TrackMutation(ITrackService trackService, IArtistService artistService, IRedisCacheService redisCacheService, IAmazonS3Service amazonS3Service, IFfmpegService ffmpegService, IAudioAnalysisService audioAnalysisService, ICategoryService categoryService, IWorkService workService, IRecordingService recordingService, IEmySoundService emySoundService, IApprovalHistoryService approvalHistoryService, IUserService userService, IFingerprintConfidencePolicyService fingerprintConfidencePolicyService, IHttpContextAccessor httpContextAccessor)
 {
     private readonly ITrackService _trackService = trackService;
     private readonly IArtistService _artistService = artistService;
@@ -42,6 +43,7 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
     private readonly IEmySoundService _emySoundService = emySoundService;
     private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
     private readonly IUserService _userService = userService;
+    private readonly IFingerprintConfidencePolicyService _fingerprintConfidencePolicyService = fingerprintConfidencePolicyService;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     public async Task<bool> UploadTrackAsync(IFile file, CreateTrackRequest createTrackRequest, CreateWorkRequest createWorkRequest, CreateRecordingRequest createRecordingRequest, bool isTesting = false)
@@ -81,29 +83,27 @@ public sealed class TrackMutation(ITrackService trackService, IArtistService art
             IEnumerable<QueryAudioFingerprintResponse> responses = await _emySoundService.CheckTrackFingerprintAsync(fileBytes, file.Name, file.ContentType ?? throw new ConflictCustomException("Content type file is empty or null"));
             if (responses.Any())
             {
+                FingerprintConfidencePolicy thresholdConfidenceLevels = await _fingerprintConfidencePolicyService.GetPolicyAsync();
                 QueryAudioFingerprintResponse bestMatch = responses.OrderByDescending(r => r.QueryCoverage).First();
 
-                switch (bestMatch.MinConfidence)
+                if (bestMatch.MinConfidence == thresholdConfidenceLevels.RejectThreshold)
                 {
-                    case 0.8:
-                        {
-                            throw new BadRequestCustomException($"The uploaded track is likely to infringe copyright.\nScore: {bestMatch.MinConfidence}.\nCoverage: {bestMatch.QueryCoverage}.\nTrack: {bestMatch.TrackId} | {bestMatch.TrackName}.");
-                        }
-                    case 0.7:
-                        {
-                            // Đánh cờ duyệt thủ công
-                            // TODO: Kiểm tra các thông tin metadata cơ bản tự động
-                            // Như định dạng file, bitrate, sample rate, duration, v.v.
-                            // Lyrics có explicit không: nếu có thì track phải đánh dấu explicit
-                            // Còn nếu không có thì track không được đánh dấu explicit
-                            // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
+                    throw new BadRequestCustomException($"The uploaded track is likely to infringe copyright.\nScore: {bestMatch.MinConfidence}.\nCoverage: {bestMatch.QueryCoverage}.\nTrack: {bestMatch.TrackId} | {bestMatch.TrackName}.");
+                }
+                else if (bestMatch.MinConfidence == thresholdConfidenceLevels.ManualReviewThreshold)
+                {
+                    // Đánh cờ duyệt thủ công
+                    // TODO: Kiểm tra các thông tin metadata cơ bản tự động
+                    // Như định dạng file, bitrate, sample rate, duration, v.v.
+                    // Lyrics có explicit không: nếu có thì track phải đánh dấu explicit
+                    // Còn nếu không có thì track không được đánh dấu explicit
+                    // Trường hợp không đánh dấu explicit mà lyrics có từ ngữ nhạy cảm thì sẽ tự động set explicit là true
 
-                            // Tạo stream mới để dùng cho duyệt thủ công
-                            using MemoryStream manualStream = new(fileBytes);
-                            await AssignApproveManuallyAsync(manualStream, createTrackRequest, createWorkRequest, createRecordingRequest);
+                    // Tạo stream mới để dùng cho duyệt thủ công
+                    using MemoryStream manualStream = new(fileBytes);
+                    await AssignApproveManuallyAsync(manualStream, createTrackRequest, createWorkRequest, createRecordingRequest);
 
-                            return true;
-                        }
+                    return true;
                 }
             }
 
