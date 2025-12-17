@@ -422,6 +422,7 @@ public static class DependencyInjection
         services.AddScoped<ITrackUploadNotifier, TrackUploadNotifier>();
         services.AddScoped<IPopularityMetricService, PopularityMetricService>();
         services.AddScoped<IPackageOrderService, PackageOrderService>();
+        services.AddScoped<IFingerprintConfidencePolicyService, FingerprintConfidencePolicyService>();
         //services.AddScoped<IChatService, ChatService>();
 
         // GraphQL Services
