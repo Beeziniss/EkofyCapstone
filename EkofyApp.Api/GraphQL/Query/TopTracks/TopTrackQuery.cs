@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.TopTracks;
 using EkofyApp.Application.ServiceInterfaces.TopTracks;
+using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using HotChocolate.Data;
 
@@ -13,7 +14,7 @@ namespace EkofyApp.Api.GraphQL.Query.TopTracks
 
         [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
         [UseProjection]
-        public IQueryable<TopTrackResponse> GetTopTracks()
+        public IQueryable<TopTrack> GetTopTracks()
         {
             return _topTrackService.GetOwnTopTracks();
         }
