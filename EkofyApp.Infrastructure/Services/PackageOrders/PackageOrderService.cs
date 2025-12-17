@@ -23,9 +23,9 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
     [Queue("request")]
     public sealed class PackageOrderService(
-        IUnitOfWork unitOfWork, 
-        IStripeService stripeService, 
-        IHttpContextAccessor httpContextAccessor, 
+        IUnitOfWork unitOfWork,
+        IStripeService stripeService,
+        IHttpContextAccessor httpContextAccessor,
         IHubContext<NotificationHub> hubContext,
         IApprovalHistoryService approvalHistoryService) : IPackageOrderService
     {
@@ -316,10 +316,10 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                         ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
 
             // Get moderator ID from HttpContext
-            string moderatorId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value 
+            string moderatorId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value
                 ?? throw new UnauthorizedCustomException("Moderator session is invalid");
 
-            decimal platformFeePercentage = await _unitOfWork.GetCollection<Domain.Entities.Invoice>()
+            decimal platformFeePercentage = await _unitOfWork.GetCollection<Invoice>()
                 .Find(x => x.OneOffSnapshot != null && x.OneOffSnapshot.OneOffType == OneOffType.Payment && x.SubscriptionSnapshot == null && x.PaymentTransactionId == orderPackage.PaymentTransactionId)
                 .Project(x => x.OneOffSnapshot!.PlatformFeePercentage)
                 .FirstOrDefaultAsync();
@@ -345,36 +345,37 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
             UpdateDefinition<PlatformRevenue> updatePlatformRevenue = Builders<PlatformRevenue>.Update.Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            if (request.RequestorPercentageAmount == 0m)
+            //nếu artist percentage là 0 thì refund hết cho listener
+            if (request.ArtistPercentageAmount == 0m)
             {
                 await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount, RefundReasonType.requested_by_customer);
-
-                updatePlatformRevenue = updatePlatformRevenue
-                       .Inc(x => x.RefundAmount, transaction.Amount);
-
-                UpdateResult updatePlatformRevenueResultZeroPercentage = await _unitOfWork.GetCollection<PlatformRevenue>()
-                    .UpdateOneAsync(_ => true, updatePlatformRevenue);
-                if (updatePlatformRevenueResultZeroPercentage.ModifiedCount == 0)
-                {
-                    Log.Error("Cannot update platform revenue after checkout session completed.");
-                }
             }
-            else 
+            else if (request.ArtistPercentageAmount == 100m)
             {
+                BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, artistAmount));
+            }
+            else
+            {
+                //nếu requestor percent > 0 thì mới refund
+                decimal refundAmount = transaction.Amount * request.RequestorPercentageAmount / 100m;
+
                 await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount * request.RequestorPercentageAmount / 100m, RefundReasonType.requested_by_customer);
 
-                //Giải ngân do công việc đã đóng và đã refund *******************************************************************
-                BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, transaction.Amount * request.ArtistPercentageAmount / 100m));
 
-                // Cập nhật service revenue cho Platform
-                updatePlatformRevenue = updatePlatformRevenue
-                           .Inc(x => x.RefundAmount, (transaction.Amount * request.RequestorPercentageAmount / 100m));
-                UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
-                    .UpdateOneAsync(_ => true, updatePlatformRevenue);
-                if (updatePlatformRevenueResult.ModifiedCount == 0)
-                {
-                    Log.Error("Cannot update platform revenue after checkout session completed.");
-                }
+                //Giải ngân do công việc đã đóng và đã refund (nếu có) **
+                decimal escrowAmount = artistAmount * request.ArtistPercentageAmount / 100m;
+                BackgroundJob.Enqueue<IStripeService>(service =>
+                    service.EscrowReleaseAsync(request.Id, escrowAmount));
+            }
+
+            // Cập nhật service revenue cho Platform
+            updatePlatformRevenue = updatePlatformRevenue
+                       .Inc(x => x.RefundAmount, (transaction.Amount * request.RequestorPercentageAmount / 100m));
+            UpdateResult updatePlatformRevenueResult = await _unitOfWork.GetCollection<PlatformRevenue>()
+                .UpdateOneAsync(_ => true, updatePlatformRevenue);
+            if (updatePlatformRevenueResult.ModifiedCount == 0)
+            {
+                Log.Error("Cannot update platform revenue after checkout session completed.");
             }
 
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund));
@@ -404,7 +405,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     ActionByUserId = moderatorId,
                     ActionAt = HelperMethod.GetUtcPlus7TimeOffset(),
                     Action = HistoryActionType.Approved,
-                    Notes = $"Dispute resolved. Escrow release: {(request.RequestorPercentageAmount == 0m ? request.ArtistPercentageAmount : platformFeePercentage - platformFeePercentage)}%",
+                    Notes = $"Dispute resolved. Escrow release: {(request.RequestorPercentageAmount == 0m ? request.ArtistPercentageAmount : request.ArtistPercentageAmount - platformFeePercentage)}%",
                     Snapshot = snapshot
                 });
             }
@@ -546,7 +547,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                             .FirstOrDefaultAsync();
 
             if (package == null) return;
-            
+
             PackageOrderDelivery? delivery = package.Deliveries.LastOrDefault(d =>
                                                             d.RequestedAt == null &&
                                                             d.ClientFeedback == null

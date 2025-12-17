@@ -20,6 +20,12 @@ namespace EkofyApp.Api.GraphQL.Mutation.Test;
 [MutationType]
 public sealed class TestMutation
 {
+    public async Task<bool> SeedDataFingerprintAsync([Service] IFingerprintConfidencePolicyService fingerprintConfidencePolicyService)
+    {
+        await fingerprintConfidencePolicyService.SeedDataAsync();
+        return true;
+    }
+
     public async Task<bool> TestInstantPayout([Service] IStripeService stripeService, string accountId, long amount)
     {
         await stripeService.CreateInstantPayoutAsync(accountId, amount, "Test Instant Payout", null, "usd");

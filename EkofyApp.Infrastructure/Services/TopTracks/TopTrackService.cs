@@ -18,7 +18,7 @@ namespace EkofyApp.Infrastructure.Services.TopTracks
         private readonly IRedisCacheService _redis = redis;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-        public IQueryable<TopTrackResponse> GetOwnTopTracks()
+        public IQueryable<TopTrack> GetOwnTopTracks()
         {
             // Lấy userId từ HttpContext
             string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
@@ -26,13 +26,7 @@ namespace EkofyApp.Infrastructure.Services.TopTracks
             // Trả về các top tracks với user id tương ứng
             return _unitOfWork.GetCollection<TopTrack>()
                 .AsQueryable()
-                .Where(tt => tt.UserId == userId)
-                .Select(t => new TopTrackResponse
-                {
-                    TracksInfo = t.TracksInfo
-                .OrderByDescending(x => x.PlayedCount)
-                .ToList()
-                });
+                .Where(tt => tt.UserId == userId);
         }
 
         public IQueryable<TopTrackResponse> GetTopTracksByUserId(string userId)

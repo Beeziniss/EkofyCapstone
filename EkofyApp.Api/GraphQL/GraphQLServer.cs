@@ -2,6 +2,7 @@
 using EkofyApp.Api.GraphQL.Mutation;
 using EkofyApp.Api.GraphQL.Query;
 using EkofyApp.Api.GraphQL.Query.ApprovalHistories;
+using EkofyApp.Api.GraphQL.Resolver;
 using EkofyApp.Api.GraphQL.Scalars;
 using EkofyApp.Api.GraphQL.SubscriptionQL;
 using EkofyApp.Domain.Enums;
@@ -125,6 +126,7 @@ public static class GraphQLServer
             .AddType<EnumType<RequestStatus>>()
             .AddType<EnumType<RequestType>>()
             .AddType<EnumType<PackageOrderStatus>>()
+            .AddType<TopTrackInfoType>()
 
 
             // Paging
