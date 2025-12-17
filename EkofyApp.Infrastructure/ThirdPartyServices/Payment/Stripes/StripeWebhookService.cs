@@ -634,7 +634,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                     }
                     else
                     {
-                        string packageOrderId = new ObjectId().ToString();
+                        string packageOrderId = ObjectId.GenerateNewId().ToString();
                         ArtistPackage artistPackage = await _unitOfWork.GetCollection<ArtistPackage>()
                             .Find(x => x.Id == checkoutSession.Metadata["package_id"])
                             .FirstOrDefaultAsync() ?? throw new NotFoundCustomException($"Not found any artist package {checkoutSession.Metadata["package_id"]}");
