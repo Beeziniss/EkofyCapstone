@@ -352,7 +352,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             }
             else if (request.ArtistPercentageAmount == 100m)
             {
-                BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, artistAmount));
+                BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(request.Id, transaction.Amount));
             }
             else
             {
@@ -363,7 +363,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
 
                 //Giải ngân do công việc đã đóng và đã refund (nếu có) **
-                decimal escrowAmount = artistAmount * request.ArtistPercentageAmount / 100m;
+                decimal escrowAmount = transaction.Amount * request.ArtistPercentageAmount / 100m;
                 BackgroundJob.Enqueue<IStripeService>(service =>
                     service.EscrowReleaseAsync(request.Id, escrowAmount));
             }
