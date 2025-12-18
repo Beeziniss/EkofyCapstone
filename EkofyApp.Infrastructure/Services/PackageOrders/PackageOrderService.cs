@@ -338,7 +338,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 RequestorPercentage = request.RequestorPercentageAmount,
                 ArtistPercentage = request.ArtistPercentageAmount,
                 RefundAmount = transaction.Amount * request.RequestorPercentageAmount / 100m,
-                EscrowReleaseAmount = request.RequestorPercentageAmount == 0m ? 0m : artistAmount,
+                EscrowReleaseAmount = request.ArtistPercentageAmount == 0m ? 0m : artistAmount,
                 orderPackage.ClientId,
                 orderPackage.ProviderId
             };
