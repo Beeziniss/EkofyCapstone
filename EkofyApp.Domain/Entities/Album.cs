@@ -26,4 +26,7 @@ public sealed class Album : TimeStamped
     public ReleaseInfo ReleaseInfo { get; set; } = null!; // Information about the album's release, including date and reason
 
     public bool IsVisible { get; set; } = true; // Indicates if it is visible to users
+
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string CreatedBy { get; set; } = null!; // User ID of the album creator
 }

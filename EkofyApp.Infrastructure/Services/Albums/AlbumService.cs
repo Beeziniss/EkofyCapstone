@@ -82,6 +82,7 @@ public sealed class AlbumService(IUnitOfWork unitOfWork, IHttpContextAccessor ht
             ThumbnailImage = createAlbumRequest.ThumbnailImage,
             ReleaseInfo = createAlbumRequest.ReleaseInfo,
             IsVisible = createAlbumRequest.IsVisible,
+            CreatedBy = userId,
         });
     }
 
@@ -116,6 +117,7 @@ public sealed class AlbumService(IUnitOfWork unitOfWork, IHttpContextAccessor ht
                 CoverImage = string.Empty,
                 ReleaseInfo = new() { IsRelease = false, ReleaseStatus = ReleaseStatus.NotAnnounced },
                 IsVisible = true,
+                CreatedBy = userId,
             });
 
             return;

@@ -157,7 +157,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             .AnyAsync() ? true : throw new NotFoundCustomException("Reported user not found");
 
         // Không cho phép tư report chính mình
-        if (reporterId == request.ReportedUserId)
+        if (reporterId == request.ReportedUserId && request.ReportType != ReportType.UnapprovedUploadedTrack)
         {
             throw new BadRequestCustomException("You cannot report yourself");
         }

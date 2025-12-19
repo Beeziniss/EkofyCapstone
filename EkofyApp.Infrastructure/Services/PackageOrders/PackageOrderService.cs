@@ -439,25 +439,41 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
         public async Task CreateReviewAsync(CreateReviewRequest createReviewRequest)
         {
-            string userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
+            string userId = _httpContextAccessor.HttpContext?.User
+                .FindFirst("userId")?.Value ?? throw new UnauthorizedCustomException("Your session is limit");
 
-            if (await _unitOfWork.GetCollection<PackageOrder>().Find(x => x.ClientId == userId && x.Id == createReviewRequest.PackageOrderId).AnyAsync())
+            PackageOrder order = await _unitOfWork.GetCollection<PackageOrder>().Find(x =>
+                x.Id == createReviewRequest.PackageOrderId &&
+                x.ClientId == userId)
+                .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                    .Include(x => x.Id)
+                    .Include(x => x.ClientId)
+                    .Include(x => x.Status)
+                    .Include(x => x.Review))
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Package order not found");
+
+            if (order.Status != PackageOrderStatus.Completed &&
+                order.Status != PackageOrderStatus.Refund)
+            {
+                throw new ConflictCustomException("You can only review completed or refunded orders");
+            }
+
+            if (order.Review != null)
             {
                 throw new ConflictCustomException("You have already reviewed this package order");
             }
 
-            // Tạo review
             UpdateResult updateResult = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
-                x => x.Id == createReviewRequest.PackageOrderId,
+                x => x.Id == order.Id && x.ClientId == userId,
                 Builders<PackageOrder>.Update
-                    .Set(x => x.CreatedAt, HelperMethod.GetUtcPlus7TimeOffset())
-                    .Set(x => x.UpdatedAt, null)
                     .Set(x => x.Review, new Review
                     {
                         Rating = createReviewRequest.Rating,
                         Content = createReviewRequest.Content
                     })
+                    .Set(x => x.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset())
             );
+
             if (updateResult.ModifiedCount == 0)
             {
                 throw new UnprocessableEntityCustomException("Cannot create review");
