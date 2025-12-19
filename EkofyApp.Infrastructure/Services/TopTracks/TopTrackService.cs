@@ -26,7 +26,15 @@ namespace EkofyApp.Infrastructure.Services.TopTracks
             // Trả về các top tracks với user id tương ứng
             return _unitOfWork.GetCollection<TopTrack>()
                 .AsQueryable()
-                .Where(tt => tt.UserId == userId);
+                .Where(tt => tt.UserId == userId)
+                .Select(t => new TopTrack
+                {
+                    Id = t.Id,
+                    UserId = t.UserId,
+                    TracksInfo = t.TracksInfo
+                    .OrderByDescending(x => x.PlayedCount)
+                    .ToList()
+                });
         }
 
         public IQueryable<TopTrackResponse> GetTopTracksByUserId(string userId)
