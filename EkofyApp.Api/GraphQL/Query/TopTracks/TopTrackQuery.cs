@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.Models.TopTracks;
 using EkofyApp.Application.ServiceInterfaces.TopTracks;
+using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Utils;
 using HotChocolate.Data;
@@ -10,10 +11,14 @@ namespace EkofyApp.Api.GraphQL.Query.TopTracks
     [QueryType]
     public class TopTrackQuery(ITopTrackService topTrackService)
     {
+
         private readonly ITopTrackService _topTrackService = topTrackService;
 
         [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
+        [UseOffsetPaging(IncludeTotalCount = true, MaxPageSize = 50, RequirePagingBoundaries = true)]
         [UseProjection]
+        [UseFiltering]
+        [UseSorting<TopTrackInfo>]
         public IQueryable<TopTrack> GetTopTracks()
         {
             return _topTrackService.GetOwnTopTracks();
