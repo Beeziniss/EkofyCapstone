@@ -198,7 +198,7 @@ public sealed class ReportService(IUnitOfWork unitOfWork, IHttpContextAccessor h
             ReportType = request.ReportType,
             Description = request.Description,
             Status = ReportStatus.Pending,
-            Priority = priority,
+            Priority = request.ReportType != ReportType.UnapprovedUploadedTrack ? priority : ReportPriority.High,
             RelatedContentId = request.RelatedContentId,
             RelatedContentType = request.RelatedContentType,
             Evidences = request.Evidences ?? [],

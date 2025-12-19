@@ -7,6 +7,6 @@ public sealed class FingerprintConfidenceMutationExtension : ObjectTypeExtension
     protected override void Configure(IObjectTypeDescriptor<FingerprintConfidenceMutation> descriptor)
     {
         descriptor.Field(x => x.UpdateFingerprintConfidencePolicyAsync(default!))
-            .Authorize(HelperRoleBase.ArtistRolesArray);
+            .Authorize(HelperRoleBase.AdminRolesArray);
     }
 }
