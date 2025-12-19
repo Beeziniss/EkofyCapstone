@@ -8,6 +8,7 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Coupons;
 using EkofyApp.Domain.Enums.Subcriptions;
+using EkofyApp.Domain.Enums.Users;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using Microsoft.AspNetCore.Http;
@@ -536,10 +537,11 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
 
         // Lấy coupon giảm giá nếu có
         List<string>? couponIds = [];
+        string code = user.Role == UserRole.Listener ? "LISTENER10FOREVER" : "ARTIST20FOREVER";
         if (createCheckoutSessionRequest.Period == PeriodTime.year)
         {
             couponIds = await _unitOfWork.GetCollection<EntityCoupon>()
-                .Find(x => x.Purpose == CouponPurposeType.AnnualPlanDiscount && x.Status == CouponStatus.Active)
+                .Find(x => x.Purpose == CouponPurposeType.AnnualPlanDiscount && x.Status == CouponStatus.Active && x.Code == code)
                 .Project(x => x.StripeCouponId)
                 .ToListAsync();
         }
