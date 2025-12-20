@@ -722,10 +722,10 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                     .UpdateManyAsync(session,
                                         x => x.Id != checkoutSession.Metadata["conversation_id"] && x.RequestId == checkoutSession.Metadata["request_id"] && x.Status == ConversationStatus.Pending,
                                         Builders<Conversation>.Update.Set(x => x.Status, ConversationStatus.Cancelled));
-                            if (updateConversationCancelled.ModifiedCount == 0)
-                            {
-                                throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
-                            }
+                            //if (updateConversationCancelled.ModifiedCount == 0)
+                            //{
+                            //    throw new UnprocessableEntityCustomException("Cannot update conversations status to cancelled");
+                            //}
 
                             // Cập nhật trạng thái của conversation được chấp nhận thành In Progress
                             UpdateResult updateConversationInprogress = await _unitOfWork.GetCollection<Conversation>()
