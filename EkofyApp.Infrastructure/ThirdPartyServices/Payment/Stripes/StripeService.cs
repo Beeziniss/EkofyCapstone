@@ -303,7 +303,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
 
         CheckoutOption.SessionCreateOptions options = new()
         {
-            PaymentMethodTypes = ["card", "link"],
+            PaymentMethodTypes = ["card"],
             LineItems =
             [
                 new SessionLineItemOptions
@@ -552,7 +552,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
 
         CheckoutOption.SessionCreateOptions options = new()
         {
-            PaymentMethodTypes = ["card", "link"],
+            PaymentMethodTypes = ["card"],
             LineItems =
             [
                 new SessionLineItemOptions
@@ -875,7 +875,7 @@ public sealed class StripeService(IUnitOfWork unitOfWork, IRedisCacheService red
         {
             Amount = amount,
             Currency = currency,
-            PaymentMethodTypes = ["card", "link"] // thêm nhiều phương thức
+            PaymentMethodTypes = ["card"] // thêm nhiều phương thức
         });
 
         return paymentIntent;
