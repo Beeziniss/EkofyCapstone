@@ -295,6 +295,8 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                 {
                     ActorId = chatMessageRequest.SenderId,
                     TargetId = chatMessageRequest.ReceiverId,
+                    RelatedId = chatMessageRequest.ConversationId,
+                    RelatedType = NotificationRelatedType.Message,
                     Content = $"You have a new message from {user.Name}.",
                     Action = NotificationActionType.Message,
                     Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/inbox/{chatMessageRequest.ConversationId}",
