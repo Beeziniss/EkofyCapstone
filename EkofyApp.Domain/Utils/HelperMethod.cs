@@ -80,7 +80,7 @@ public sealed class HelperMethod
 
             // REVIEW
             (NotificationActionType.Review, NotificationRelatedType.Review)
-                => $"{actorName} reviewed your service.",
+                => $"{actorName} reviewed your service at #{relatedName ?? "Unknown"}.",
 
             // ORDER
             (NotificationActionType.OrderCompleted, NotificationRelatedType.Order)
@@ -90,7 +90,7 @@ public sealed class HelperMethod
                 => $"Your order with user {actorName} must be finish in 24 hours.",
 
             (NotificationActionType.OrderCreated, NotificationRelatedType.Order)
-                => $"{actorName} created a new order for you.",
+                => $"{actorName} apccepted your order.",
 
             // REQUEST
             (NotificationActionType.RequestCreated, NotificationRelatedType.Request)
