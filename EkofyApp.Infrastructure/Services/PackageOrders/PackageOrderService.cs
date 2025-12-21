@@ -511,11 +511,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     string.Empty
                 );
 
-                await _hubContext.Clients.User(orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
-                {
-                    Content = content,
-                });
-                await _hubContext.Clients.User(orderPackage.ClientId).SendAsync("ReceiveNotification", new NotificationResponse
+                await _hubContext.Clients.Users(orderPackage.ClientId, orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
                 {
                     Content = content,
                 });
