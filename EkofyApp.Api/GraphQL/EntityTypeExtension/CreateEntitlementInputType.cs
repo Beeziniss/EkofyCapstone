@@ -8,5 +8,8 @@ public sealed class CreateEntitlementInputType : InputObjectType<CreateEntitleme
     {
         descriptor.Field(x => x.DefaultValues)
             .Type<NonNullType<EntitlementValueScalar>>();
+
+        descriptor.Field(x => x.SubscriptionOverrides)
+            .Type<NonNullType<EntitlementValueScalar>>();
     }
 }
