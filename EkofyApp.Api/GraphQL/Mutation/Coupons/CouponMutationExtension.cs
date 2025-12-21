@@ -1,4 +1,6 @@
-﻿namespace EkofyApp.Api.GraphQL.Mutation.Coupons;
+﻿using EkofyApp.Domain.Utils;
+
+namespace EkofyApp.Api.GraphQL.Mutation.Coupons;
 
 public sealed class CouponMutationExtension : ObjectTypeExtension<CouponMutation>
 {
@@ -6,12 +8,12 @@ public sealed class CouponMutationExtension : ObjectTypeExtension<CouponMutation
     {
         // Configure the CouponMutation type here if needed
         descriptor.Field(x => x.CreateCouponAsync(default!))
-            .Authorize(roles: "Admin");
+            .Authorize(HelperRoleBase.AdminRolesArray);
 
         descriptor.Field(x => x.DeprecateCouponAsync(default!))
-            .Authorize(roles: "Admin");
+            .Authorize(HelperRoleBase.AdminRolesArray);
 
         descriptor.Field(x => x.DeleteCouponAsync(default!))
-            .Authorize(roles: "Admin");
+            .Authorize(HelperRoleBase.AdminRolesArray);
     }
 }
