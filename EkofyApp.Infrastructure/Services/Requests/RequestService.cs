@@ -215,11 +215,6 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 return false;
             }
 
-            string displayName = await _unitOfWork.GetCollection<Listener>()
-                .Find(x => x.UserId == userId)
-                .Project(x => x.DisplayName)
-                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Listener not found");
-
             string content = HelperMethod.BuildContentNotification(
                 request.Status == RequestStatus.Confirmed ? NotificationActionType.RequestApproved : NotificationActionType.RequestRejected,
                 NotificationRelatedType.Request,
