@@ -352,7 +352,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                                                 UserId = user.Id,
                                                 StripeSubscriptionId = stripeSubscriptionId,
                                                 StripeInvoiceId = invoice.Id,
-                                                StripePaymentMethod = [],
+                                                StripePaymentMethod = ["card"],
                                                 Amount = latestSubscription.Amount,
                                                 Currency = "vnd",
                                                 PaymentStatus = PaymentTransactionStatus.Paid,

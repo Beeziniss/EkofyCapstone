@@ -55,7 +55,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                                       .Set(po => po.StartedAt, now);
 
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, update);
-            if(result.ModifiedCount <= 0)
+            if (result.ModifiedCount <= 0)
             {
                 return false;
             }
@@ -247,7 +247,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
                 po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
                 update);
-            if(result.ModifiedCount <= 0)
+            if (result.ModifiedCount <= 0)
             {
                 return false;
             }
@@ -302,6 +302,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                             .Include(po => po.FreezedTime)
                                             .Include(po => po.OverdueJobId)
                                             .Include(po => po.DisputedAt)
+                                            .Include(po => po.ClientId)
                                             .Include(po => po.ProviderId))
                                           .FirstOrDefaultAsync()
                                ?? throw new BadRequestCustomException("You can not do any action for this request due to in progress or complete!");
@@ -313,7 +314,34 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                                           .Set(po => po.DisputedReason, request.Reason)
                                                           .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
-                return result.ModifiedCount > 0;
+                if (result.ModifiedCount <= 0)
+                {
+                    return false;
+                }
+
+                string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.OrderDisputed,
+                    NotificationRelatedType.Order,
+                    null,
+                    string.Empty
+                );
+
+                await _hubContext.Clients.User(orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                });
+
+                await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+                {
+                    ActorId = orderPackage.ClientId,
+                    TargetId = orderPackage.ProviderId,
+                    Content = content,
+                    RelatedType = NotificationRelatedType.Order,
+                    RelatedId = request.Id,
+                    Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{request.Id}/details",
+                });
+
+                return true;
             }
 
 
@@ -363,6 +391,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                           .Find(po => po.Id == request.Id &&
                                                       (po.Status == PackageOrderStatus.Disputed))
                                           .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                                            .Include(po => po.Id)
                                             .Include(po => po.Status)
                                             .Include(po => po.PaymentTransactionId)
                                             .Include(po => po.ProviderId)
@@ -474,6 +503,45 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     Notes = $"Dispute resolved. Escrow release: {(request.RequestorPercentageAmount == 0m ? request.ArtistPercentageAmount : request.ArtistPercentageAmount - platformFeePercentage)}%",
                     Snapshot = snapshot
                 });
+
+                string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.OrderRefunded,
+                    NotificationRelatedType.Order,
+                    orderPackage.Id,
+                    string.Empty
+                );
+
+                await _hubContext.Clients.User(orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                });
+                await _hubContext.Clients.User(orderPackage.ClientId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                });
+
+                List<Notification> notifications =
+                    [
+                        new Notification
+                        {
+                            ActorId = moderatorId,
+                            TargetId = orderPackage.ClientId,
+                            Content = content,
+                            RelatedType = NotificationRelatedType.Order,
+                            RelatedId = orderPackage.Id,
+                            Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{orderPackage.Id}/details",
+                        },
+                        new Notification
+                        {
+                            ActorId = moderatorId,
+                            TargetId = orderPackage.ProviderId,
+                            Content = content,
+                            RelatedType = NotificationRelatedType.Order,
+                            RelatedId = orderPackage.Id,
+                            Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{orderPackage.Id}/details",
+                        },
+                    ];
+                await _unitOfWork.GetCollection<Notification>().InsertManyAsync(notifications);
             }
 
             return result.ModifiedCount > 0;

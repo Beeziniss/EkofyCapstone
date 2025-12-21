@@ -92,6 +92,12 @@ public sealed class HelperMethod
             (NotificationActionType.OrderCreated, NotificationRelatedType.Order)
                 => $"{actorName} apccepted your order.",
 
+            (NotificationActionType.OrderDisputed, NotificationRelatedType.Order)
+                => $"Your order #{relatedName ?? "N/A"} has been disputed.",
+
+            (NotificationActionType.OrderRefunded, NotificationRelatedType.Order)
+                => $"Your order #{relatedName ?? "N/A"} has been refunded.",
+
             // REQUEST
             (NotificationActionType.RequestCreated, NotificationRelatedType.Request)
                 => $"{actorName} submitted a new request.",
