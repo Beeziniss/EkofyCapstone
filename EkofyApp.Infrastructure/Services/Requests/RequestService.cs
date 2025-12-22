@@ -1,4 +1,5 @@
-﻿using EkofyApp.Application.Models.Requests;
+﻿using EkofyApp.Application.Models.Notifications;
+using EkofyApp.Application.Models.Requests;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Chat;
 using EkofyApp.Application.ServiceInterfaces.Requests;
@@ -6,16 +7,19 @@ using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
+using EkofyApp.Infrastructure.Services.Notifications;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Requests
 {
-    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IChatService chatService) : IRequestService
+    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IChatService chatService, IHubContext<NotificationHub> hubContext) : IRequestService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
         private readonly IChatService _chatService = chatService;
+        private readonly IHubContext<NotificationHub> _hubContext = hubContext;
 
         public IQueryable<Request> GetRequestsQueryable()
         {
@@ -42,6 +46,9 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                             .FirstOrDefaultAsync()
                                 ?? throw new BadRequestCustomException("Package not found!"); ;
 
+            string displayName = string.Empty;
+            string userArtistId = string.Empty;
+            string content = string.Empty;
 
             //Nếu là direct request thif tạo mới 
             if (isDirectRequest)
@@ -59,6 +66,39 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 };
 
                 await _unitOfWork.GetCollection<Request>().InsertOneAsync(directRequest);
+
+                displayName = await _unitOfWork.GetCollection<Listener>()
+                .Find(x => x.UserId == userId)
+                .Project(x => x.DisplayName)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Listener not found");
+
+                userArtistId = await _unitOfWork.GetCollection<Artist>()
+                    .Find(x => x.Id == artistPackage.ArtistId)
+                    .Project(x => x.UserId)
+                    .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
+
+                content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.RequestCreated,
+                    NotificationRelatedType.Request,
+                    null,
+                    displayName
+                );
+
+                await _hubContext.Clients.User(userArtistId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                });
+
+                await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+                {
+                    ActorId = userId,
+                    TargetId = userArtistId,
+                    Content = content,
+                    RelatedType = NotificationRelatedType.Request,
+                    RelatedId = directRequest.Id,
+                    Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/artist/studio/pending-request/{directRequest.Id}",
+                });
+
                 return true;
             }
 
@@ -76,7 +116,44 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                                  .Set(r => r.ArtistId, artistPackage.ArtistId)
                                                  .Set(r => r.RequestCreatedTime, HelperMethod.GetUtcPlus7TimeOffset());
             var result = await _unitOfWork.GetCollection<Request>().UpdateOneAsync(r => r.Id == request.PublicRequestId, update);
-            return result.ModifiedCount > 0;
+            if(result.ModifiedCount <= 0)
+            {
+                return false;
+            }
+
+            displayName = await _unitOfWork.GetCollection<Listener>()
+                .Find(x => x.UserId == userId)
+                .Project(x => x.DisplayName)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Listener not found");
+
+            userArtistId = await _unitOfWork.GetCollection<Artist>()
+                .Find(x => x.Id == artistPackage.ArtistId)
+                .Project(x => x.UserId)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
+
+            content = HelperMethod.BuildContentNotification(
+                NotificationActionType.RequestCreated,
+                NotificationRelatedType.Request,
+                null,
+                displayName
+            );
+
+            await _hubContext.Clients.User(userArtistId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+            });
+
+            await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+            {
+                ActorId = userId,
+                TargetId = userArtistId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Request,
+                RelatedId = request.PublicRequestId,
+                Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/artist/studio/pending-request/{request.PublicRequestId}",
+            });
+
+            return true;
         }
 
         #region custom direct request
@@ -133,8 +210,34 @@ namespace EkofyApp.Infrastructure.Services.Requests
                                                  .Set(r => r.Notes,  "The request is " + request.Status.ToString().ToLower() + " by the artist");
 
             var result = await _unitOfWork.GetCollection<Request>().UpdateOneAsync(r => r.Id == request.RequestId, update);
+            if(result.ModifiedCount <= 0)
+            {
+                return false;
+            }
 
-            return result.ModifiedCount > 0;
+            string content = HelperMethod.BuildContentNotification(
+                request.Status == RequestStatus.Confirmed ? NotificationActionType.RequestApproved : NotificationActionType.RequestRejected,
+                NotificationRelatedType.Request,
+                null,
+                string.Empty
+            );
+
+            await _hubContext.Clients.User(requestDocument.RequestUserId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+            });
+
+            await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+            {
+                ActorId = userId,
+                TargetId = requestDocument.RequestUserId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Request,
+                RelatedId = request.RequestId,
+                Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/profile/my-requests/{request.RequestId}",
+            });
+
+            return true;
         }
         #endregion
 

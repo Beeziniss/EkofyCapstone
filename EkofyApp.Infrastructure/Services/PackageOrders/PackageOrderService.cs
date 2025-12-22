@@ -55,13 +55,44 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                                       .Set(po => po.StartedAt, now);
 
             var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, update);
+            if (result.ModifiedCount <= 0)
+            {
+                return false;
+            }
 
             var deadline = now.AddDays(packageOrder.Duration);
 
             //job chạy khi bắt đầu in progress
             BackgroundJob.Schedule<PackageOrderService>(service => service.SolveOverdueAutomatically(packageOrderId, deadline), deadline);
 
-            return result.ModifiedCount > 0;
+            string stageName = await _unitOfWork.GetCollection<Artist>()
+                .Find(x => x.UserId == packageOrder.ProviderId)
+                .Project(x => x.StageName)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Artist not found");
+
+            string content = HelperMethod.BuildContentNotification(
+                NotificationActionType.OrderCreated,
+                NotificationRelatedType.Order,
+                null,
+                stageName
+            );
+
+            await _hubContext.Clients.User(packageOrder.ClientId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+            });
+
+            await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+            {
+                ActorId = packageOrder.ProviderId,
+                TargetId = packageOrder.ClientId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Order,
+                RelatedId = packageOrderId,
+                Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{packageOrderId}/details",
+            });
+
+            return true;
         }
 
         public async Task<bool> SubmitDeliveryAsync(SubmitDeliveryRequest request)
@@ -214,6 +245,9 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                     .Find(po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress)
                                     .Project<PackageOrder>(Builders<PackageOrder>.Projection
                                         .Include(po => po.ConversationId)
+                                        .Include(po => po.Id)
+                                        .Include(po => po.ProviderId)
+                                        .Include(po => po.ClientId)
                                     )
                                     .FirstOrDefaultAsync()
                               ?? throw new NotFoundCustomException("This package order is not found!");
@@ -237,6 +271,27 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 }
             });
 
+            string content = HelperMethod.BuildContentNotification(
+                NotificationActionType.OrderCreated,
+                NotificationRelatedType.Order,
+                packageOrderId,
+                string.Empty
+            );
+
+            await _hubContext.Clients.User(packageOrder.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+            });
+
+            await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+            {
+                ActorId = packageOrder.ClientId,
+                TargetId = packageOrder.ProviderId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Order,
+                RelatedId = packageOrderId,
+                Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{packageOrderId}/details",
+            });
 
             return true;
         }
@@ -257,6 +312,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                             .Include(po => po.FreezedTime)
                                             .Include(po => po.OverdueJobId)
                                             .Include(po => po.DisputedAt)
+                                            .Include(po => po.ClientId)
                                             .Include(po => po.ProviderId))
                                           .FirstOrDefaultAsync()
                                ?? throw new BadRequestCustomException("You can not do any action for this request due to in progress or complete!");
@@ -268,7 +324,34 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                                           .Set(po => po.DisputedReason, request.Reason)
                                                           .Set(po => po.DisputedAt, HelperMethod.GetUtcPlus7TimeOffset());
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
-                return result.ModifiedCount > 0;
+                if (result.ModifiedCount <= 0)
+                {
+                    return false;
+                }
+
+                string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.OrderDisputed,
+                    NotificationRelatedType.Order,
+                    null,
+                    string.Empty
+                );
+
+                await _hubContext.Clients.User(orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                });
+
+                await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+                {
+                    ActorId = orderPackage.ClientId,
+                    TargetId = orderPackage.ProviderId,
+                    Content = content,
+                    RelatedType = NotificationRelatedType.Order,
+                    RelatedId = request.Id,
+                    Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{request.Id}/details",
+                });
+
+                return true;
             }
 
 
@@ -318,6 +401,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                           .Find(po => po.Id == request.Id &&
                                                       (po.Status == PackageOrderStatus.Disputed))
                                           .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                                            .Include(po => po.Id)
                                             .Include(po => po.Status)
                                             .Include(po => po.PaymentTransactionId)
                                             .Include(po => po.ProviderId)
@@ -432,6 +516,41 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 });
 
                 await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(c => c.Id == orderPackage.ConversationId, Builders<Conversation>.Update.Set(cu => cu.Status, ConversationStatus.Completed));
+
+                string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.OrderRefunded,
+                    NotificationRelatedType.Order,
+                    orderPackage.Id,
+                    string.Empty
+                );
+
+                await _hubContext.Clients.Users(orderPackage.ClientId, orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                {
+                    Content = content,
+                });
+
+                List<Notification> notifications =
+                    [
+                        new Notification
+                        {
+                            ActorId = moderatorId,
+                            TargetId = orderPackage.ClientId,
+                            Content = content,
+                            RelatedType = NotificationRelatedType.Order,
+                            RelatedId = orderPackage.Id,
+                            Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{orderPackage.Id}/details",
+                        },
+                        new Notification
+                        {
+                            ActorId = moderatorId,
+                            TargetId = orderPackage.ProviderId,
+                            Content = content,
+                            RelatedType = NotificationRelatedType.Order,
+                            RelatedId = orderPackage.Id,
+                            Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{orderPackage.Id}/details",
+                        },
+                    ];
+                await _unitOfWork.GetCollection<Notification>().InsertManyAsync(notifications);
             }
 
             return result.ModifiedCount > 0;
@@ -472,6 +591,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 .Project<PackageOrder>(Builders<PackageOrder>.Projection
                     .Include(x => x.Id)
                     .Include(x => x.ClientId)
+                    .Include(x => x.ProviderId)
                     .Include(x => x.Status)
                     .Include(x => x.Review))
                 .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Package order not found");
@@ -502,6 +622,33 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             {
                 throw new UnprocessableEntityCustomException("Cannot create review");
             }
+
+            string displayName = await _unitOfWork.GetCollection<Listener>()
+                .Find(x => x.UserId == userId)
+                .Project(x => x.DisplayName)
+                .FirstOrDefaultAsync() ?? throw new NotFoundCustomException("Not found listener");
+
+            string content = HelperMethod.BuildContentNotification(
+                NotificationActionType.Review,
+                NotificationRelatedType.Review,
+                createReviewRequest.PackageOrderId,
+                displayName
+            );
+
+            await _hubContext.Clients.User(order.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+            });
+
+            await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+            {
+                ActorId = order.ClientId,
+                TargetId = order.ProviderId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Review,
+                RelatedId = createReviewRequest.PackageOrderId,
+                Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{createReviewRequest.PackageOrderId}/details",
+            });
         }
 
         public async Task UpdateReviewAsync(UpdateReviewRequest updateReviewRequest)
