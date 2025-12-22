@@ -205,19 +205,40 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
         public async Task<bool> ApproveAndCloseRequest(string packageOrderId)
         {
-            // find and update package order. If not found, return false
-            var update = Builders<PackageOrder>.Update
-                .Set(po => po.Status, PackageOrderStatus.Completed)
-                .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
+            //NOTE:chia tiền -  trong đây đã check package order rồi
             BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(packageOrderId, null));
 
-            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
-                po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
-                update);
+            // find and update package order. If not found, return false
+            var packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
+                                    .Find(po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress)
+                                    .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                                        .Include(po => po.ConversationId)
+                                    )
+                                    .FirstOrDefaultAsync()
+                              ?? throw new NotFoundCustomException("This package order is not found!");
 
-            return result.ModifiedCount > 0;
+            await _unitOfWork.ExecuteInTransactionAsync(async session =>
+            {
+                var update = Builders<PackageOrder>.Update
+                            .Set(po => po.Status, PackageOrderStatus.Completed)
+                            .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                var resultPackageOrder = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(session,
+                    po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
+                    update);
+
+                var resultConversation = await _unitOfWork.GetCollection<Conversation>()
+                    .UpdateOneAsync(session, c => c.Id == packageOrder.ConversationId,
+                        Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Completed));
+                if(resultPackageOrder.ModifiedCount == 0 && resultConversation.ModifiedCount == 0)
+                {
+                    throw new BadRequestCustomException("Payout complete but not change order or conversation status.");
+                }
+            });
+
+
+            return true;
         }
 
         //INFO: dành cho người tạo request khi thay đổi trạng thái của đơn đã đạt
@@ -301,7 +322,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                             .Include(po => po.PaymentTransactionId)
                                             .Include(po => po.ProviderId)
                                             .Include(po => po.ClientId)
-                                            .Include(po => po.DisputedReason))
+                                            .Include(po => po.DisputedReason)
+                                            .Include(po => po.ConversationId))
                                           .FirstOrDefaultAsync()
                                ?? throw new NotFoundCustomException("Can not find order!");
 
@@ -408,6 +430,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     Notes = $"Dispute resolved. Escrow release: {(request.RequestorPercentageAmount == 0m ? request.ArtistPercentageAmount : request.ArtistPercentageAmount - platformFeePercentage)}%",
                     Snapshot = snapshot
                 });
+
+                await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(c => c.Id == orderPackage.ConversationId, Builders<Conversation>.Update.Set(cu => cu.Status, ConversationStatus.Completed));
             }
 
             return result.ModifiedCount > 0;
