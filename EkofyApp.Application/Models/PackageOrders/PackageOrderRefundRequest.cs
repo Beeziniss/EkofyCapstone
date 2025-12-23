@@ -5,5 +5,6 @@
         public string Id { get; init; } = default!;
         public decimal ArtistPercentageAmount { get; init; }
         public decimal RequestorPercentageAmount { get; init; }
+        public string RefundReason { get; init; } = default!;
     }
 }

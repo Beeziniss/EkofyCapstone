@@ -1,5 +1,6 @@
 ﻿using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ServiceInterfaces.Subscriptions;
 using EkofyApp.Application.ServiceInterfaces.UserSubscriptions;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
@@ -563,6 +564,7 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
         }
     }
 
+    [Queue("order")]
     public async Task HandleWebhookCheckoutSessionAsync(string json, string stripeSignature)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async session =>
@@ -693,6 +695,11 @@ public sealed class StripeWebhookService(IUnitOfWork unitOfWork, ILogger<StripeS
                             Duration = Convert.ToInt32(checkoutSession.Metadata["duration"]),
                             PlatformFeePercentage = platformFeePercentage,
                         });
+
+                        var threeDaysLater = HelperMethod.GetUtcPlus7TimeOffset().AddDays(3);
+
+                        BackgroundJob.Schedule<IPackageOrderService>(service => service.CloseOrderAndRefundAutomatically(
+                            packageOrderId), threeDaysLater);
 
                         oneOffSnapshot = new()
                         {

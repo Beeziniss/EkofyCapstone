@@ -92,6 +92,9 @@ public sealed class HelperMethod
             (NotificationActionType.OrderCreated, NotificationRelatedType.Order)
                 => $"{actorName} apccepted your order.",
 
+            (NotificationActionType.OrderContinued, NotificationRelatedType.Order)
+                => $"Your order #{relatedName ?? "N/A"} turned from disputed into in progress. Please continue your work",
+
             (NotificationActionType.OrderDisputed, NotificationRelatedType.Order)
                 => $"Your order #{relatedName ?? "N/A"} has been disputed.",
 

@@ -26,6 +26,7 @@ public sealed class PackageOrder : TimeStamped
     public PackageOrderStatus Status { get; set; }
     public int RevisionCount { get; set; }
     public string? DisputedReason { get; set; }
+    public string? RefundReason { get; set; }
     public List<PackageOrderDelivery> Deliveries { get; set; } = [];
     public int Duration { get; set; }
     public TimeSpan FreezedTime { get; set; } = TimeSpan.Zero;
