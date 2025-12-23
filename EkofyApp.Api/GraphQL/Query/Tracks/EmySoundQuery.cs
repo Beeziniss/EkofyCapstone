@@ -52,6 +52,43 @@ public sealed class EmySoundQuery(IEmySoundApi emySoundApi)
     }
 
     [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
+    public async Task<IEnumerable<QueryAudioFingerprintResponse>> QueryTracksForRecordingAsync(IFile file)
+    {
+        using Stream stream = file.OpenReadStream();
+
+        StreamPart streamPart = new(stream, file.Name, file.ContentType);
+        HttpResponseMessage response = await _emySoundApi.QueryTrackAsync(streamPart, MediaType.Audio.ToString(), 0.5, 0.4);
+
+        string body = await response.Content.ReadAsStringAsync();
+
+        // Parse chuỗi JSON → root là mảng
+        JsonElement root = JsonDocument.Parse(body).RootElement;
+        if (root.GetArrayLength() == 0)
+        {
+            //throw new NotFoundCustomException("No matching track found.");
+            return [];
+        }
+
+        List<QueryAudioFingerprintResponse> results = [];
+        foreach (JsonElement item in root.EnumerateArray())
+        {
+            // Lấy track fields
+            JsonElement track = item.GetProperty("track");
+            JsonElement audioCoverage = item.GetProperty("audio").GetProperty("coverage");
+            results.Add(new QueryAudioFingerprintResponse
+            {
+                TrackId = track.GetProperty("id").GetString() ?? throw new NotFoundCustomException("Track UserId is empty."),
+                TrackName = track.GetProperty("title").GetString() ?? throw new NotFoundCustomException("Track Name is empty."),
+                ArtistName = track.GetProperty("artist").GetString() ?? throw new NotFoundCustomException("Artist Name is empty."),
+                TrackMatchStartsAt = audioCoverage.GetProperty("trackMatchStartsAt").GetDouble(),
+                TrackMatchEndsAt = audioCoverage.GetProperty("trackMatchStartsAt").GetDouble() + audioCoverage.GetProperty("trackCoverageLength").GetDouble(),
+            });
+        }
+
+        return results;
+    }
+
+    [AuthorizeRoles(HelperRoleBase.ListenerArtistRoles)]
     public async Task<QueryAudioFingerprintResponse> QueryTrackAsync(IFile file)
     {
         using Stream stream = file.OpenReadStream();
