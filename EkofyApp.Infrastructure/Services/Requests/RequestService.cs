@@ -8,12 +8,14 @@ using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Exceptions;
 using EkofyApp.Domain.Utils;
 using EkofyApp.Infrastructure.Services.Notifications;
+using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Requests
 {
+    [Queue("request")]
     public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IChatService chatService, IHubContext<NotificationHub> hubContext) : IRequestService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;

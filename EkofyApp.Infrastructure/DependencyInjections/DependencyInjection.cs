@@ -835,7 +835,7 @@ public static class DependencyInjection
         service.AddHangfireServer(ServerOptions =>
         {
             ServerOptions.ServerName = "BackgroundJobs.Hangfire";
-            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction", "request", "daily_playlist", "approval_escalation"];
+            ServerOptions.Queues = ["scheduled", "email", "track_upload", "track_count", "expired_restriction", "request", "order", "daily_playlist", "approval_escalation"];
         });
 
         // Background Jobs Services

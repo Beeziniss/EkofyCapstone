@@ -21,7 +21,7 @@ using EkofyApp.Application.Models.ApprovalHistories;
 
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
-    [Queue("request")]
+    [Queue("order")]
     public sealed class PackageOrderService(
         IUnitOfWork unitOfWork,
         IStripeService stripeService,
@@ -236,30 +236,40 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
 
         public async Task<bool> ApproveAndCloseRequest(string packageOrderId)
         {
-            // find and update package order. If not found, return false
-            var update = Builders<PackageOrder>.Update
-                .Set(po => po.Status, PackageOrderStatus.Completed)
-                .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
 
-            //NOTE: CHIA TIỀN CHO ARTIST Ở ĐÂY
+            //NOTE:chia tiền -  trong đây đã check package order rồi
             BackgroundJob.Enqueue<IStripeService>(service => service.EscrowReleaseAsync(packageOrderId, null));
 
-            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(
-                po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
-                update);
-            if (result.ModifiedCount <= 0)
-            {
-                return false;
-            }
+            // find and update package order. If not found, return false
+            var packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
+                                    .Find(po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress)
+                                    .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                                        .Include(po => po.ConversationId)
+                                        .Include(po => po.Id)
+                                        .Include(po => po.ProviderId)
+                                        .Include(po => po.ClientId)
+                                    )
+                                    .FirstOrDefaultAsync()
+                              ?? throw new NotFoundCustomException("This package order is not found!");
 
-            PackageOrder packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
-                                        .Find(po => po.Id == packageOrderId)
-                                        .Project<PackageOrder>(Builders<PackageOrder>.Projection
-                                            .Include(po => po.Id)
-                                            .Include(po => po.ProviderId)
-                                            .Include(po => po.ClientId))
-                                        .FirstOrDefaultAsync()
-                                  ?? throw new NotFoundCustomException("This package order is not found!");
+            await _unitOfWork.ExecuteInTransactionAsync(async session =>
+            {
+                var update = Builders<PackageOrder>.Update
+                            .Set(po => po.Status, PackageOrderStatus.Completed)
+                            .Set(po => po.CompletedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                var resultPackageOrder = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(session,
+                    po => po.Id == packageOrderId && po.Status == PackageOrderStatus.InProgress,
+                    update);
+
+                var resultConversation = await _unitOfWork.GetCollection<Conversation>()
+                    .UpdateOneAsync(session, c => c.Id == packageOrder.ConversationId,
+                        Builders<Conversation>.Update.Set(c => c.Status, ConversationStatus.Completed));
+                if(resultPackageOrder.ModifiedCount == 0 && resultConversation.ModifiedCount == 0)
+                {
+                    throw new BadRequestCustomException("Payout complete but not change order or conversation status.");
+                }
+            });
 
             string content = HelperMethod.BuildContentNotification(
                 NotificationActionType.OrderCreated,
@@ -378,7 +388,31 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                                           .Set(po => po.UpdatedAt, now);
 
                 var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, update);
-                return result.ModifiedCount > 0;
+                if (result.ModifiedCount > 0)
+                {
+                    string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.OrderContinued,
+                    NotificationRelatedType.Order,
+                    null,
+                    string.Empty
+                    );
+
+                    await _hubContext.Clients.User(orderPackage.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                    {
+                        Content = content,
+                    });
+
+                    await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+                    {
+                        ActorId = orderPackage.ClientId,
+                        TargetId = orderPackage.ProviderId,
+                        Content = content,
+                        RelatedType = NotificationRelatedType.Order,
+                        RelatedId = request.Id,
+                        Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{request.Id}/details",
+                    });
+                    return true;
+                }
             }
             return false;
         }
@@ -396,7 +430,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                                             .Include(po => po.PaymentTransactionId)
                                             .Include(po => po.ProviderId)
                                             .Include(po => po.ClientId)
-                                            .Include(po => po.DisputedReason))
+                                            .Include(po => po.DisputedReason)
+                                            .Include(po => po.ConversationId))
                                           .FirstOrDefaultAsync()
                                ?? throw new NotFoundCustomException("Can not find order!");
 
@@ -473,7 +508,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 Log.Error("Cannot update platform revenue after checkout session completed.");
             }
 
-            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund));
+            var result = await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == request.Id, Builders<PackageOrder>.Update.Set(po => po.Status, PackageOrderStatus.Refund).Set(po => po.RefundReason, request.RefundReason));
 
             // Create approval history after successful refund
             if (result.ModifiedCount > 0)
@@ -503,6 +538,8 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     Notes = $"Dispute resolved. Escrow release: {(request.RequestorPercentageAmount == 0m ? request.ArtistPercentageAmount : request.ArtistPercentageAmount - platformFeePercentage)}%",
                     Snapshot = snapshot
                 });
+
+                await _unitOfWork.GetCollection<Conversation>().UpdateOneAsync(c => c.Id == orderPackage.ConversationId, Builders<Conversation>.Update.Set(cu => cu.Status, ConversationStatus.Completed));
 
                 string content = HelperMethod.BuildContentNotification(
                     NotificationActionType.OrderRefunded,
@@ -767,7 +804,7 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(filter, update);
         }
 
-        //JOB THÔNG BÁO CHO ARTIST KHI SẮP HẾT HẠN
+        //JOB THÔNG BÁO + MAIL CHO ARTIST VÀ LISTENER KHI SẮP HẾT HẠN
         public async Task NotifyArtistBeforeDeadlineAsync()
         {
             var now = HelperMethod.GetUtcPlus7TimeOffset();
@@ -810,6 +847,46 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     Content = content,
                     Avatar = string.Empty,
                 });
+            }
+        }
+
+        //after 3 days without action of artist since this order created, reject and refund full for listener
+        public async Task CloseOrderAndRefundAutomatically(string packageOrderId)
+        {
+            PackageOrder? packageOrder = await _unitOfWork.GetCollection<PackageOrder>()
+                .Find(c => c.Id == packageOrderId)
+                .Project<PackageOrder>(Builders<PackageOrder>.Projection
+                    .Include(po => po.StartedAt)
+                    .Include(po => po.Status)
+                    .Include(po => po.PaymentTransactionId)
+                    )
+                .FirstOrDefaultAsync()
+                ?? throw new NotFoundCustomException("Package Order not found!");
+
+            if(packageOrder.StartedAt.HasValue || packageOrder.Status != PackageOrderStatus.Paid)
+            {
+                return;
+            }
+
+            var transaction = await _unitOfWork.GetCollection<PaymentTransaction>()
+                                      .Find(pt => pt.Id == packageOrder.PaymentTransactionId)
+                                      .Project<PaymentTransaction>(Builders<PaymentTransaction>.Projection
+                                        .Include(pti => pti.Amount)
+                                        .Include(pti => pti.StripePaymentId)
+                                       )
+                                      .FirstOrDefaultAsync()
+                        ?? throw new NotFoundCustomException("Oops, we can not find your transaction for this order!");
+
+            try
+            {
+                //refund full
+                await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount, RefundReasonType.requested_by_customer);
+
+                await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, Builders<PackageOrder>.Update.Set(pu => pu.Status, PackageOrderStatus.Refund));
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Exception occurs when auto close and refund for listener " + ex);
             }
         }
         #endregion
