@@ -30,21 +30,73 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
 
     public async Task CreateSubscriptionAsync(CreateSubscriptionRequest createSubscriptionRequest)
     {
-        int currentVersion = await _unitOfWork.GetCollection<Subscription>()
-             .Find(x => x.Tier == createSubscriptionRequest.Tier)
-             .SortByDescending(x => x.Version)
-           .Project(x => x.Version)
-     .FirstOrDefaultAsync();
-
-        await _unitOfWork.GetCollection<Subscription>().InsertOneAsync(new Subscription
+        await _unitOfWork.ExecuteInTransactionAsync(async session =>
         {
-            Name = createSubscriptionRequest.Name,
-            Description = createSubscriptionRequest.Description,
-            Code = createSubscriptionRequest.Code,
-            Amount = createSubscriptionRequest.Price,
-            Version = ++currentVersion,
-            Tier = createSubscriptionRequest.Tier,
-            Status = SubscriptionStatus.Inactive,
+            // Get current version for this tier
+            int currentVersion = await _unitOfWork.GetCollection<Subscription>()
+             .Find(session, x => x.Tier == createSubscriptionRequest.Tier)
+             .SortByDescending(x => x.Version)
+             .Project(x => x.Version)
+             .FirstOrDefaultAsync();
+
+            int newVersion = ++currentVersion;
+
+            // Insert new subscription
+            await _unitOfWork.GetCollection<Subscription>().InsertOneAsync(session, new Subscription
+            {
+                Name = createSubscriptionRequest.Name,
+                Description = createSubscriptionRequest.Description,
+                Code = createSubscriptionRequest.Code,
+                Amount = createSubscriptionRequest.Price,
+                Version = newVersion,
+                Tier = createSubscriptionRequest.Tier,
+                Status = SubscriptionStatus.Inactive,
+            });
+
+            // Get all entitlements from the previous version
+            if (currentVersion > 0)
+            {
+                Subscription? previousSubscription = await _unitOfWork.GetCollection<Subscription>()
+                    .Find(session, x => x.Tier == createSubscriptionRequest.Tier && x.Version == currentVersion - 1)
+                    .FirstOrDefaultAsync();
+
+                if (previousSubscription != null)
+                {
+                    // Find all entitlements associated with the previous subscription version
+                    List<Entitlement> previousEntitlements = await _unitOfWork.GetCollection<Entitlement>()
+                        .Find(session, e => e.SubscriptionOverrides.Any(so => so.SubscriptionCode == previousSubscription.Code))
+                        .ToListAsync();
+
+                    if (previousEntitlements.Count > 0)
+                    {
+                        // Create new entitlements with updated subscription code for the new version
+                        List<UpdateDefinition<Entitlement>> entitlementUpdates = [];
+                        UpdateDefinitionBuilder<Entitlement> updateBuilder = Builders<Entitlement>.Update;
+
+                        foreach (Entitlement entitlement in previousEntitlements)
+                        {
+                            FilterDefinition<Entitlement> filter = Builders<Entitlement>.Filter.Eq(e => e.Id, entitlement.Id);
+
+                            UpdateDefinition<Entitlement> update = updateBuilder
+                                .Set(e => e.SubscriptionOverrides, 
+                                    entitlement.SubscriptionOverrides
+                                        .Select(so => so.SubscriptionCode == previousSubscription.Code
+                                            ? new EntitlementSubscriptionOverride
+                                            {
+                                                SubscriptionCode = createSubscriptionRequest.Code,
+                                                Value = so.Value
+                                            }
+                                            : so
+                                        ).ToList()
+                                    )
+                                .Set(e => e.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                            await _unitOfWork.GetCollection<Entitlement>()
+                                .UpdateOneAsync(session, filter, update);
+                        }
+                    }
+                }
+            }
         });
     }
 
