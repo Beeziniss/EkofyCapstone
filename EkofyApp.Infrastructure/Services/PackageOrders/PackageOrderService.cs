@@ -5,6 +5,7 @@ using EkofyApp.Application.Models.Reviews;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Domain.EmbeddedDocuments;
@@ -28,12 +29,14 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
         IStripeService stripeService,
         IHttpContextAccessor httpContextAccessor,
         IHubContext<NotificationHub> hubContext,
+        INotificationService notificationService,
         IApprovalHistoryService approvalHistoryService) : IPackageOrderService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IStripeService _stripeService = stripeService;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
         private readonly IHubContext<NotificationHub> _hubContext = hubContext;
+        private readonly INotificationService _notificationService = notificationService;
         private readonly IApprovalHistoryService _approvalHistoryService = approvalHistoryService;
 
         public IQueryable<PackageOrder> GetPackageOrders()
@@ -92,6 +95,11 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 RelatedId = packageOrderId,
                 Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{packageOrderId}/details",
             });
+
+            Dictionary<string, string> data = [];
+            data.Add("mobileRoute", $"/orders/{packageOrderId}");
+
+            await _notificationService.SendFcmNotificationAsync(packageOrder.ClientId, "Order confirmed", "Your order has been confirmed by the artist! Start working now.", "order", data);
 
             return true;
         }
@@ -177,6 +185,11 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                     RelatedType = NotificationRelatedType.Order,
                     Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/orders/{request.PackageOrderId}/submission"
                 });
+
+            Dictionary<string, string> data = [];
+            data.Add("mobileRoute", $"/orders/{request.PackageOrderId}");
+
+            await _notificationService.SendFcmNotificationAsync(packageOrder.ClientId, "Order deliveried", "Your order has been delivered by the artist! Check it now...", "order", data);
 
             return result.ModifiedCount > 0;
         }

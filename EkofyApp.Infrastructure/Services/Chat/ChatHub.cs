@@ -2,6 +2,7 @@
 using EkofyApp.Application.Models.Notifications;
 using EkofyApp.Application.Models.Users;
 using EkofyApp.Application.ServiceInterfaces;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
 using EkofyApp.Domain.Enums.Users;
@@ -17,11 +18,12 @@ using System.Security.Claims;
 
 namespace EkofyApp.Infrastructure.Services.Chat;
 
-public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub> notificationHubContext) : Hub
+public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub> notificationHubContext, INotificationService notificationService) : Hub
 {
     private static readonly ConcurrentDictionary<string, HashSet<string>> OnlineUsers = []; // userId -> userConnectionId
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IHubContext<NotificationHub> _notificationHubContext = notificationHubContext;
+    private readonly INotificationService _notificationService = notificationService;
 
     public override async Task OnConnectedAsync()
     {
@@ -301,6 +303,12 @@ public sealed class ChatHub(IUnitOfWork unitOfWork, IHubContext<NotificationHub>
                     Action = NotificationActionType.Message,
                     Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/inbox/{chatMessageRequest.ConversationId}",
                 });
+
+                Dictionary<string, string> data = [];
+
+                data.Add("mobileRoute", $"/inbox/{chatMessageRequest.ConversationId}");
+
+                await _notificationService.SendFcmNotificationAsync(chatMessageRequest.ReceiverId, "New Message", $"You have a new message from {user.Name}.", "message", data);
             }
 
             // Optional: cũng có thể gửi về cho tất cả kết nối của sender nếu muốn sync
