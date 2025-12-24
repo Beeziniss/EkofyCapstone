@@ -2,6 +2,7 @@
 using EkofyApp.Application.Models.Requests;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Chat;
+using EkofyApp.Application.ServiceInterfaces.Notifications;
 using EkofyApp.Application.ServiceInterfaces.Requests;
 using EkofyApp.Domain.Entities;
 using EkofyApp.Domain.Enums;
@@ -17,11 +18,11 @@ using MongoDB.Driver;
 namespace EkofyApp.Infrastructure.Services.Requests
 {
     [Queue("request")]
-    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, IChatService chatService, IHubContext<NotificationHub> hubContext) : IRequestService
+    public class RequestService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, INotificationService notificationService, IHubContext<NotificationHub> hubContext) : IRequestService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
-        private readonly IChatService _chatService = chatService;
+        private readonly INotificationService _notificationService = notificationService;
         private readonly IHubContext<NotificationHub> _hubContext = hubContext;
 
         public IQueryable<Request> GetRequestsQueryable()
@@ -250,6 +251,13 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/profile/my-requests/{request.RequestId}",
             });
 
+            Dictionary<string, string> data = [];
+            data.Add("mobileRoute", "/own-requests");
+
+            string status = request.Status == RequestStatus.Confirmed ? "approved" : "rejected";
+
+            await _notificationService.SendFcmNotificationAsync(requestDocument.RequestUserId, "Request Change", $"Your request has been {status}.", "request", data);
+
             return true;
         }
         #endregion
@@ -435,6 +443,11 @@ namespace EkofyApp.Infrastructure.Services.Requests
             });
 
             await _unitOfWork.GetCollection<Request>().UpdateManyAsync(filter, update);
+
+            Dictionary<string, string> data = [];
+            data.Add("mobileRoute", "/own-requests");
+
+            await _notificationService.SendFcmNotificationAsync(request.RequestUserId, "Request Rejected", "Your request has been rejected because of overdue!", "request", data);
         }
     }
 }
