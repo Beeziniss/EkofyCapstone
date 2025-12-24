@@ -4,6 +4,7 @@ using EkofyApp.Application.Models.Works;
 using EkofyApp.Application.ServiceInterfaces;
 using EkofyApp.Application.ServiceInterfaces.Jobs;
 using EkofyApp.Application.ServiceInterfaces.MonthlyStreamCounts;
+using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ServiceInterfaces.Playlists;
 using EkofyApp.Application.ServiceInterfaces.PopularityMetrics;
 using EkofyApp.Application.ServiceInterfaces.Recommendations;
@@ -310,5 +311,14 @@ public class BackgoundService : IBackgoundService
         using var scope = _serviceScopeFactory.CreateScope();
         var trackService = scope.ServiceProvider.GetRequiredService<ITrackService>();
         await trackService.EscalateOldUploadRequestsAsync();
+    }
+
+    [Queue("order")]
+    [JobDisplayName("Notify Artist And Listener Before Deadline")]
+    public async Task NotifyOrderBeforeDeadlineJob()
+    {
+        using var scope = _serviceScopeFactory.CreateScope();
+        var packageOrderService = scope.ServiceProvider.GetRequiredService<IPackageOrderService>();
+        await packageOrderService.NotifyArtistAndListenerBeforeDeadlineAsync();
     }
 }

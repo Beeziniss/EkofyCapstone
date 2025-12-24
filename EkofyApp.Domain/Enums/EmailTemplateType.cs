@@ -21,4 +21,5 @@ public enum EmailTemplateType
     SubscriptionResumed,
     SubscriptionExpired,
     UpdatePolicy,
+    OrderDeadlineReminder
 }

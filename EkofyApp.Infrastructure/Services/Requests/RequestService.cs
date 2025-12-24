@@ -11,6 +11,7 @@ using EkofyApp.Infrastructure.Services.Notifications;
 using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace EkofyApp.Infrastructure.Services.Requests
@@ -57,6 +58,7 @@ namespace EkofyApp.Infrastructure.Services.Requests
             {
                 Request directRequest = new()
                 {
+                    Id = ObjectId.GenerateNewId().ToString(),
                     RequestUserId = userId,
                     ArtistId = request.ArtistId,
                     Duration = artistPackage.EstimateDeliveryDays,
@@ -68,6 +70,10 @@ namespace EkofyApp.Infrastructure.Services.Requests
                 };
 
                 await _unitOfWork.GetCollection<Request>().InsertOneAsync(directRequest);
+
+                var expiredTimeDirectRequest = HelperMethod.GetUtcPlus7TimeOffset().AddDays(3);
+
+                BackgroundJob.Schedule<RequestService>(service => service.AutoCloseExpiredRequestsAsync(directRequest.Id), expiredTimeDirectRequest);
 
                 displayName = await _unitOfWork.GetCollection<Listener>()
                 .Find(x => x.UserId == userId)
@@ -107,7 +113,8 @@ namespace EkofyApp.Infrastructure.Services.Requests
             var publicRequest = await _unitOfWork.GetCollection<Request>()
                                             .Find(r => r.Id == request.PublicRequestId).Limit(1)
                                             .Project<Request>(Builders<Request>.Projection
-                                                .Include(r => r.DetailDescription))
+                                                .Include(r => r.DetailDescription)
+                                                .Include(r => r.Id))
                                             .FirstOrDefaultAsync()
                                 ?? throw new BadRequestCustomException("Public Request not found!");
 
@@ -122,6 +129,10 @@ namespace EkofyApp.Infrastructure.Services.Requests
             {
                 return false;
             }
+
+            var expiredTime = HelperMethod.GetUtcPlus7TimeOffset().AddDays(3);
+
+            BackgroundJob.Schedule<RequestService>(service => service.AutoCloseExpiredRequestsAsync(publicRequest.Id), expiredTime);
 
             displayName = await _unitOfWork.GetCollection<Listener>()
                 .Find(x => x.UserId == userId)
@@ -387,17 +398,41 @@ namespace EkofyApp.Infrastructure.Services.Requests
 
 
         //TODO: background job for auto requests that expired
-        public async Task AutoCloseExpiredRequestsAsync()
+        public async Task AutoCloseExpiredRequestsAsync(string requestId)
         {
+            var request = await _unitOfWork.GetCollection<Request>().Find(rh => rh.Id == requestId).FirstOrDefaultAsync() ?? throw new NotFoundCustomException("The request not found when auto close expire!");
+
             var filter = Builders<Request>.Filter.And(
-                Builders<Request>.Filter.Lte(rh => rh.RequestCreatedTime, HelperMethod.GetUtcPlus7TimeOffset().AddDays(-3)),
+                Builders<Request>.Filter.Eq(rh => rh.Id, requestId),
                 Builders<Request>.Filter.Eq(rh => rh.Status, RequestStatus.Pending)
             );
             var update = Builders<Request>.Update.Set(rh => rh.Status, RequestStatus.Rejected)
                                                  .Set(rh => rh.Notes, "The request is reject by the system because of overdue!");
 
+            var artist = await _unitOfWork.GetCollection<Artist>().Find(a => a.Id == request.ArtistId).FirstOrDefaultAsync() ?? throw new NotFoundCustomException("The artist not found when auto close expired request");
 
             //GỬI THÔNG BÁO ĐÂY
+            string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.RequestRejected,
+                    NotificationRelatedType.Request,
+                    null,
+                    string.Empty
+                    );
+
+            await _hubContext.Clients.User(request.ArtistId!).SendAsync("ReceiveNotification", new NotificationResponse
+            {
+                Content = content,
+            });
+
+            await _unitOfWork.GetCollection<Notification>().InsertOneAsync(new Notification
+            {
+                ActorId = request.RequestUserId,
+                TargetId = artist.UserId,
+                Content = content,
+                RelatedType = NotificationRelatedType.Request,
+                RelatedId = request.Id,
+                Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/artist/studio/pending-request/{requestId}",
+            });
 
             await _unitOfWork.GetCollection<Request>().UpdateManyAsync(filter, update);
         }

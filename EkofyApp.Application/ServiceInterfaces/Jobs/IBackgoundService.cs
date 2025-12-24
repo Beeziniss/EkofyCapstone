@@ -23,5 +23,6 @@ namespace EkofyApp.Application.ServiceInterfaces.Jobs
         Task<bool> CheckProgressingUploadsManuallyJob(string actionByUserId, string uploadId);
         Task DailyPlaylistGenerationJob();
         Task EscalateOldUploadRequestsJob();
+        Task NotifyOrderBeforeDeadlineJob();
     }
 }
