@@ -1,9 +1,11 @@
-﻿using EkofyApp.Application.Models.Notifications;
+﻿using EkofyApp.Application.Models.ApprovalHistories;
+using EkofyApp.Application.Models.Notifications;
 using EkofyApp.Application.Models.PackageOrders;
 using EkofyApp.Application.Models.Reviews;
 using EkofyApp.Application.ServiceInterfaces;
-using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ServiceInterfaces.ApprovalHistories;
+using EkofyApp.Application.ServiceInterfaces.Jobs;
+using EkofyApp.Application.ServiceInterfaces.PackageOrders;
 using EkofyApp.Application.ThirdPartyServiceInterfaces.Payment.Stripe;
 using EkofyApp.Domain.EmbeddedDocuments;
 using EkofyApp.Domain.Entities;
@@ -17,7 +19,6 @@ using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
-using EkofyApp.Application.Models.ApprovalHistories;
 
 namespace EkofyApp.Infrastructure.Services.PackageOrders
 {
@@ -804,32 +805,89 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
             await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(filter, update);
         }
 
-        //JOB THÔNG BÁO + MAIL CHO ARTIST VÀ LISTENER KHI SẮP HẾT HẠN
-        public async Task NotifyArtistBeforeDeadlineAsync()
+        //JOB THÔNG BÁO + MAIL CHO ARTIST VÀ LISTENER KHI SẮP HẾT HẠN 1 ngày
+        public async Task NotifyArtistAndListenerBeforeDeadlineAsync()
         {
             var now = HelperMethod.GetUtcPlus7TimeOffset();
 
+            //lấy tất cả orders đag làm và đã start
             var filter = Builders<PackageOrder>.Filter.And(
                 Builders<PackageOrder>.Filter.Eq(po => po.Status, PackageOrderStatus.InProgress),
-                Builders<PackageOrder>.Filter.Where(po => po.StartedAt != null
-                                                && (po.StartedAt.Value.AddDays(po.Duration - 1) + po.FreezedTime) <= now
-                                                && (po.StartedAt.Value.AddDays(po.Duration) + po.FreezedTime) > HelperMethod.GetUtcPlus7TimeOffset())
-                );
-            var packageOrders = await _unitOfWork.GetCollection<PackageOrder>().Find(filter).ToListAsync();
+                Builders<PackageOrder>.Filter.Ne(po => po.StartedAt, null)
+            );
 
-            var clientIds = packageOrders.Select(o => o.ClientId).Distinct().ToList();
-
-            var clients = await _unitOfWork.GetCollection<User>()
-                .Find(u => clientIds.Contains(u.Id))
+            var packageOrders = await _unitOfWork.GetCollection<PackageOrder>()
+                .Find(filter)
                 .ToListAsync();
 
-            var clientDict = clients.ToDictionary(c => c.Id, c => c.FullName);
-
-            foreach (var packageOrder in packageOrders)
+            //lấy những order trong 24h cuối
+            var expiringOrders = packageOrders.Where(po =>
             {
-                string clientName = clientDict.TryGetValue(packageOrder.ClientId, out var name) ? name : "Unknown";
-                string content = HelperMethod.BuildContentNotification(NotificationActionType.OrderDeadline, NotificationRelatedType.Order, packageOrder.Id, clientName);
+                var expiryDate = po.StartedAt!.Value
+                    .AddDays(po.Duration)
+                    .Add(po.FreezedTime);
+                var oneDayBeforeExpiry = expiryDate.AddDays(-1);
 
+                return now >= oneDayBeforeExpiry && now < expiryDate;
+            }).ToList();
+
+            if (!expiringOrders.Any())
+            {
+                return; // Không có order nào cần thông báo
+            }
+
+            // Kiểm tra notifications đã gửi (tránh trùng lặp)
+            var orderIds = expiringOrders.Select(o => o.Id).ToList();
+            var existingNotifications = await _unitOfWork.GetCollection<Notification>()
+                .Find(n => orderIds.Contains(n.RelatedId)
+                        && n.Action == NotificationActionType.OrderDeadline)
+                .Project(n => n.RelatedId)
+                .ToListAsync();
+
+            var existingNotifSet = new HashSet<string>(existingNotifications);
+
+            // Lấy tất cả users (clients + providers) 1 lần duy nhất
+            var clientIds = expiringOrders.Select(o => o.ClientId).Distinct().ToList();
+            var providerIds = expiringOrders.Select(o => o.ProviderId).Distinct().ToList();
+            var allUserIds = clientIds.Union(providerIds).Distinct().ToList();
+
+            var users = await _unitOfWork.GetCollection<User>()
+                .Find(u => allUserIds.Contains(u.Id))
+                .ToListAsync();
+
+            var userDict = users.ToDictionary(u => u.Id);
+
+            // Xử lý từng order
+            foreach (var packageOrder in expiringOrders)
+            {
+                // Skip nếu đã gửi thông báo cho order này
+                if (existingNotifSet.Contains(packageOrder.Id))
+                {
+                    continue;
+                }
+
+                // Lấy thông tin client và provider
+                if (!userDict.TryGetValue(packageOrder.ClientId, out var requestor))
+                {
+                    // Log warning: Client không tồn tại
+                    continue;
+                }
+
+                if (!userDict.TryGetValue(packageOrder.ProviderId, out var provider))
+                {
+                    // Log warning: Provider không tồn tại
+                    continue;
+                }
+
+                // Tạo nội dung thông báo
+                string content = HelperMethod.BuildContentNotification(
+                    NotificationActionType.OrderDeadline,
+                    NotificationRelatedType.Order,
+                    packageOrder.Id,
+                    requestor.FullName
+                );
+
+                // Lưu notification vào DB
                 await _unitOfWork.GetCollection<Notification>()
                     .InsertOneAsync(new Notification
                     {
@@ -838,15 +896,42 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                         Content = content,
                         Action = NotificationActionType.OrderDeadline,
                         RelatedId = packageOrder.Id,
-                        RelatedType = NotificationRelatedType.Track,
+                        RelatedType = NotificationRelatedType.Order,
                         Url = $"{Environment.GetEnvironmentVariable("FRONTEND_URL")}/order/{packageOrder.Id}"
                     });
 
-                await _hubContext.Clients.User(packageOrder.ProviderId).SendAsync("ReceiveNotification", new NotificationResponse
+                // Gửi realtime notification qua SignalR
+                try
                 {
-                    Content = content,
-                    Avatar = string.Empty,
-                });
+                    await _hubContext.Clients.User(packageOrder.ProviderId)
+                        .SendAsync("ReceiveNotification", new NotificationResponse
+                        {
+                            Content = content,
+                            Avatar = string.Empty,
+                        });
+                }
+                catch (Exception ex)
+                {
+                    // Log lỗi SignalR nhưng không làm fail job
+                    Log.Warning(ex, "Failed to send realtime notification for order {OrderId}", packageOrder.Id);
+                }
+
+                // Enqueue email jobs cho cả client và provider
+                BackgroundJob.Enqueue<IBackgoundService>(x =>
+                    x.SendEmailJob(
+                        EmailTemplateType.OrderDeadlineReminder,
+                        requestor.Email,
+                        requestor.FullName,
+                        packageOrder.Id
+                    ));
+
+                BackgroundJob.Enqueue<IBackgoundService>(x =>
+                    x.SendEmailJob(
+                        EmailTemplateType.OrderDeadlineReminder,
+                        provider.Email,
+                        provider.FullName,
+                        packageOrder.Id
+                    ));
             }
         }
 
@@ -882,7 +967,9 @@ namespace EkofyApp.Infrastructure.Services.PackageOrders
                 //refund full
                 await _stripeService.RefundAsync(transaction.StripePaymentId!, transaction.Amount, RefundReasonType.requested_by_customer);
 
-                await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, Builders<PackageOrder>.Update.Set(pu => pu.Status, PackageOrderStatus.Refund));
+                await _unitOfWork.GetCollection<PackageOrder>().UpdateOneAsync(po => po.Id == packageOrderId, Builders<PackageOrder>.Update
+                    .Set(pu => pu.Status, PackageOrderStatus.Refund)
+                    .Set(pu => pu.RefundReason, "The order has not been approved by the artist for over 3 days."));
             }
             catch (Exception ex)
             {

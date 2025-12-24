@@ -24,5 +24,8 @@ public static class HangfireJobConfiguration
 
         // Kiểm tra và xử lý các yêu cầu upload lâu ngày chưa được duyệt
         RecurringJob.AddOrUpdate("escalate-old-upload-requests", () => app.Services.GetService<IBackgoundService>()!.EscalateOldUploadRequestsJob(), Cron.Daily(0, 0), new RecurringJobOptions { TimeZone = vietnamTimeZone });
+
+        //Kiểm tra và gửi thông báo sắp tới hạn order trong mỗi 1 tiếng
+        RecurringJob.AddOrUpdate("notify-order-in-24-hours", () => app.Services.GetService<IBackgoundService>()!.NotifyOrderBeforeDeadlineJob(), "* */1 * * *", new RecurringJobOptions { TimeZone = vietnamTimeZone });
     }
 }

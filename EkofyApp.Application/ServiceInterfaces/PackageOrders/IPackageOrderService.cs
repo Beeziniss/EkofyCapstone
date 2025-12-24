@@ -14,6 +14,7 @@ namespace EkofyApp.Application.ServiceInterfaces.PackageOrders
         Task DeleteReviewHardAsync(string packageOrderId);
         Task<ReviewResponse> GetAverageRatingBaseOnPackageAsync(string packageId);
         IQueryable<PackageOrder> GetPackageOrders();
+        Task NotifyArtistAndListenerBeforeDeadlineAsync();
         Task<bool> RefundAndEscrowAsync(PackageOrderRefundRequest request);
         Task<bool> SendRedoRequest(RedoRequest request);
         Task<bool> SubmitDeliveryAsync(SubmitDeliveryRequest request);

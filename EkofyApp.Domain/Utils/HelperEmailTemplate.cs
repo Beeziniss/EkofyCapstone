@@ -20,6 +20,7 @@ public sealed class HelperEmailTemplate
     public static string SubjectSubscriptionResumed() => "Ekofy - Subscription Resumed";
     public static string SubjectSubscriptionExpired() => "Ekofy - Subscription Expired Notice";
     public static string SubjectUpdatePolicy() => "Ekofy - Policy Update Notification";
+    public static string OrderDeadlineReminder() => "Ekofy - Order Deadline Reminder";
 
     public static string RegisterNotification(string[] paramaters)
     {
@@ -1146,5 +1147,52 @@ public sealed class HelperEmailTemplate
 
 </body>
 </html>";
+    }
+
+    /// <summary>
+	/// Subscription expired email template.
+    /// Expected parameters:
+	/// 0 - Full Name
+	/// 1 - Order Id
+    /// </summary>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
+    public static string OrderDeadlineReminder(string[] parameters)
+    {
+        // Định nghĩa các tham số
+        string fullName = parameters[0];
+        string orderId = parameters[1];
+
+        return @$"<!doctype html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <title>Order Deadline Reminder</title>
+</head>
+<body style=""font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f5f5f5; padding: 40px;"">
+
+  <!-- SUBSCRIPTION EXPIRED -->
+  <div style=""background: linear-gradient(45deg, #3b54ea 0%, #ab4ee5 100%); padding: 40px 0; margin-bottom: 40px"">
+    <div style=""margin: 0 auto; padding: 64px 56px; width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 32px; line-height: 1.8;"">
+      <div style=""text-align: center"">
+        <img src=""https://res.cloudinary.com/dofnn7sbx/image/upload/v1759760383/logo_yqjeui.png"" alt=""Ekofy Logo"" />
+      </div>
+      <div style=""height: 1px; width: 100%; background-color: #d9d9d9; margin: 32px 0""></div>
+
+      <strong>Dear {fullName},</strong>
+      <p> We would like to inform you that your order <strong>{orderId}</strong> will be end in 24 hours.
+      </p>
+      <p> If after the deadline time, the order is not approved and closed, the system will close it automatically and we will solve the dispution.</p>
+      <p style=""font-size: 0.9em"">
+        Thank you for being part of <strong>Ekofy</strong>.<br><br>
+        Best regards,<br>
+        <strong>The Ekofy Team</strong>
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>
+";
     }
 }
