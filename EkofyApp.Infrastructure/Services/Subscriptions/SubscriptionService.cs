@@ -69,31 +69,39 @@ public sealed class SubscriptionService(IUnitOfWork unitOfWork, ILogger<Subscrip
 
                     if (previousEntitlements.Count > 0)
                     {
-                        // Create new entitlements with updated subscription code for the new version
-                        List<UpdateDefinition<Entitlement>> entitlementUpdates = [];
                         UpdateDefinitionBuilder<Entitlement> updateBuilder = Builders<Entitlement>.Update;
 
                         foreach (Entitlement entitlement in previousEntitlements)
                         {
-                            FilterDefinition<Entitlement> filter = Builders<Entitlement>.Filter.Eq(e => e.Id, entitlement.Id);
+                            // Find the existing override for the previous subscription code
+                            EntitlementSubscriptionOverride? existingOverride = entitlement.SubscriptionOverrides
+                                .FirstOrDefault(so => so.SubscriptionCode == previousSubscription.Code);
 
-                            UpdateDefinition<Entitlement> update = updateBuilder
-                                .Set(e => e.SubscriptionOverrides, 
-                                    entitlement.SubscriptionOverrides
-                                        .Select(so => so.SubscriptionCode == previousSubscription.Code
-                                            ? new EntitlementSubscriptionOverride
-                                            {
-                                                SubscriptionCode = createSubscriptionRequest.Code,
-                                                Value = so.Value
-                                            }
-                                            : so
-                                        ).ToList()
-                                    )
-                                .Set(e => e.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+                            if (existingOverride != null)
+                            {
+                                FilterDefinition<Entitlement> filter = Builders<Entitlement>.Filter.Eq(e => e.Id, entitlement.Id);
 
-                            await _unitOfWork.GetCollection<Entitlement>()
-                                .UpdateOneAsync(session, filter, update);
+                                // Add the new subscription override while preserving existing ones
+                                UpdateDefinition<Entitlement> update = updateBuilder
+                                    .AddToSet(e => e.SubscriptionOverrides, new EntitlementSubscriptionOverride
+                                    {
+                                        SubscriptionCode = createSubscriptionRequest.Code,
+                                        Value = existingOverride.Value
+                                    })
+                                    .Set(e => e.UpdatedAt, HelperMethod.GetUtcPlus7TimeOffset());
+
+                                await _unitOfWork.GetCollection<Entitlement>()
+                                    .UpdateOneAsync(session, filter, update);
+                            }
                         }
+
+                        _logger.LogInformation(
+                            "Added new subscription overrides for {Count} entitlements from subscription code '{OldCode}' (v{OldVersion}) to '{NewCode}' (v{NewVersion})",
+                            previousEntitlements.Count,
+                            previousSubscription.Code,
+                            previousSubscription.Version,
+                            createSubscriptionRequest.Code,
+                            newVersion);
                     }
                 }
             }
